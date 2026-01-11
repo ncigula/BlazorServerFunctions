@@ -1,7 +1,7 @@
 ﻿namespace BlazorServerFunctions.Abstractions;
 
 [AttributeUsage(AttributeTargets.Method)]
-public class ServerFunctionAttribute
+public sealed class ServerFunctionAttribute : Attribute
 {
     public string? Route { get; set; }
     public bool RequireAuthorization { get; set; }

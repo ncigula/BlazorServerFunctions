@@ -4,12 +4,12 @@ namespace BlazorServerFunctions.Abstractions;
 
 public sealed record MethodInfo
 {
-    public required string Name { get; init; }
-    public required IMethodSymbol Symbol { get; init; }
-    public required string ReturnType { get; init; }
-    public required bool IsAsync { get; init; }
-    public required IReadOnlyCollection<ParameterInfo> Parameters { get; init; } = [];
-    public string? CustomRoute { get; init; }
-    public required bool RequireAuthorization { get; init; }
-    public string HttpMethod { get; init; } = "POST";
+    public string Name { get; set; } = string.Empty;
+    public IMethodSymbol? Symbol { get; set; }
+    public string ReturnType { get; set; } = string.Empty;
+    public bool IsAsync { get; set; }
+    public IReadOnlyCollection<ParameterInfo> Parameters { get; set; } = [];
+    public string? CustomRoute { get; set; }
+    public bool RequireAuthorization { get; set; }
+    public string HttpMethod { get; set; } = "POST";
 }

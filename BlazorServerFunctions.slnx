@@ -1,5 +1,8 @@
 <Solution>
-  <Folder Name="/samples/" />
+  <Folder Name="/samples/">
+    <Project Path="samples/BlazorServerFunctions.Sample/BlazorServerFunctions.Sample.Client/BlazorServerFunctions.Sample.Client.csproj" />
+    <Project Path="samples/BlazorServerFunctions.Sample/BlazorServerFunctions.Sample/BlazorServerFunctions.Sample.csproj" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path=".gitignore" />
@@ -13,7 +16,6 @@
     <Project Path="src/BlazorServerFunctions.Generator/BlazorServerFunctions.Generator.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/BlazorServerFunctions.IntegrationTests/BlazorServerFunctions.IntegrationTests.csproj" />
     <Project Path="tests/BlazorServerFunctions.UnitTests/BlazorServerFunctions.UnitTests.csproj" />
   </Folder>
 </Solution>

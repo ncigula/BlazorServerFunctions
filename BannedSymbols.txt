@@ -1,0 +1,3 @@
+P:System.DateTime.Now;Use System.DateTime.UtcNow instead.
+M:System.String.Substring(System.Int32,System.Int32); Use Span<Char> instead.
+M:System.Guid.NewGuid(); Use Guid.CreateVersion7() instead.

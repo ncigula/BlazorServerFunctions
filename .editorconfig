@@ -30,6 +30,8 @@ dotnet_diagnostic.CA2327.severity = suggestion
 dotnet_diagnostic.CA1032.severity = none
 dotnet_diagnostic.CA1034.severity = none
 dotnet_diagnostic.CA1031.severity = none
+dotnet_diagnostic.CA1515.severity = none
+dotnet_diagnostic.CA1115.severity = none
 
 # Microsoft .NET properties
 csharp_new_line_before_members_in_object_initializers = false

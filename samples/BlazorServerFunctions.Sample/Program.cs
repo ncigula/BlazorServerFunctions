@@ -1,5 +1,7 @@
 using BlazorServerFunctions.Sample.Client.Pages;
 using BlazorServerFunctions.Sample.Components;
+using BlazorServerFunctions.Sample.Components.Weather;
+using BlazorServerFunctions.Sample.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -7,6 +9,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
+
+builder.Services.AddScoped<IWeatherService, WeatherService>();
 
 var app = builder.Build();
 

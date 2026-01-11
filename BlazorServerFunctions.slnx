@@ -12,5 +12,8 @@
     <Project Path="src/BlazorServerFunctions.Extensions/BlazorServerFunctions.Extensions.csproj" />
     <Project Path="src/BlazorServerFunctions.Generator/BlazorServerFunctions.Generator.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/BlazorServerFunctions.IntegrationTests/BlazorServerFunctions.IntegrationTests.csproj" />
+    <Project Path="tests/BlazorServerFunctions.UnitTests/BlazorServerFunctions.UnitTests.csproj" />
+  </Folder>
 </Solution>

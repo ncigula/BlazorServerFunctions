@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <Sdk Name="Aspire.AppHost.Sdk" Version="9.0.0"/>
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <IsAspireHost>true</IsAspireHost>
+        <UserSecretsId>029db465-13c6-48d4-8d2a-7f120133f86e</UserSecretsId>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Aspire.Hosting.AppHost"/>
+        <PackageReference Include="KubernetesClient"/>
+
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\BlazorServerFunctions.Sample\BlazorServerFunctions.Sample.csproj" />
+    </ItemGroup>
+
+</Project>

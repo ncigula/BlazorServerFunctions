@@ -3,6 +3,7 @@
     <Project Path="samples/BlazorServerFunctions.Sample.AppHost/BlazorServerFunctions.Sample.AppHost.csproj" />
     <Project Path="samples/BlazorServerFunctions.Sample.Client/BlazorServerFunctions.Sample.Client.csproj" />
     <Project Path="samples/BlazorServerFunctions.Sample.ServiceDefaults/BlazorServerFunctions.Sample.ServiceDefaults.csproj" />
+    <Project Path="samples/BlazorServerFunctions.Sample.Shared/BlazorServerFunctions.Sample.Shared.csproj" />
     <Project Path="samples/BlazorServerFunctions.Sample/BlazorServerFunctions.Sample.csproj" />
   </Folder>
   <Folder Name="/Solution Items/">
@@ -18,6 +19,7 @@
     <Project Path="src/BlazorServerFunctions.Generator/BlazorServerFunctions.Generator.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/BlazorServerFunctions.IntegrationTests/BlazorServerFunctions.IntegrationTests.csproj" />
     <Project Path="tests/BlazorServerFunctions.UnitTests/BlazorServerFunctions.UnitTests.csproj" />
   </Folder>
 </Solution>

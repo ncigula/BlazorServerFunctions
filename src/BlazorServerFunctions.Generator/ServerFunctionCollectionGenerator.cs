@@ -195,10 +195,10 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Get [ServerFunction] attribute data
+        // Get [ServerFunctionCollection] attribute data
         var attribute = interfaceSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == 
-                "BlazorServerFunctions.Abstractions.ServerFunctionAttribute");
+                "BlazorServerFunctions.Abstractions.ServerFunctionCollectionAttribute");
 
         if (attribute is null)
             return null;

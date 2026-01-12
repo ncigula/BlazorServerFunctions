@@ -284,7 +284,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         // Get method attribute if exists
         var methodAttribute = methodSymbol.GetAttributes()
             .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == 
-                "BlazorServerFunctions.Abstractions.ServerFunctionMethodAttribute");
+                "BlazorServerFunctions.Abstractions.ServerFunctionAttribute");
 
         string? customRoute = null;
         bool requireAuthorization = false;

@@ -1,3 +1,5 @@
+using Xunit;
+
 namespace BlazorServerFunctions.UnitTests;
 
 public class UnitTest1

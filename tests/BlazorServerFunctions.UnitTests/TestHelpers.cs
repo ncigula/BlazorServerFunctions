@@ -1,36 +1,24 @@
-﻿using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Runtime.CompilerServices;
 
 namespace BlazorServerFunctions.UnitTests;
 
-public class TestAnalyzerConfigOptionsProvider : AnalyzerConfigOptionsProvider
+public static class TestHelpers
 {
-    private readonly Dictionary<string, string> _options;
-
-    public TestAnalyzerConfigOptionsProvider(Dictionary<string, string> options)
+    public static IEnumerable<string> GetProjectFiles(string projectDirectoryName)
     {
-        _options = options;
-        GlobalOptions = new TestAnalyzerConfigOptions(options);
+        var currentFilePath = GetCurrentFilePath();
+
+        var solutionRoot =
+            Path.GetDirectoryName(
+                Path.GetDirectoryName(
+                    Path.GetDirectoryName(currentFilePath)));
+
+        var projectPath = Path.Combine(solutionRoot!, "samples", projectDirectoryName);
+
+        return Directory.EnumerateFiles(projectPath, "*.cs", SearchOption.AllDirectories)
+            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
+                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));
     }
 
-    public override AnalyzerConfigOptions GlobalOptions { get; }
-
-    public override AnalyzerConfigOptions GetOptions(SyntaxTree tree) => new TestAnalyzerConfigOptions(_options);
-    public override AnalyzerConfigOptions GetOptions(AdditionalText textFile) => new TestAnalyzerConfigOptions(_options);
-}
-
-public class TestAnalyzerConfigOptions : AnalyzerConfigOptions
-{
-    private readonly Dictionary<string, string> _options;
-
-    public TestAnalyzerConfigOptions(Dictionary<string, string> options)
-    {
-        _options = options;
-    }
-
-    public override bool TryGetValue(string key, [NotNullWhen(true)] out string? value)
-    {
-        return _options.TryGetValue(key, out value);
-    }
+    private static string GetCurrentFilePath([CallerFilePath] string path = "") => path;
 }

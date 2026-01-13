@@ -32,7 +32,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         context.RegisterSourceOutput(compilationAndProject,
             static (spc, source) => Execute(spc, source.Left.Left, source.Left.Right, source.Right));
     }
-    
+
     // Check if a syntax node could be an interface with our attribute
     private static bool IsCandidateInterface(SyntaxNode node)
     {
@@ -42,7 +42,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         // Quick check: does it have any attributes?
         return interfaceDecl.AttributeLists.Count > 0;
     }
-    
+
     // Get the semantic model for the interface
     private static InterfaceDeclarationSyntax? GetSemanticTargetForGeneration(
         GeneratorSyntaxContext context)
@@ -59,7 +59,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
                     continue;
 
                 var attributeType = attributeSymbol.ContainingType;
-                
+
                 var fullName = attributeType.ToDisplayString();
 
                 if (fullName == "BlazorServerFunctions.Abstractions.ServerFunctionCollectionAttribute")
@@ -71,59 +71,57 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
         return null;
     }
-    
+
     // Detect if this is Server or Client project
     private static ProjectInfo GetProjectInfo(AnalyzerConfigOptionsProvider options)
-{
-    options.GlobalOptions.TryGetValue("build_property.RootNamespace", out var rootNamespace);
-    options.GlobalOptions.TryGetValue("build_property.ProjectName", out var projectName);
-    
-    // Strategy 1: Check project SDK type
-    options.GlobalOptions.TryGetValue("build_property.UsingMicrosoftNETSdkWeb", out var isWeb);
-    options.GlobalOptions.TryGetValue("build_property.UsingMicrosoftNETSdkBlazorWebAssembly", out var isWasm);
-    
-    bool isClientProject = bool.Parse(isWasm ?? "false");
-    bool isServerProject = bool.Parse(isWeb ?? "false");
-    
-    // Strategy 2: Check for references that hint at project type
-    // (This is harder in incremental generators, so we'll skip it)
-    
-    // Strategy 3: Naming convention as last resort
-    if (!isClientProject && !isServerProject && projectName != null)
     {
-        // Check naming patterns
-        isClientProject = projectName.EndsWith(".Client") || 
-                         projectName.EndsWith(".WASM") ||
-                         projectName.EndsWith(".WebAssembly");
-                         
-        isServerProject = projectName.EndsWith(".Server") || 
-                         projectName.EndsWith(".Web") ||
-                         projectName.Contains("API");
-    }
-    
-    // Allow explicit override
-    options.GlobalOptions.TryGetValue("build_property.GenerateServerFunctionEndpoints", out var explicitEndpoints);
-    options.GlobalOptions.TryGetValue("build_property.GenerateServerFunctionClients", out var explicitClients);
-    
-    bool generateEndpoints = bool.TryParse(explicitEndpoints, out var e) 
-        ? e 
-        : isServerProject;
-        
-    bool generateClients = bool.TryParse(explicitClients, out var c) 
-        ? c 
-        : isClientProject;
+        options.GlobalOptions.TryGetValue("build_property.RootNamespace", out var rootNamespace);
+        options.GlobalOptions.TryGetValue("build_property.ProjectName", out var projectName);
 
-    return new ProjectInfo
-    {
-        RootNamespace = rootNamespace ?? "Generated",
-        ProjectName = projectName ?? "Unknown",
-        IsClientProject = isClientProject,
-        IsServerProject = isServerProject,
-        GenerateEndpoints = generateEndpoints,
-        GenerateClients = generateClients
-    };
-}
-    
+        // Strategy 1: Check project SDK type
+        options.GlobalOptions.TryGetValue("build_property.UsingMicrosoftNETSdkWeb", out var isWeb);
+        options.GlobalOptions.TryGetValue("build_property.UsingMicrosoftNETSdkBlazorWebAssembly", out var isWasm);
+
+        bool isClientProject = bool.Parse(isWasm ?? "false");
+        bool isServerProject = bool.Parse(isWeb ?? "false");
+
+        // Strategy 2: Check for references that hint at project type
+        // (This is harder in incremental generators, so we'll skip it)
+
+        // Strategy 3: Naming convention as last resort
+        if (!isClientProject && !isServerProject && projectName != null)
+        {
+            // Check naming patterns
+            isClientProject = projectName.EndsWith(".Client") ||
+                              projectName.EndsWith(".WASM") ||
+                              projectName.EndsWith(".WebAssembly");
+
+            isServerProject = projectName.EndsWith(".Server") ||
+                              projectName.EndsWith(".Web") ||
+                              projectName.Contains("API");
+        }
+
+        // Allow explicit override
+        options.GlobalOptions.TryGetValue("build_property.GenerateServerFunctionEndpoints", out var explicitEndpoints);
+        options.GlobalOptions.TryGetValue("build_property.GenerateServerFunctionClients", out var explicitClients);
+
+        bool generateEndpoints = bool.TryParse(explicitEndpoints, out var e)
+            ? e
+            : isServerProject;
+
+        bool generateClients = bool.TryParse(explicitClients, out var c)
+            ? c
+            : isClientProject;
+
+        return new ProjectInfo
+        {
+            RootNamespace = rootNamespace ?? "Generated",
+            ProjectName = projectName ?? "Unknown",
+            GenerateEndpoints = generateEndpoints,
+            GenerateClients = generateClients
+        };
+    }
+
     // Main execution method
     private static void Execute(
         SourceProductionContext context,
@@ -197,8 +195,8 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
         // Get [ServerFunctionCollection] attribute data
         var attribute = interfaceSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == 
-                "BlazorServerFunctions.Abstractions.ServerFunctionCollectionAttribute");
+            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() ==
+                                 "BlazorServerFunctions.Abstractions.ServerFunctionCollectionAttribute");
 
         if (attribute is null)
             return null;
@@ -283,8 +281,8 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
         // Get method attribute if exists
         var methodAttribute = methodSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() == 
-                "BlazorServerFunctions.Abstractions.ServerFunctionAttribute");
+            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() ==
+                                 "BlazorServerFunctions.Abstractions.ServerFunctionAttribute");
 
         string? customRoute = null;
         bool requireAuthorization = false;
@@ -340,8 +338,6 @@ public sealed record ProjectInfo
 {
     public string RootNamespace { get; set; } = string.Empty;
     public string ProjectName { get; set; } = string.Empty;
-    public bool IsClientProject { get; set; }
-    public bool IsServerProject { get; set; }
     public bool GenerateEndpoints { get; set; }
     public bool GenerateClients { get; set; }
 }

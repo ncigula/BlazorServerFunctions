@@ -5,8 +5,5 @@ namespace BlazorServerFunctions.UnitTests;
 public static class ModuleInitializer
 {
     [ModuleInitializer]
-    public static void Initialize()
-    {
-        VerifySourceGenerators.Initialize();
-    }
+    public static void Initialize() => VerifySourceGenerators.Initialize();
 }

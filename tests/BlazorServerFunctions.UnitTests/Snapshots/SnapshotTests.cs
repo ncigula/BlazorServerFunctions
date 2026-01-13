@@ -8,25 +8,12 @@ namespace BlazorServerFunctions.UnitTests.Snapshots;
 
 public class SnapshotTests
 {
-    private static IEnumerable<string> GetProjectFiles(string projectDirectoryName)
-    {
-        var currentFile = GetCurrentFilePath();
-        var solutionRoot = Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(Path.GetDirectoryName(currentFile))));
-        var projectPath = Path.Combine(solutionRoot!, "samples", projectDirectoryName);
-        
-        return Directory.EnumerateFiles(projectPath, "*.cs", SearchOption.AllDirectories)
-            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}") && 
-                        !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));
-    }
-
-    private static string GetCurrentFilePath([CallerFilePath] string path = "") => path;
-
     [Fact]
     public async Task WeatherServiceServerSnapshot()
     {
         // Load the real files from Shared and Sample (Server)
-        var sharedFiles = GetProjectFiles("BlazorServerFunctions.Sample.Shared");
-        var serverFiles = GetProjectFiles("BlazorServerFunctions.Sample");
+        var sharedFiles = TestHelpers.GetProjectFiles("BlazorServerFunctions.Sample.Shared");
+        var serverFiles = TestHelpers.GetProjectFiles("BlazorServerFunctions.Sample");
 
         var syntaxTrees = sharedFiles.Concat(serverFiles)
             .Select(f => CSharpSyntaxTree.ParseText(File.ReadAllText(f), path: f))
@@ -57,7 +44,7 @@ public class SnapshotTests
             ["build_property.ProjectName"] = "BlazorServerFunctions.Sample",
             ["build_property.UsingMicrosoftNETSdkWeb"] = "true"
         });
-        
+
         driver = driver.WithUpdatedAnalyzerConfigOptions(optionsProvider);
 
         // Run the generator
@@ -71,8 +58,8 @@ public class SnapshotTests
     public async Task WeatherServiceClientSnapshot()
     {
         // Load the real files from Shared and Sample.Client
-        var sharedFiles = GetProjectFiles("BlazorServerFunctions.Sample.Shared");
-        var clientFiles = GetProjectFiles("BlazorServerFunctions.Sample.Client");
+        var sharedFiles = TestHelpers.GetProjectFiles("BlazorServerFunctions.Sample.Shared");
+        var clientFiles = TestHelpers.GetProjectFiles("BlazorServerFunctions.Sample.Client");
 
         var syntaxTrees = sharedFiles.Concat(clientFiles)
             .Select(f => CSharpSyntaxTree.ParseText(File.ReadAllText(f), path: f))
@@ -103,7 +90,7 @@ public class SnapshotTests
             ["build_property.ProjectName"] = "BlazorServerFunctions.Sample.Client",
             ["build_property.UsingMicrosoftNETSdkBlazorWebAssembly"] = "true"
         });
-        
+
         driver = driver.WithUpdatedAnalyzerConfigOptions(optionsProvider);
 
         // Run the generator

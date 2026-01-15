@@ -40,9 +40,7 @@ public class SnapshotTests
         // Add analyzer options (build properties) for Server
         var optionsProvider = new TestAnalyzerConfigOptionsProvider(new Dictionary<string, string>
         {
-            ["build_property.RootNamespace"] = "BlazorServerFunctions.Sample",
-            ["build_property.ProjectName"] = "BlazorServerFunctions.Sample",
-            ["build_property.UsingMicrosoftNETSdkWeb"] = "true"
+            ["build_property.GenerateServerFunctionEndpoints"] = "true",
         });
 
         driver = driver.WithUpdatedAnalyzerConfigOptions(optionsProvider);
@@ -86,9 +84,7 @@ public class SnapshotTests
         // Add analyzer options (build properties) for Client
         var optionsProvider = new TestAnalyzerConfigOptionsProvider(new Dictionary<string, string>
         {
-            ["build_property.RootNamespace"] = "BlazorServerFunctions.Sample.Client",
-            ["build_property.ProjectName"] = "BlazorServerFunctions.Sample.Client",
-            ["build_property.UsingMicrosoftNETSdkBlazorWebAssembly"] = "true"
+            ["build_property.GenerateServerFunctionClients"] = "true",
         });
 
         driver = driver.WithUpdatedAnalyzerConfigOptions(optionsProvider);

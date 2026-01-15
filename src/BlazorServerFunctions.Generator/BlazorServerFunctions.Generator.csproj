@@ -7,9 +7,12 @@
         <IsPackable>true</IsPackable>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     </PropertyGroup>
-    
+
     <ItemGroup>
-        <ProjectReference Include="..\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj"/>
+        <ProjectReference Include="..\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj" />
+        <ProjectReference Include="..\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj"
+                          OutputItemType="Analyzer"
+                          ReferenceOutputAssembly="false" />
     </ItemGroup>
 
     <ItemGroup>

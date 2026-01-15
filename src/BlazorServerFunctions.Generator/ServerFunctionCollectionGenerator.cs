@@ -34,14 +34,8 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
     }
 
     // Check if a syntax node could be an interface with our attribute
-    private static bool IsCandidateInterface(SyntaxNode node)
-    {
-        if (node is not InterfaceDeclarationSyntax interfaceDecl)
-            return false;
-
-        // Quick check: does it have any attributes?
-        return interfaceDecl.AttributeLists.Count > 0;
-    }
+    private static bool IsCandidateInterface(SyntaxNode node) =>
+        node is InterfaceDeclarationSyntax { AttributeLists.Count: > 0 };
 
     // Get the semantic model for the interface
     private static InterfaceDeclarationSyntax? GetSemanticTargetForGeneration(
@@ -75,51 +69,25 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
     // Detect if this is Server or Client project
     private static ProjectInfo GetProjectInfo(AnalyzerConfigOptionsProvider options)
     {
-        options.GlobalOptions.TryGetValue("build_property.RootNamespace", out var rootNamespace);
-        options.GlobalOptions.TryGetValue("build_property.ProjectName", out var projectName);
-
-        // Strategy 1: Check project SDK type
-        options.GlobalOptions.TryGetValue("build_property.UsingMicrosoftNETSdkWeb", out var isWeb);
-        options.GlobalOptions.TryGetValue("build_property.UsingMicrosoftNETSdkBlazorWebAssembly", out var isWasm);
-
-        bool isClientProject = bool.Parse(isWasm ?? "false");
-        bool isServerProject = bool.Parse(isWeb ?? "false");
-
-        // Strategy 2: Check for references that hint at project type
-        // (This is harder in incremental generators, so we'll skip it)
-
-        // Strategy 3: Naming convention as last resort
-        if (!isClientProject && !isServerProject && projectName != null)
-        {
-            // Check naming patterns
-            isClientProject = projectName.EndsWith(".Client") ||
-                              projectName.EndsWith(".WASM") ||
-                              projectName.EndsWith(".WebAssembly");
-
-            isServerProject = projectName.EndsWith(".Server") ||
-                              projectName.EndsWith(".Web") ||
-                              projectName.Contains("API");
-        }
-
-        // Allow explicit override
-        options.GlobalOptions.TryGetValue("build_property.GenerateServerFunctionEndpoints", out var explicitEndpoints);
-        options.GlobalOptions.TryGetValue("build_property.GenerateServerFunctionClients", out var explicitClients);
-
-        bool generateEndpoints = bool.TryParse(explicitEndpoints, out var e)
-            ? e
-            : isServerProject;
-
-        bool generateClients = bool.TryParse(explicitClients, out var c)
-            ? c
-            : isClientProject;
+        bool generateEndpoints = ParseBooleanOptions(options.GlobalOptions, "build_property.GenerateServerFunctionEndpoints");
+        bool generateClients = ParseBooleanOptions(options.GlobalOptions, "build_property.GenerateServerFunctionClients");
 
         return new ProjectInfo
         {
-            RootNamespace = rootNamespace ?? "Generated",
-            ProjectName = projectName ?? "Unknown",
             GenerateEndpoints = generateEndpoints,
             GenerateClients = generateClients
         };
+    }
+
+    private static bool ParseBooleanOptions(AnalyzerConfigOptions options, string key)
+    {
+        if (options.TryGetValue(key, out var raw) &&
+            bool.TryParse(raw, out var value))
+        {
+            return value;
+        }
+
+        return false;
     }
 
     // Main execution method

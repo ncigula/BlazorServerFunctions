@@ -13,6 +13,7 @@ internal static class ServerEndpointGenerator
         sb.AppendLine("#nullable enable");
         sb.AppendLine();
         sb.AppendLine("using Microsoft.AspNetCore.Builder;");
+        sb.AppendLine("using Microsoft.AspNetCore.Routing;");
         sb.AppendLine("using Microsoft.AspNetCore.Http;");
         sb.AppendLine("using Microsoft.AspNetCore.Mvc;");
         sb.AppendLine("using System.Text.Json;");

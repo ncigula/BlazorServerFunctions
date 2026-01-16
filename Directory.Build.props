@@ -10,7 +10,10 @@
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
     </PropertyGroup>
-
+    <ItemGroup>
+        <CompilerVisibleProperty Include="GenerateServerFunctionEndpoints" />
+        <CompilerVisibleProperty Include="GenerateServerFunctionClients" />
+    </ItemGroup>
     <ItemGroup Condition="'$(MSBuildProjectExtension)' != '.dcproj'">
         <PackageReference Include="Microsoft.CodeAnalysis.PerformanceSensitiveAnalyzers">
             <PrivateAssets>all</PrivateAssets>

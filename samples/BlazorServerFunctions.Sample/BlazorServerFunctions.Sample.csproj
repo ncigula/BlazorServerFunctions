@@ -2,6 +2,7 @@
     <PropertyGroup>
         <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
         <GenerateServerFunctionEndpoints>true</GenerateServerFunctionEndpoints>
+        <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
     </PropertyGroup>
 
     <ItemGroup>

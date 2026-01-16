@@ -13,6 +13,7 @@ internal static class ServerRegistrationGenerator
         sb.AppendLine("#nullable enable");
         sb.AppendLine();
         sb.AppendLine("using Microsoft.AspNetCore.Builder;");
+        sb.AppendLine("using Microsoft.AspNetCore.Routing;");
         sb.AppendLine();
         
         // Use the namespace of the first interface, or default

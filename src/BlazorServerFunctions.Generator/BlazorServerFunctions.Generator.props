@@ -1,0 +1,16 @@
+﻿<Project>
+  <PropertyGroup>
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>obj\Generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Ensure generated files are visible in the IDE but not double-compiled -->
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)\**\*.g.cs" />
+    <None Include="$(CompilerGeneratedFilesOutputPath)\**\*.g.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(MSBuildProjectName)' != 'BlazorServerFunctions.Generator' AND '$(MSBuildProjectName)' != 'BlazorServerFunctions.Abstractions'">
+    <ProjectReference Include="$(MSBuildThisFileDirectory)..\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj" Condition="Exists('$(MSBuildThisFileDirectory)..\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj')" />
+  </ItemGroup>
+</Project>

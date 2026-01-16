@@ -5,7 +5,7 @@ namespace BlazorServerFunctions.Generator;
 
 internal static class ServerRegistrationGenerator
 {
-    public static string Generate(List<InterfaceInfo> interfaces)
+    public static string Generate(System.Collections.IEnumerable interfaces)
     {
         var sb = new StringBuilder();
 
@@ -17,18 +17,31 @@ internal static class ServerRegistrationGenerator
         sb.AppendLine();
         
         // Use the namespace of the first interface, or default
-        var ns = interfaces.FirstOrDefault()?.Namespace ?? "Generated";
+        string ns = "Generated";
+        var interfaceList = new System.Collections.Generic.List<object>();
+        foreach (var i in interfaces)
+        {
+            interfaceList.Add(i);
+        }
+
+        if (interfaceList.Count > 0)
+        {
+            var first = interfaceList[0];
+            ns = (string)first.GetType().GetProperty("Namespace").GetValue(first);
+        }
+
         sb.AppendLine($"namespace {ns}.Generated;");
         sb.AppendLine();
-        sb.AppendLine("internal static class ServerFunctionEndpointsRegistration");
+        sb.AppendLine("public static class ServerFunctionEndpointsRegistration");
         sb.AppendLine("{");
-        sb.AppendLine("    internal static IEndpointRouteBuilder MapServerFunctionEndpoints(");
+        sb.AppendLine("    public static IEndpointRouteBuilder MapServerFunctionEndpoints(");
         sb.AppendLine("        this IEndpointRouteBuilder endpoints)");
         sb.AppendLine("    {");
 
-        foreach (var interfaceInfo in interfaces)
+        foreach (var i in interfaceList)
         {
-            sb.AppendLine($"        endpoints.Map{interfaceInfo.Name}Endpoints();");
+            var name = (string)i.GetType().GetProperty("Name").GetValue(i);
+            sb.AppendLine($"        endpoints.Map{name}Endpoints();");
         }
 
         sb.AppendLine("        return endpoints;");

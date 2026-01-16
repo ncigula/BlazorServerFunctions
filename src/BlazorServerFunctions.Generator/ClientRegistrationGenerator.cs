@@ -5,7 +5,7 @@ namespace BlazorServerFunctions.Generator;
 
 internal static class ClientRegistrationGenerator
 {
-    public static string Generate(List<InterfaceInfo> interfaces)
+    public static string Generate(System.Collections.IEnumerable interfaces)
     {
         var sb = new StringBuilder();
 
@@ -16,7 +16,19 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine();
         
         // Use the namespace of the first interface, or default
-        var ns = interfaces.FirstOrDefault()?.Namespace ?? "Generated";
+        string ns = "Generated";
+        var interfaceList = new System.Collections.Generic.List<object>();
+        foreach (var i in interfaces)
+        {
+            interfaceList.Add(i);
+        }
+
+        if (interfaceList.Count > 0)
+        {
+            var first = interfaceList[0];
+            ns = (string)first.GetType().GetProperty("Namespace").GetValue(first);
+        }
+
         sb.AppendLine($"namespace {ns}.Generated;");
         sb.AppendLine();
         sb.AppendLine("public static class ServerFunctionClientsRegistration");
@@ -25,8 +37,9 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine("        this IServiceCollection services)");
         sb.AppendLine("    {");
 
-        foreach (var name in interfaces.Select(interfaceInfo => interfaceInfo.Name))
+        foreach (var i in interfaceList)
         {
+            var name = (string)i.GetType().GetProperty("Name").GetValue(i);
             var clientClassName = name.TrimStart('I') + "Client";
             
             sb.AppendLine($"        services.AddHttpClient<{name}, {clientClassName}>();");

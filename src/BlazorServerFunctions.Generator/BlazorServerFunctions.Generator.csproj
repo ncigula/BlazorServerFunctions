@@ -1,18 +1,22 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <!-- Change TargetFramework to TargetFrameworks and add netstandard2.0 -->
         <TargetFramework>netstandard2.0</TargetFramework>
         <LangVersion>latest</LangVersion>
         <IsPackable>true</IsPackable>
         <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <IncludeBuildOutput>false</IncludeBuildOutput>
     </PropertyGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj" />
-        <ProjectReference Include="..\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj"
-                          OutputItemType="Analyzer"
-                          ReferenceOutputAssembly="false" />
+        <ProjectReference Include="..\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj" PrivateAssets="all" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="$(OutputPath)\BlazorServerFunctions.Generator.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+        <None Include="$(OutputPath)\BlazorServerFunctions.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+        <None Include="BlazorServerFunctions.Generator.props" Pack="true" PackagePath="build;buildTransitive" />
     </ItemGroup>
 
     <ItemGroup>

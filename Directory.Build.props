@@ -10,10 +10,8 @@
         <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
     </PropertyGroup>
-    <ItemGroup>
-        <CompilerVisibleProperty Include="GenerateServerFunctionEndpoints" />
-        <CompilerVisibleProperty Include="GenerateServerFunctionClients" />
-    </ItemGroup>
+
+
     <ItemGroup Condition="'$(MSBuildProjectExtension)' != '.dcproj'">
         <PackageReference Include="Microsoft.CodeAnalysis.PerformanceSensitiveAnalyzers">
             <PrivateAssets>all</PrivateAssets>
@@ -32,4 +30,8 @@
     <ItemGroup>
         <AdditionalFiles Include="$(SolutionDir)BannedSymbols.txt" />
     </ItemGroup>
+
+    <!-- Automatically import generator props for local development when ProjectReference is used -->
+    <Import Project="$(MSBuildThisFileDirectory)src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.props" 
+            Condition="Exists('$(MSBuildThisFileDirectory)src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.props') AND '$(MSBuildProjectName)' != 'BlazorServerFunctions.Generator' AND '$(MSBuildProjectName)' != 'BlazorServerFunctions.Abstractions' AND '$(MSBuildProjectExtension)' != '.dcproj'" />
 </Project>

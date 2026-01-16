@@ -1,6 +1,7 @@
-﻿using System.Collections.Immutable;
-using BlazorServerFunctions.Abstractions;
-using BlazorServerFunctions.Generator.CodeGenerators;
+﻿using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Linq;
+using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -13,27 +14,98 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Step 1: Find all interfaces with [ServerFunction] attribute
+        // Step 1: Find all interfaces with [ServerFunctionCollection] attribute in current project
         var interfaceDeclarations = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (node, _) => IsCandidateInterface(node),
                 transform: static (ctx, _) => GetSemanticTargetForGeneration(ctx))
             .Where(static m => m is not null);
 
+        // Step 1b: Find all interfaces with [ServerFunctionCollection] attribute in referenced assemblies
+        var referencedInterfaces = context.CompilationProvider
+            .Select(static (compilation, cancellationToken) => GetReferencedInterfaces(compilation, cancellationToken));
+
         // Step 2: Detect project type (Server vs Client)
-        var projectInfo = context.AnalyzerConfigOptionsProvider
-            .Select(static (options, _) => GetProjectInfo(options));
+        var projectInfo = context.CompilationProvider
+            .Select(static (compilation, _) => GetProjectInfo(compilation));
 
         // Step 3: Combine everything
-        var compilation = context.CompilationProvider.Combine(interfaceDeclarations.Collect());
-        var compilationAndProject = compilation.Combine(projectInfo);
+        var compilationAndInterfaces = context.CompilationProvider.Combine(interfaceDeclarations.Collect());
+        var withReferenced = compilationAndInterfaces.Combine(referencedInterfaces);
+        var compilationAndProject = withReferenced.Combine(projectInfo);
 
         // Step 4: Generate code
         context.RegisterSourceOutput(compilationAndProject,
-            static (spc, source) => Execute(spc, source.Left.Left, source.Left.Right, source.Right));
+            static (spc, source) => Execute(spc, source.Left.Left.Left, source.Left.Left.Right, source.Left.Right, source.Right));
     }
 
-    // Check if a syntax node could be an interface with our attribute
+    private static ImmutableArray<InterfaceInfo> GetReferencedInterfaces(Compilation compilation, CancellationToken cancellationToken)
+    {
+        var result = new List<InterfaceInfo>();
+        
+        bool isServer = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Routing.IEndpointRouteBuilder") != null;
+        bool isClient = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Components.WebAssembly.Hosting.WebAssemblyHostBuilder") != null;
+        
+        // We only search referenced assemblies if this is a top-level project (Server or Client)
+        if (!isServer && !isClient)
+            return ImmutableArray<InterfaceInfo>.Empty;
+
+        foreach (var reference in compilation.SourceModule.ReferencedAssemblySymbols)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            // Skip system assemblies
+            if (reference.Name.StartsWith("System.") || reference.Name.StartsWith("Microsoft."))
+                continue;
+
+            // Search for interfaces with the attribute
+            var visitor = new InterfaceVisitor(result, cancellationToken);
+            visitor.Visit(reference.GlobalNamespace);
+        }
+
+        return result.ToImmutableArray();
+    }
+
+    private sealed class InterfaceVisitor : SymbolVisitor
+    {
+        private readonly List<InterfaceInfo> _result;
+        private readonly CancellationToken _cancellationToken;
+
+        public InterfaceVisitor(List<InterfaceInfo> result, CancellationToken cancellationToken)
+        {
+            _result = result;
+            _cancellationToken = cancellationToken;
+        }
+
+        public override void VisitNamespace(INamespaceSymbol symbol)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            foreach (var member in symbol.GetMembers())
+            {
+                member.Accept(this);
+            }
+        }
+
+        public override void VisitNamedType(INamedTypeSymbol symbol)
+        {
+            _cancellationToken.ThrowIfCancellationRequested();
+            if (symbol.TypeKind == TypeKind.Interface)
+            {
+                var interfaceInfo = ParseInterface(symbol, _cancellationToken);
+                if (interfaceInfo != null)
+                {
+                    _result.Add(interfaceInfo);
+                }
+            }
+
+            foreach (var member in symbol.GetTypeMembers())
+            {
+                member.Accept(this);
+            }
+        }
+    }
+
+        // Check if a syntax node could be an interface with our attribute
     private static bool IsCandidateInterface(SyntaxNode node) =>
         node is InterfaceDeclarationSyntax { AttributeLists.Count: > 0 };
 
@@ -48,15 +120,8 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         {
             foreach (var attribute in attributeList.Attributes)
             {
-                var symbol = context.SemanticModel.GetSymbolInfo(attribute).Symbol;
-                if (symbol is not IMethodSymbol attributeSymbol)
-                    continue;
-
-                var attributeType = attributeSymbol.ContainingType;
-
-                var fullName = attributeType.ToDisplayString();
-
-                if (fullName == "BlazorServerFunctions.Abstractions.ServerFunctionCollectionAttribute")
+                var name = attribute.Name.ToString();
+                if (name == "ServerFunctionCollection" || name == "ServerFunctionCollectionAttribute")
                 {
                     return interfaceDecl;
                 }
@@ -67,27 +132,26 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
     }
 
     // Detect if this is Server or Client project
-    private static ProjectInfo GetProjectInfo(AnalyzerConfigOptionsProvider options)
+    private static ProjectInfo GetProjectInfo(Compilation compilation)
     {
-        bool generateEndpoints = ParseBooleanOptions(options.GlobalOptions, "build_property.GenerateServerFunctionEndpoints");
-        bool generateClients = ParseBooleanOptions(options.GlobalOptions, "build_property.GenerateServerFunctionClients");
+        // Detect Server by checking for IEndpointRouteBuilder (ASP.NET Core)
+        bool isServer = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Routing.IEndpointRouteBuilder") != null;
+        
+        // Detect Client by checking for WebAssemblyHostBuilder (Blazor WASM)
+        bool isClient = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Components.WebAssembly.Hosting.WebAssemblyHostBuilder") != null;
+
+        // If it's a Server project, we DON'T want to generate clients for referenced interfaces
+        // because those clients are already generated in the referenced libraries.
+        // We only generate server endpoints for everything.
+
+        // The user specifically wants Shared projects to NOT contain server code.
+        bool isLibrary = !isServer && !isClient;
 
         return new ProjectInfo
         {
-            GenerateEndpoints = generateEndpoints,
-            GenerateClients = generateClients
+            GenerateEndpoints = isServer, // Only generate endpoints if it IS a server project
+            GenerateClients = isClient || isLibrary // Generate clients for client projects OR libraries
         };
-    }
-
-    private static bool ParseBooleanOptions(AnalyzerConfigOptions options, string key)
-    {
-        if (options.TryGetValue(key, out var raw) &&
-            bool.TryParse(raw, out var value))
-        {
-            return value;
-        }
-
-        return false;
     }
 
     // Main execution method
@@ -95,12 +159,13 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         SourceProductionContext context,
         Compilation compilation,
         ImmutableArray<InterfaceDeclarationSyntax?> interfaces,
+        ImmutableArray<InterfaceInfo> referencedInterfaces,
         ProjectInfo projectInfo)
     {
-        if (interfaces.IsDefaultOrEmpty)
+        if (interfaces.IsDefaultOrEmpty && referencedInterfaces.IsDefaultOrEmpty)
             return;
 
-        var interfaceInfos = new List<InterfaceInfo>();
+        var localInterfaceInfos = new List<InterfaceInfo>();
 
         foreach (var interfaceDecl in interfaces)
         {
@@ -118,38 +183,42 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             var interfaceInfo = ParseInterface(interfaceSymbol, context.CancellationToken);
             if (interfaceInfo is not null)
             {
-                interfaceInfos.Add(interfaceInfo);
+                localInterfaceInfos.Add(interfaceInfo);
             }
         }
 
-        if (interfaceInfos.Count == 0)
+        if (localInterfaceInfos.Count == 0 && referencedInterfaces.Length == 0)
             return;
 
+        // Combine for endpoint generation (Server needs both local and referenced)
+        var allInterfaceInfos = new List<InterfaceInfo>(localInterfaceInfos);
+        allInterfaceInfos.AddRange(referencedInterfaces);
+
         // Generate server endpoints
-        if (projectInfo.GenerateEndpoints)
+        if (projectInfo.GenerateEndpoints && allInterfaceInfos.Count > 0)
         {
-            foreach (var interfaceInfo in interfaceInfos)
+            foreach (var interfaceInfo in allInterfaceInfos)
             {
                 var serverCode = ServerEndpointGenerator.Generate(interfaceInfo);
                 context.AddSource($"{interfaceInfo.Name}ServerExtensions.g.cs", serverCode);
             }
 
             // Generate master registration
-            var registrationCode = ServerRegistrationGenerator.Generate(interfaceInfos);
+            var registrationCode = ServerRegistrationGenerator.Generate(allInterfaceInfos);
             context.AddSource("ServerFunctionEndpointsRegistration.g.cs", registrationCode);
         }
 
-        // Generate client proxies
-        if (projectInfo.GenerateClients)
+        // Generate client proxies (ONLY for local interfaces)
+        if (projectInfo.GenerateClients && localInterfaceInfos.Count > 0)
         {
-            foreach (var interfaceInfo in interfaceInfos)
+            foreach (var interfaceInfo in localInterfaceInfos)
             {
-                var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
+                var clientCode = CodeGenerators.ClientProxyGenerator.Generate(interfaceInfo);
                 context.AddSource($"{interfaceInfo.Name}Client.g.cs", clientCode);
             }
 
             // Generate client registration
-            var clientRegistrationCode = ClientRegistrationGenerator.Generate(interfaceInfos);
+            var clientRegistrationCode = ClientRegistrationGenerator.Generate(localInterfaceInfos);
             context.AddSource("ServerFunctionClientsRegistration.g.cs", clientRegistrationCode);
         }
     }
@@ -163,8 +232,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
         // Get [ServerFunctionCollection] attribute data
         var attribute = interfaceSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() ==
-                                 "BlazorServerFunctions.Abstractions.ServerFunctionCollectionAttribute");
+            .FirstOrDefault(a => a.AttributeClass?.Name == "ServerFunctionCollectionAttribute");
 
         if (attribute is null)
             return null;
@@ -210,7 +278,6 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
         return new InterfaceInfo
         {
-            Symbol = interfaceSymbol,
             Name = interfaceSymbol.Name,
             Namespace = namespaceName,
             RoutePrefix = routePrefix,
@@ -249,8 +316,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
         // Get method attribute if exists
         var methodAttribute = methodSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.ToDisplayString() ==
-                                 "BlazorServerFunctions.Abstractions.ServerFunctionAttribute");
+            .FirstOrDefault(a => a.AttributeClass?.Name == "ServerFunctionAttribute");
 
         string? customRoute = null;
         bool requireAuthorization = false;
@@ -291,7 +357,6 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         return new MethodInfo
         {
             Name = methodSymbol.Name,
-            Symbol = methodSymbol,
             ReturnType = returnType,
             IsAsync = isAsync,
             RequireAuthorization = requireAuthorization,
@@ -300,12 +365,4 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             HttpMethod = httpMethod
         };
     }
-}
-
-public sealed record ProjectInfo
-{
-    public string RootNamespace { get; set; } = string.Empty;
-    public string ProjectName { get; set; } = string.Empty;
-    public bool GenerateEndpoints { get; set; }
-    public bool GenerateClients { get; set; }
 }

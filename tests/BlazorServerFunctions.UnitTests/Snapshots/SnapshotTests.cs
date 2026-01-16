@@ -37,14 +37,6 @@ public class SnapshotTests
         var generator = new ServerFunctionCollectionGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
 
-        // Add analyzer options (build properties) for Server
-        var optionsProvider = new TestAnalyzerConfigOptionsProvider(new Dictionary<string, string>
-        {
-            ["build_property.GenerateServerFunctionEndpoints"] = "true",
-        });
-
-        driver = driver.WithUpdatedAnalyzerConfigOptions(optionsProvider);
-
         // Run the generator
         driver = driver.RunGenerators(compilation);
 
@@ -80,14 +72,6 @@ public class SnapshotTests
         // Create the generator and driver
         var generator = new ServerFunctionCollectionGenerator();
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
-
-        // Add analyzer options (build properties) for Client
-        var optionsProvider = new TestAnalyzerConfigOptionsProvider(new Dictionary<string, string>
-        {
-            ["build_property.GenerateServerFunctionClients"] = "true",
-        });
-
-        driver = driver.WithUpdatedAnalyzerConfigOptions(optionsProvider);
 
         // Run the generator
         driver = driver.RunGenerators(compilation);

@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
+        <NoWarn>$(NoWarn);CA1707</NoWarn>
         <NoWarn>$(NoWarn);NU1608</NoWarn>
         <!--
         This template uses native xUnit.net command line options when using 'dotnet run' and

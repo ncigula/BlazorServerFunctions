@@ -5,17 +5,30 @@ public static class TestHelpers
     public static IEnumerable<string> GetProjectFiles(string projectName)
     {
         string solutionRoot = FindSolutionRoot();
-        string? projectDir = Directory.GetDirectories(
-                Path.Combine(solutionRoot, "samples"),
-                projectName,
-                SearchOption.AllDirectories)
-            .FirstOrDefault();
 
-        if (projectDir is null)
-            throw new DirectoryNotFoundException($"Could not find project directory for {projectName}.");
+        // Search both src and samples
+        var searchRoots = new[]
+        {
+            Path.Combine(solutionRoot, "src"),
+            Path.Combine(solutionRoot, "samples")
+        };
 
-        return Directory.EnumerateFiles(projectDir, "*.cs", SearchOption.AllDirectories);
+        foreach (var root in searchRoots)
+        {
+            var projectDir = Directory.GetDirectories(
+                    root,
+                    projectName,
+                    SearchOption.AllDirectories)
+                .FirstOrDefault();
+
+            if (projectDir != null)
+                return Directory.EnumerateFiles(projectDir, "*.cs", SearchOption.AllDirectories);
+        }
+
+        throw new DirectoryNotFoundException($"Could not find project directory for {projectName}.");
     }
+
+
 
     private static string FindSolutionRoot()
     {

@@ -13,6 +13,6 @@ public class IWeatherServiceTests
 
         host.AssertTypesExistInCompilation(
             ["IWeatherServiceClient.g.cs", "ServerFunctionClientsRegistration.g.cs"],
-            ["WeatherServiceClient", "ServerFunctionClientsRegistration"]);
+            ["BlazorServerFunctions.Sample.Shared.WeatherServiceClient", "BlazorServerFunctions.Sample.Shared.ServerFunctionClientsRegistration"]);
     }
 }

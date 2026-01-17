@@ -81,11 +81,11 @@ public sealed class IntegrationTestHost
         using var ms = new MemoryStream();
         var emit = _updatedCompilation.Emit(ms);
 
-        emit.Success.ShouldBeTrue("the generated code must compile");
-
         emit.Diagnostics
-            .Where(d => d.Severity == DiagnosticSeverity.Error)
+            .Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
             .ShouldBeEmpty("there should be no compilation errors");
+        
+        emit.Success.ShouldBeTrue("the generated code must compile");
     }
 
     public void AssertTypesExist(params string[] types)

@@ -1,38 +1,35 @@
-﻿using System.Runtime.CompilerServices;
-
-namespace BlazorServerFunctions.Generator.IntegrationTests;
+﻿namespace BlazorServerFunctions.Generator.IntegrationTests;
 
 public static class TestHelpers
 {
-    public static string GetSolutionPath()
+    public static IEnumerable<string> GetProjectFiles(string projectName)
     {
-        var currentFilePath = GetCurrentFilePath();
+        string solutionRoot = FindSolutionRoot();
+        string? projectDir = Directory.GetDirectories(
+                Path.Combine(solutionRoot, "samples"),
+                projectName,
+                SearchOption.AllDirectories)
+            .FirstOrDefault();
 
-        var solutionRoot =
-            Path.GetDirectoryName(
-                Path.GetDirectoryName(
-                    Path.GetDirectoryName(currentFilePath)));
-        
-        return solutionRoot!;
+        if (projectDir is null)
+            throw new DirectoryNotFoundException($"Could not find project directory for {projectName}.");
+
+        return Directory.EnumerateFiles(projectDir, "*.cs", SearchOption.AllDirectories);
     }
 
-    public static string GetProjectPath(string projectDirectoryName)
+    private static string FindSolutionRoot()
     {
-        var solutionRoot = GetSolutionPath();
+        string dir = Directory.GetCurrentDirectory();
 
-        var projectPath = Path.Combine(solutionRoot!, "samples", projectDirectoryName);
+        while (!Directory.EnumerateFiles(dir, "*.slnx").Any())
+        {
+            DirectoryInfo? parent = Directory.GetParent(dir);
+            if (parent is null)
+                throw new DirectoryNotFoundException("Could not find solution root (.slnx).");
 
-        return projectPath;
+            dir = parent.FullName;
+        }
+
+        return dir;
     }
-    
-    public static IEnumerable<string> GetProjectFiles(string projectDirectoryName)
-    {
-        var projectPath = GetProjectPath(projectDirectoryName);
-
-        return Directory.EnumerateFiles(projectPath, "*.cs", SearchOption.AllDirectories)
-            .Where(f => !f.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}")
-                        && !f.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}"));
-    }
-
-    private static string GetCurrentFilePath([CallerFilePath] string path = "") => path;
 }

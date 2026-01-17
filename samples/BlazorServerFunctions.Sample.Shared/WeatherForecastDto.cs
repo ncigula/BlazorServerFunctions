@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace BlazorServerFunctions.Sample.Shared;
+﻿namespace BlazorServerFunctions.Sample.Shared;
 
 public sealed class WeatherForecastDto
 {

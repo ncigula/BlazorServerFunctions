@@ -1,11 +1,7 @@
-﻿using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Threading;
+﻿using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.CodeAnalysis.Diagnostics;
 
 namespace BlazorServerFunctions.Generator;
 
@@ -213,7 +209,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         {
             foreach (var interfaceInfo in localInterfaceInfos)
             {
-                var clientCode = CodeGenerators.ClientProxyGenerator.Generate(interfaceInfo);
+                var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
                 context.AddSource($"{interfaceInfo.Name}Client.g.cs", clientCode);
             }
 

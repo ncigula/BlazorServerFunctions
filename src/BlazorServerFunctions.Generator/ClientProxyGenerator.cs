@@ -1,8 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using System.Text;
 
-namespace BlazorServerFunctions.Generator.CodeGenerators;
+namespace BlazorServerFunctions.Generator;
 
 internal static class ClientProxyGenerator
 {

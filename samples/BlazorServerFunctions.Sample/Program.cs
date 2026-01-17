@@ -1,4 +1,3 @@
-using BlazorServerFunctions.Sample.Client.Pages;
 using BlazorServerFunctions.Sample.Components;
 using BlazorServerFunctions.Sample.Components.Weather;
 using BlazorServerFunctions.Sample.Shared;

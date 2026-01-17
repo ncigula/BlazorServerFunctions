@@ -1,6 +1,4 @@
-﻿using System;
-using System.Threading.Tasks;
-using BlazorServerFunctions.Abstractions;
+﻿using BlazorServerFunctions.Abstractions;
 
 namespace BlazorServerFunctions.Sample.Shared;
 

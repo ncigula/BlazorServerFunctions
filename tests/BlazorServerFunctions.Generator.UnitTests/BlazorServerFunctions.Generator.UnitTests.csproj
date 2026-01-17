@@ -16,9 +16,6 @@
     </ItemGroup>
 
     <!-- Removed Using Include="Xunit" to avoid ambiguity with xunit.v3 -->
-    <ItemGroup>
-      <Folder Include="_snapshots\" />
-    </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="Microsoft.NET.Test.Sdk"/>

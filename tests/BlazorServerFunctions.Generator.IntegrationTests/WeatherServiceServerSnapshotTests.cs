@@ -8,7 +8,7 @@ public class IWeatherServiceTests
     public void WeatherService_Generates_Server_Functions()
     {
         var host = IntegrationTestHost.Create(
-            ["BlazorServerFunctions.Sample", "BlazorServerFunctions.Sample.Shared", "BlazorServerFunctions.Abstractions"],
+            ["BlazorServerFunctions.Sample.Shared"],
             ["IWeatherService.cs"]);
 
         host.AssertTypesExistInCompilation(

@@ -7,18 +7,18 @@ namespace BlazorServerFunctions.Generator.IntegrationTests;
 
 public sealed class IntegrationTestHost
 {
-    public CSharpCompilation Compilation { get; }
-    public GeneratorDriverRunResult RunResult { get; }
-    public Compilation UpdatedCompilation { get; }
+    //private readonly CSharpCompilation _compilation;
+    private readonly GeneratorDriverRunResult _runResult;
+    private readonly Compilation _updatedCompilation;
 
     private IntegrationTestHost(
-        CSharpCompilation compilation,
+        //CSharpCompilation compilation,
         GeneratorDriverRunResult runResult,
         Compilation updatedCompilation)
     {
-        Compilation = compilation;
-        RunResult = runResult;
-        UpdatedCompilation = updatedCompilation;
+        //_compilation = compilation;
+        _runResult = runResult;
+        _updatedCompilation = updatedCompilation;
     }
 
     public static IntegrationTestHost Create(
@@ -27,6 +27,7 @@ public sealed class IntegrationTestHost
     {
         var syntaxTrees = projects
             .SelectMany(TestHelpers.GetProjectFiles)
+            .Where(file => sourceFiles.Any(file.EndsWith))
             .Select(f => CSharpSyntaxTree.ParseText(File.ReadAllText(f), path: f))
             .ToArray();
 
@@ -48,12 +49,15 @@ public sealed class IntegrationTestHost
 
         var runResult = driver.GetRunResult();
 
-        return new IntegrationTestHost(compilation, runResult, updatedCompilation);
+        return new IntegrationTestHost(
+            //compilation,
+            runResult,
+            updatedCompilation);
     }
 
     public void AssertNoGeneratorErrors()
     {
-        var errors = RunResult.Diagnostics
+        var errors = _runResult.Diagnostics
             .Where(d => d.Severity == DiagnosticSeverity.Error)
             .ToList();
 
@@ -65,7 +69,7 @@ public sealed class IntegrationTestHost
 
     public void AssertFilesAreGenerated(IEnumerable<string> expectedFiles)
     {
-        var generated = RunResult.GeneratedTrees
+        var generated = _runResult.GeneratedTrees
             .Select(t => Path.GetFileName(t.FilePath))
             .ToList();
 
@@ -75,7 +79,7 @@ public sealed class IntegrationTestHost
     public void AssertCompilationSucceeds()
     {
         using var ms = new MemoryStream();
-        var emit = UpdatedCompilation.Emit(ms);
+        var emit = _updatedCompilation.Emit(ms);
 
         emit.Success.ShouldBeTrue("the generated code must compile");
 
@@ -90,7 +94,7 @@ public sealed class IntegrationTestHost
     public void AssertTypesExist(IEnumerable<string> types)
     {
         var missing = types
-            .Where(t => UpdatedCompilation.GetTypeByMetadataName(t) == null)
+            .Where(t => _updatedCompilation.GetTypeByMetadataName(t) == null)
             .ToList();
 
         missing.ShouldBeEmpty("all expected generated types must exist");

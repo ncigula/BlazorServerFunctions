@@ -15,7 +15,6 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/BlazorServerFunctions.Abstractions/BlazorServerFunctions.Abstractions.csproj" />
-    <Project Path="src/BlazorServerFunctions.Extensions/BlazorServerFunctions.Extensions.csproj" />
     <Project Path="src/BlazorServerFunctions.Generator/BlazorServerFunctions.Generator.csproj" />
   </Folder>
   <Folder Name="/tests/">

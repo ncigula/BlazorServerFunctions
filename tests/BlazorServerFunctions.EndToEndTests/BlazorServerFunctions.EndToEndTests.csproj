@@ -1,7 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <OutputType>Exe</OutputType>
-        <RootNamespace>BlazorServerFunctions.UnitTests</RootNamespace>
         <NoWarn>$(NoWarn);NU1608</NoWarn>
         <!--
         This template uses native xUnit.net command line options when using 'dotnet run' and
@@ -24,13 +23,10 @@
         <PackageReference Include="xunit"/>
         <PackageReference Include="xunit.runner.visualstudio"/>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing.XUnit"/>
-        <PackageReference Include="Verify.Xunit"/>
-        <PackageReference Include="Verify.SourceGenerators"/>
-        <PackageReference Include="DiffEngine"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\src\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj" />
-      <ProjectReference Include="..\..\src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.csproj" />
+        <ProjectReference Include="..\..\src\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj" />
+        <ProjectReference Include="..\..\src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.csproj" />
     </ItemGroup>
 </Project>

@@ -18,7 +18,8 @@
     <Project Path="src/BlazorServerFunctions.Generator/BlazorServerFunctions.Generator.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/BlazorServerFunctions.IntegrationTests/BlazorServerFunctions.IntegrationTests.csproj" />
-    <Project Path="tests/BlazorServerFunctions.UnitTests/BlazorServerFunctions.UnitTests.csproj" />
+    <Project Path="tests/BlazorServerFunctions.EndToEndTests/BlazorServerFunctions.EndToEndTests.csproj" />
+    <Project Path="tests/BlazorServerFunctions.Generator.IntegrationTests/BlazorServerFunctions.Generator.IntegrationTests.csproj" />
+    <Project Path="tests/BlazorServerFunctions.Generator.UnitTests/BlazorServerFunctions.Generator.UnitTests.csproj" />
   </Folder>
 </Solution>

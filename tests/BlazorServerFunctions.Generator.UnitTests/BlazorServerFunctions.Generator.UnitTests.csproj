@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <NoWarn>$(NoWarn);CA1707</NoWarn>
+        <NoWarn>$(NoWarn);NU1608</NoWarn>
+        <!--
+        This template uses native xUnit.net command line options when using 'dotnet run' and
+        VSTest by default when using 'dotnet test'. For more information on how to enable support
+        for Microsoft Testing Platform, please visit:
+          https://xunit.net/docs/getting-started/v3/microsoft-testing-platform
+        -->
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest"/>
+    </ItemGroup>
+
+    <!-- Removed Using Include="Xunit" to avoid ambiguity with xunit.v3 -->
+    <ItemGroup>
+      <Folder Include="_snapshots\" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk"/>
+        <PackageReference Include="xunit"/>
+        <PackageReference Include="xunit.runner.visualstudio"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing.XUnit"/>
+        <PackageReference Include="Verify.Xunit"/>
+        <PackageReference Include="Verify.SourceGenerators"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj" />
+        <ProjectReference Include="..\..\src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.csproj" />
+    </ItemGroup>
+</Project>

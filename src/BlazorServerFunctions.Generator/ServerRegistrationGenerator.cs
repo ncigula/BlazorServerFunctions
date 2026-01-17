@@ -18,7 +18,7 @@ internal static class ServerRegistrationGenerator
         
         // Use the namespace of the first interface, or default
         string ns = "Generated";
-        var interfaceList = new System.Collections.Generic.List<object>();
+        var interfaceList = new List<object>();
         foreach (var i in interfaces)
         {
             interfaceList.Add(i);

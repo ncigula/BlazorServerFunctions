@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace BlazorServerFunctions.UnitTests;
+namespace BlazorServerFunctions.Generator.IntegrationTests;
 
 public static class TestHelpers
 {

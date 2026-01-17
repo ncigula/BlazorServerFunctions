@@ -1,10 +1,8 @@
-﻿using System.Runtime.CompilerServices;
-using BlazorServerFunctions.Abstractions;
-using BlazorServerFunctions.Generator;
+﻿using BlazorServerFunctions.Abstractions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 
-namespace BlazorServerFunctions.UnitTests.Snapshots;
+namespace BlazorServerFunctions.Generator.IntegrationTests.Snapshots;
 
 public class SnapshotTests
 {
@@ -41,7 +39,7 @@ public class SnapshotTests
         driver = driver.RunGenerators(compilation);
 
         // Verify the results
-        await Verifier.Verify(driver);
+        await Verify(driver);
     }
 
     [Fact]
@@ -77,6 +75,6 @@ public class SnapshotTests
         driver = driver.RunGenerators(compilation);
 
         // Verify the results
-        await Verifier.Verify(driver);
+        await Verify(driver);
     }
 }

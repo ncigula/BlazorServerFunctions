@@ -8,6 +8,8 @@ public class WeatherServiceGeneratorTests
         var source = """
                      using BlazorServerFunctions.Abstractions;
                      
+                     namespace BlazorServerFunctions.Sample.Shared;
+                     
                      [ServerFunctionCollection]
                      public interface IWeatherService
                      {

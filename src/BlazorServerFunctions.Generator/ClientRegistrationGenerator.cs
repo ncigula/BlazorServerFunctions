@@ -28,7 +28,7 @@ internal static class ClientRegistrationGenerator
             ns = (string)first.GetType().GetProperty("Namespace").GetValue(first);
         }
 
-        sb.AppendLine($"namespace {ns}.Generated;");
+        sb.AppendLine($"namespace {ns};");
         sb.AppendLine();
         sb.AppendLine("public static class ServerFunctionClientsRegistration");
         sb.AppendLine("{");

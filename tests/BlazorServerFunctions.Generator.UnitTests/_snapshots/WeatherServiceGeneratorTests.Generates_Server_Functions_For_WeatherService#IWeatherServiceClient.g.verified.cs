@@ -6,7 +6,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
 
-namespace Generated.Generated;
+namespace BlazorServerFunctions.Sample.Shared;
 
 public class WeatherServiceClient : IWeatherService
 {

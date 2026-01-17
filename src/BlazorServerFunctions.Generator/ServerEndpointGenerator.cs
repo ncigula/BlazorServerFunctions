@@ -24,7 +24,7 @@ internal static class ServerEndpointGenerator
         sb.AppendLine("using Microsoft.AspNetCore.Mvc;");
         sb.AppendLine("using System.Text.Json;");
         sb.AppendLine();
-        sb.AppendLine($"namespace {ns}.Generated;");
+        sb.AppendLine($"namespace {ns};");
         sb.AppendLine();
         sb.AppendLine($"internal static class {name}ServerExtensions");
         sb.AppendLine("{");

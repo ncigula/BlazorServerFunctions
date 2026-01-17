@@ -29,7 +29,7 @@ internal static class ServerRegistrationGenerator
             ns = (string)first.GetType().GetProperty("Namespace").GetValue(first);
         }
 
-        sb.AppendLine($"namespace {ns}.Generated;");
+        sb.AppendLine($"namespace {ns};");
         sb.AppendLine();
         sb.AppendLine("public static class ServerFunctionEndpointsRegistration");
         sb.AppendLine("{");

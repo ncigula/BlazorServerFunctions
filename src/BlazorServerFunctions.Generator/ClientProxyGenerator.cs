@@ -22,7 +22,7 @@ internal static class ClientProxyGenerator
         sb.AppendLine("using System.Net.Http.Json;");
         sb.AppendLine("using System.Threading.Tasks;");
         sb.AppendLine();
-        sb.AppendLine($"namespace {ns}.Generated;");
+        sb.AppendLine($"namespace {ns};");
         sb.AppendLine();
         sb.AppendLine($"public class {name.TrimStart('I')}Client : {name}");
         sb.AppendLine("{");

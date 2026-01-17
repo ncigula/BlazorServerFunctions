@@ -4,7 +4,7 @@
 
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Generated.Generated;
+namespace BlazorServerFunctions.Sample.Shared;
 
 public static class ServerFunctionClientsRegistration
 {

@@ -1,4 +1,4 @@
-﻿namespace BlazorServerFunctions.Generator;
+﻿namespace BlazorServerFunctions.Generator.Models;
 
 internal sealed class MethodInfo
 {

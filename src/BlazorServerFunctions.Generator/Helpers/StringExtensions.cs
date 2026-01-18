@@ -1,6 +1,6 @@
 ﻿using System.Globalization;
 
-namespace BlazorServerFunctions.Generator.Extensions;
+namespace BlazorServerFunctions.Generator.Helpers;
 
 public static class StringExtensions
 {

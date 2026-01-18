@@ -1,8 +1,8 @@
 ﻿using System.Globalization;
 using System.Text;
-using BlazorServerFunctions.Generator.Extensions;
+using BlazorServerFunctions.Generator.Helpers;
 
-namespace BlazorServerFunctions.Generator;
+namespace BlazorServerFunctions.Generator.Generators;
 
 internal static class ClientProxyGenerator
 {

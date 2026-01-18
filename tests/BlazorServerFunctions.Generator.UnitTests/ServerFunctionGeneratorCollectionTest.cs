@@ -1,3 +1,5 @@
+using BlazorServerFunctions.Generator.Generators;
+
 namespace BlazorServerFunctions.Generator.UnitTests;
 
 public class ServerFunctionGeneratorCollectionTest

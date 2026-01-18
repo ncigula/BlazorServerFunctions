@@ -1,9 +1,11 @@
 ﻿using System.Collections.Immutable;
+using BlazorServerFunctions.Generator.Helpers;
+using BlazorServerFunctions.Generator.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace BlazorServerFunctions.Generator;
+namespace BlazorServerFunctions.Generator.Generators;
 
 [Generator]
 public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
@@ -62,51 +64,10 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
         return result.ToImmutableArray();
     }
-
-    private sealed class InterfaceVisitor : SymbolVisitor
-    {
-        private readonly List<InterfaceInfo> _result;
-        private readonly CancellationToken _cancellationToken;
-
-        public InterfaceVisitor(List<InterfaceInfo> result, CancellationToken cancellationToken)
-        {
-            _result = result;
-            _cancellationToken = cancellationToken;
-        }
-
-        public override void VisitNamespace(INamespaceSymbol symbol)
-        {
-            _cancellationToken.ThrowIfCancellationRequested();
-            foreach (var member in symbol.GetMembers())
-            {
-                member.Accept(this);
-            }
-        }
-
-        public override void VisitNamedType(INamedTypeSymbol symbol)
-        {
-            _cancellationToken.ThrowIfCancellationRequested();
-            if (symbol.TypeKind == TypeKind.Interface)
-            {
-                var interfaceInfo = ParseInterface(symbol, _cancellationToken);
-                if (interfaceInfo != null)
-                {
-                    _result.Add(interfaceInfo);
-                }
-            }
-
-            foreach (var member in symbol.GetTypeMembers())
-            {
-                member.Accept(this);
-            }
-        }
-    }
-
-    // Check if a syntax node could be an interface with our attribute
+    
     private static bool IsCandidateInterface(SyntaxNode node) =>
         node is InterfaceDeclarationSyntax { AttributeLists.Count: > 0 };
 
-    // Get the semantic model for the interface
     private static InterfaceDeclarationSyntax? GetSemanticTargetForGeneration(
         GeneratorSyntaxContext context)
     {
@@ -129,7 +90,6 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         return null;
     }
 
-    // Detect if this is Server or Client project
     private static ProjectInfo GetProjectInfo(Compilation compilation)
     {
         // Detect Server by checking for IEndpointRouteBuilder (ASP.NET Core)
@@ -178,7 +138,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             if (interfaceSymbol is null)
                 continue;
 
-            var interfaceInfo = ParseInterface(interfaceSymbol, context.CancellationToken);
+            var interfaceInfo = InterfaceParser.ParseInterface(interfaceSymbol, context.CancellationToken);
             if (interfaceInfo is not null)
             {
                 localInterfaceInfos.Add(interfaceInfo);
@@ -219,134 +179,5 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             var clientRegistrationCode = ClientRegistrationGenerator.Generate(localInterfaceInfos);
             context.AddSource("ServerFunctionClientsRegistration.g.cs", clientRegistrationCode);
         }
-    }
-
-    // Parse interface symbol into our data model
-    private static InterfaceInfo? ParseInterface(
-        INamedTypeSymbol interfaceSymbol,
-        CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        // Get [ServerFunctionCollection] attribute data
-        var attribute = interfaceSymbol.GetAttributes()
-            .FirstOrDefault(a => string.Equals(a.AttributeClass?.Name, "ServerFunctionCollectionAttribute", StringComparison.OrdinalIgnoreCase));
-
-        if (attribute is null)
-            return null;
-
-        // Extract attribute parameters
-        string? routePrefix = null;
-        bool requireAuth = false;
-
-        foreach (var namedArg in attribute.NamedArguments)
-        {
-            switch (namedArg.Key)
-            {
-                case "RoutePrefix":
-                    routePrefix = namedArg.Value.Value?.ToString();
-                    break;
-                case "RequireAuthorization":
-                    requireAuth = namedArg.Value.Value is true;
-                    break;
-            }
-        }
-
-        // Default route prefix from interface name (remove leading 'I')
-        routePrefix ??= interfaceSymbol.Name.TrimStart('I').ToLowerInvariant();
-
-        // Get namespace
-        var namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
-            ? "Generated"
-            : interfaceSymbol.ContainingNamespace.ToDisplayString();
-
-        // Parse methods
-        var methods = new List<MethodInfo>();
-        foreach (var member in interfaceSymbol.GetMembers())
-        {
-            if (member is not IMethodSymbol methodSymbol)
-                continue;
-
-            var methodInfo = ParseMethod(methodSymbol, cancellationToken);
-            if (methodInfo is not null)
-            {
-                methods.Add(methodInfo);
-            }
-        }
-
-        return new InterfaceInfo
-        {
-            Name = interfaceSymbol.Name,
-            Namespace = namespaceName,
-            RoutePrefix = routePrefix,
-            RequireAuthorization = requireAuth,
-            Methods = methods
-        };
-    }
-
-    // Parse method symbol into our data model
-    private static MethodInfo? ParseMethod(
-        IMethodSymbol methodSymbol,
-        CancellationToken cancellationToken)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-
-        if (methodSymbol.MethodKind != MethodKind.Ordinary)
-            return null;
-
-        var returnType = methodSymbol.ReturnType.ToDisplayString();
-        bool isAsync = returnType.StartsWith("System.Threading.Tasks.Task", StringComparison.InvariantCulture);
-
-        if (isAsync && methodSymbol.ReturnType is INamedTypeSymbol namedType)
-            returnType = namedType.TypeArguments.Length > 0
-                ? namedType.TypeArguments[0].ToDisplayString()
-                : "void"; // Task with no result
-
-        var methodAttribute = methodSymbol.GetAttributes()
-            .FirstOrDefault(a => string.Equals(a.AttributeClass?.Name, "ServerFunctionAttribute", StringComparison.OrdinalIgnoreCase));
-
-        string? customRoute = null;
-        bool requireAuthorization = false;
-        string httpMethod = "POST";
-
-        if (methodAttribute is not null)
-        {
-            foreach (var namedArg in methodAttribute.NamedArguments)
-            {
-                switch (namedArg.Key)
-                {
-                    case "Route":
-                        customRoute = namedArg.Value.Value?.ToString();
-                        break;
-                    case "HttpMethod":
-                        httpMethod = namedArg.Value.Value?.ToString() ?? "POST";
-                        break;
-                    case "RequireAuthorization":
-                        requireAuthorization = namedArg.Value.Value is true;
-                        break;
-                }
-            }
-        }
-
-        var parameters = methodSymbol.Parameters
-            .Select(parameter => new ParameterInfo
-            {
-                Name = parameter.Name,
-                Type = parameter.Type.ToDisplayString(),
-                HasDefaultValue = parameter.HasExplicitDefaultValue,
-                DefaultValue = parameter.HasExplicitDefaultValue ? parameter.ExplicitDefaultValue?.ToString() : null,
-            })
-            .ToList();
-
-        return new MethodInfo
-        {
-            Name = methodSymbol.Name,
-            ReturnType = returnType,
-            IsAsync = isAsync,
-            RequireAuthorization = requireAuthorization,
-            Parameters = parameters,
-            CustomRoute = customRoute,
-            HttpMethod = httpMethod,
-        };
     }
 }

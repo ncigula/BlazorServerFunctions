@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace BlazorServerFunctions.Generator;
+namespace BlazorServerFunctions.Generator.Generators;
 
 internal static class ServerRegistrationGenerator
 {

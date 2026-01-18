@@ -12,61 +12,76 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 {
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Step 1: Find all interfaces with [ServerFunctionCollection] attribute in current project
+        // Step 1: Detect project type FIRST (only once)
+        var projectInfo = context.CompilationProvider
+            .Select(static (compilation, _) => GetProjectInfo(compilation));
+
+        // Step 1a: Find local interfaces
         var interfaceDeclarations = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (node, _) => IsCandidateInterface(node),
                 transform: static (ctx, _) => GetSemanticTargetForGeneration(ctx))
             .Where(static m => m is not null);
 
-        // Step 1b: Find all interfaces with [ServerFunctionCollection] attribute in referenced assemblies
+        // Step 1b: Find referenced interfaces (only if needed)
         var referencedInterfaces = context.CompilationProvider
-            .Select(static (compilation, cancellationToken) => GetReferencedInterfaces(compilation, cancellationToken));
+            .Combine(projectInfo)
+            .Select(static (source, cancellationToken) =>
+                GetReferencedInterfaces(source.Left, source.Right, cancellationToken));
 
-        // Step 2: Detect project type (Server vs Client)
-        var projectInfo = context.CompilationProvider
-            .Select(static (compilation, _) => GetProjectInfo(compilation));
-
-        // Step 3: Combine everything
+        // Step 2: Combine everything
         var compilationAndInterfaces = context.CompilationProvider.Combine(interfaceDeclarations.Collect());
         var withReferenced = compilationAndInterfaces.Combine(referencedInterfaces);
         var compilationAndProject = withReferenced.Combine(projectInfo);
 
-        // Step 4: Generate code
+        // Step 3: Generate code
         context.RegisterSourceOutput(compilationAndProject,
-            static (spc, source) => Execute(spc, source.Left.Left.Left, source.Left.Left.Right, source.Left.Right, source.Right));
+            static (spc, data) =>
+            {
+                var compilation = data.Left.Left.Left;
+                var localInterfaces = data.Left.Left.Right;
+                var referencedInterfaces = data.Left.Right;
+                var projectInfo = data.Right;
+
+                Execute(spc, compilation, localInterfaces, referencedInterfaces, projectInfo);
+            });
     }
 
-    private static ImmutableArray<InterfaceInfo> GetReferencedInterfaces(Compilation compilation, CancellationToken cancellationToken)
+    private static ImmutableArray<InterfaceInfo> GetReferencedInterfaces(
+        Compilation compilation,
+        ProjectInfo projectInfo,
+        CancellationToken cancellationToken)
     {
-        var result = new List<InterfaceInfo>();
-
-        bool isServer = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Routing.IEndpointRouteBuilder") != null;
-        bool isClient = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Components.WebAssembly.Hosting.WebAssemblyHostBuilder") != null;
-
-        // We only search referenced assemblies if this is a top-level project (Server or Client)
-        if (!isServer && !isClient)
+        if (projectInfo is { GenerateEndpoints: false, GenerateClients: false })
             return ImmutableArray<InterfaceInfo>.Empty;
+
+        var result = new List<InterfaceInfo>();
 
         foreach (var reference in compilation.SourceModule.ReferencedAssemblySymbols)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            // Skip system assemblies
-            if (reference.Name.StartsWith("System.", StringComparison.InvariantCulture)
-                || reference.Name.StartsWith("Microsoft.", StringComparison.InvariantCulture))
+            if (ShouldSkipAssembly(reference))
                 continue;
 
-            // Search for interfaces with the attribute
             var visitor = new InterfaceVisitor(result, cancellationToken);
             visitor.Visit(reference.GlobalNamespace);
         }
 
         return result.ToImmutableArray();
     }
-    
+
     private static bool IsCandidateInterface(SyntaxNode node) =>
         node is InterfaceDeclarationSyntax { AttributeLists.Count: > 0 };
+
+    private static bool ShouldSkipAssembly(IAssemblySymbol assembly)
+    {
+        var name = assembly.Name;
+        return name.StartsWith("System.", StringComparison.Ordinal)
+               || name.StartsWith("Microsoft.", StringComparison.Ordinal)
+               || name.Equals("mscorlib", StringComparison.Ordinal)
+               || name.Equals("netstandard", StringComparison.Ordinal);
+    }
 
     private static InterfaceDeclarationSyntax? GetSemanticTargetForGeneration(
         GeneratorSyntaxContext context)
@@ -112,7 +127,6 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         };
     }
 
-    // Main execution method
     private static void Execute(
         SourceProductionContext context,
         Compilation compilation,
@@ -120,10 +134,36 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         ImmutableArray<InterfaceInfo> referencedInterfaces,
         ProjectInfo projectInfo)
     {
+        // Early exit if nothing to do
         if (interfaces.IsDefaultOrEmpty && referencedInterfaces.IsDefaultOrEmpty)
             return;
 
-        var localInterfaceInfos = new List<InterfaceInfo>();
+        var localInterfaceInfos = ParseLocalInterfaces(context, compilation, interfaces);
+
+        // Another early exit
+        if (localInterfaceInfos.Count == 0 && referencedInterfaces.Length == 0)
+            return;
+
+        // Generate endpoints if needed
+        if (projectInfo.GenerateEndpoints)
+        {
+            GenerateEndpoints(context, localInterfaceInfos, referencedInterfaces);
+        }
+
+        // Generate clients if needed
+        if (projectInfo.GenerateClients && localInterfaceInfos.Count > 0)
+        {
+            GenerateClients(context, localInterfaceInfos);
+        }
+    }
+
+    private static List<InterfaceInfo> ParseLocalInterfaces(
+        SourceProductionContext context,
+        Compilation compilation,
+        ImmutableArray<InterfaceDeclarationSyntax?> interfaces)
+    {
+        var result = new List<InterfaceInfo>(interfaces.Length);
+        var semanticModelCache = new Dictionary<SyntaxTree, SemanticModel>(); // 👈 Cache
 
         foreach (var interfaceDecl in interfaces)
         {
@@ -132,7 +172,12 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
             context.CancellationToken.ThrowIfCancellationRequested();
 
-            var semanticModel = compilation.GetSemanticModel(interfaceDecl.SyntaxTree);
+            if (!semanticModelCache.TryGetValue(interfaceDecl.SyntaxTree, out var semanticModel))
+            {
+                semanticModel = compilation.GetSemanticModel(interfaceDecl.SyntaxTree);
+                semanticModelCache[interfaceDecl.SyntaxTree] = semanticModel;
+            }
+            
             var interfaceSymbol = semanticModel.GetDeclaredSymbol(interfaceDecl);
 
             if (interfaceSymbol is null)
@@ -141,43 +186,48 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             var interfaceInfo = InterfaceParser.ParseInterface(interfaceSymbol, context.CancellationToken);
             if (interfaceInfo is not null)
             {
-                localInterfaceInfos.Add(interfaceInfo);
+                result.Add(interfaceInfo);
             }
         }
 
-        if (localInterfaceInfos.Count == 0 && referencedInterfaces.Length == 0)
-            return;
+        return result;
+    }
 
-        // Combine for endpoint generation (Server needs both local and referenced)
-        var allInterfaceInfos = new List<InterfaceInfo>(localInterfaceInfos);
+    private static void GenerateEndpoints(
+        SourceProductionContext context,
+        List<InterfaceInfo> localInterfaces,
+        ImmutableArray<InterfaceInfo> referencedInterfaces)
+    {
+        var allInterfaceInfos = new List<InterfaceInfo>(
+            localInterfaces.Count + referencedInterfaces.Length); // 👈 Pre-size
+
+        allInterfaceInfos.AddRange(localInterfaces);
         allInterfaceInfos.AddRange(referencedInterfaces);
 
-        // Generate server endpoints
-        if (projectInfo.GenerateEndpoints && allInterfaceInfos.Count > 0)
-        {
-            foreach (var interfaceInfo in allInterfaceInfos)
-            {
-                var serverCode = ServerEndpointGenerator.Generate(interfaceInfo);
-                context.AddSource($"{interfaceInfo.Name}ServerExtensions.g.cs", serverCode);
-            }
+        if (allInterfaceInfos.Count == 0)
+            return;
 
-            // Generate master registration
-            var registrationCode = ServerRegistrationGenerator.Generate(allInterfaceInfos);
-            context.AddSource("ServerFunctionEndpointsRegistration.g.cs", registrationCode);
+        foreach (var interfaceInfo in allInterfaceInfos)
+        {
+            var serverCode = ServerEndpointGenerator.Generate(interfaceInfo);
+            context.AddSource($"{interfaceInfo.Name}ServerExtensions.g.cs", serverCode);
         }
 
-        // Generate client proxies (ONLY for local interfaces)
-        if (projectInfo.GenerateClients && localInterfaceInfos.Count > 0)
-        {
-            foreach (var interfaceInfo in localInterfaceInfos)
-            {
-                var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
-                context.AddSource($"{interfaceInfo.Name}Client.g.cs", clientCode);
-            }
+        var registrationCode = ServerRegistrationGenerator.Generate(allInterfaceInfos);
+        context.AddSource("ServerFunctionEndpointsRegistration.g.cs", registrationCode);
+    }
 
-            // Generate client registration
-            var clientRegistrationCode = ClientRegistrationGenerator.Generate(localInterfaceInfos);
-            context.AddSource("ServerFunctionClientsRegistration.g.cs", clientRegistrationCode);
+    private static void GenerateClients(
+        SourceProductionContext context,
+        List<InterfaceInfo> localInterfaces)
+    {
+        foreach (var interfaceInfo in localInterfaces)
+        {
+            var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
+            context.AddSource($"{interfaceInfo.Name}Client.g.cs", clientCode);
         }
+
+        var clientRegistrationCode = ClientRegistrationGenerator.Generate(localInterfaces);
+        context.AddSource("ServerFunctionClientsRegistration.g.cs", clientRegistrationCode);
     }
 }

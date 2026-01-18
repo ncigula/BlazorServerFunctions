@@ -4,4 +4,4 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddProject<BlazorServerFunctions_Sample>("sample");
 
-await builder.Build().RunAsync();
+await builder.Build().RunAsync().ConfigureAwait(true);

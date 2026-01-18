@@ -11,7 +11,6 @@
         <EnableNETAnalyzers>true</EnableNETAnalyzers>
     </PropertyGroup>
 
-
     <ItemGroup Condition="'$(MSBuildProjectExtension)' != '.dcproj'">
         <PackageReference Include="Microsoft.CodeAnalysis.PerformanceSensitiveAnalyzers">
             <PrivateAssets>all</PrivateAssets>
@@ -25,13 +24,33 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
         </PackageReference>
+        <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Meziantou.Analyzer">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <!--        <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers">-->
+        <!--            <PrivateAssets>all</PrivateAssets>-->
+        <!--            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>-->
+        <!--        </PackageReference>-->
+        <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="AsyncFixer">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </PackageReference>
     </ItemGroup>
 
     <ItemGroup>
-        <AdditionalFiles Include="$(SolutionDir)BannedSymbols.txt" />
+        <AdditionalFiles Include="$(SolutionDir)BannedSymbols.txt"/>
     </ItemGroup>
 
     <!-- Automatically import generator props for local development when ProjectReference is used -->
-    <Import Project="$(MSBuildThisFileDirectory)src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.props" 
-            Condition="Exists('$(MSBuildThisFileDirectory)src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.props') AND '$(MSBuildProjectName)' != 'BlazorServerFunctions.Generator' AND '$(MSBuildProjectName)' != 'BlazorServerFunctions.Abstractions' AND '$(MSBuildProjectExtension)' != '.dcproj'" />
+    <Import Project="$(MSBuildThisFileDirectory)src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.props"
+            Condition="Exists('$(MSBuildThisFileDirectory)src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.props') AND '$(MSBuildProjectName)' != 'BlazorServerFunctions.Generator' AND '$(MSBuildProjectName)' != 'BlazorServerFunctions.Abstractions' AND '$(MSBuildProjectExtension)' != '.dcproj'"/>
 </Project>

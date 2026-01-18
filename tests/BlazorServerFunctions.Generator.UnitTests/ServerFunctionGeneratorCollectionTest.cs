@@ -1,6 +1,6 @@
 namespace BlazorServerFunctions.Generator.UnitTests;
 
-public class WeatherServiceGeneratorTests
+public class ServerFunctionGeneratorCollectionTest
 {
     [Fact]
     public Task Generates_Server_Functions_For_WeatherService()

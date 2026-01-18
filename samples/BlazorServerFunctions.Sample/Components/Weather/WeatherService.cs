@@ -7,7 +7,7 @@ internal sealed class WeatherService : IWeatherService
     public async Task<WeatherForecastDto[]> GetWeatherForecastsAsync()
     {
         // Simulate asynchronous loading to demonstrate streaming rendering
-        await Task.Delay(500);
+        await Task.Delay(500).ConfigureAwait(false);
 
         var startDate = DateOnly.FromDateTime(DateTime.UtcNow);
         var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };

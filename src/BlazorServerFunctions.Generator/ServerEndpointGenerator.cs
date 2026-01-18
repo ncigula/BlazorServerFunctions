@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using BlazorServerFunctions.Generator.Extensions;
 
 namespace BlazorServerFunctions.Generator;
 
@@ -72,7 +73,7 @@ internal static class ServerEndpointGenerator
         var routeName = customRoute ?? methodName;
         var hasParameters = parameters.Count > 0;
 
-        sb.AppendLine($"        group.Map{char.ToUpper(httpMethodLower[0]) + httpMethodLower.Substring(1)}(\"/{routeName}\",");
+        sb.AppendLine($"        group.Map{httpMethodLower.Capitalize()}(\"/{routeName}\",");
         
         if (hasParameters)
         {
@@ -87,7 +88,7 @@ internal static class ServerEndpointGenerator
 
         // Call the service
         sb.Append("                ");
-        if (returnType != "void")
+        if (!string.Equals(returnType, "void", StringComparison.OrdinalIgnoreCase))
         {
             sb.Append("var result = ");
         }
@@ -100,7 +101,7 @@ internal static class ServerEndpointGenerator
             foreach (var p in (System.Collections.IEnumerable)parameters)
             {
                 var pName = (string)p.GetType().GetProperty("Name").GetValue(p);
-                paramList.Add($"request.{char.ToUpper(pName[0])}{pName.Substring(1)}");
+                paramList.Add($"request.{pName.Capitalize()}");
             }
             sb.Append(string.Join(", ", paramList));
         }
@@ -108,7 +109,7 @@ internal static class ServerEndpointGenerator
         sb.AppendLine(");");
 
         // Return result
-        if (returnType != "void")
+        if (!string.Equals(returnType, "void", StringComparison.OrdinalIgnoreCase))
         {
             sb.AppendLine("                return Results.Ok(result);");
         }
@@ -136,7 +137,7 @@ internal static class ServerEndpointGenerator
         {
             var pType = (string)p.GetType().GetProperty("Type").GetValue(p);
             var pName = (string)p.GetType().GetProperty("Name").GetValue(p);
-            properties.Add($"{pType} {char.ToUpper(pName[0])}{pName.Substring(1)}");
+            properties.Add($"{pType} {pName.Capitalize()}");
         }
         
         sb.Append(string.Join(", ", properties));

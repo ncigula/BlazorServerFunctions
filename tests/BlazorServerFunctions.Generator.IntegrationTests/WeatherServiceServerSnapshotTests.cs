@@ -2,7 +2,7 @@
 
 namespace BlazorServerFunctions.Generator.IntegrationTests;
 
-public class IWeatherServiceTests
+public class WeatherServiceServerSnapshotTests
 {
     [Fact]
     public void WeatherService_Generates_Server_Functions()

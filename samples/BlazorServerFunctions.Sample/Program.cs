@@ -36,4 +36,4 @@ app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(BlazorServerFunctions.Sample.Client._Imports).Assembly);
 
-await app.RunAsync();
+await app.RunAsync().ConfigureAwait(true);

@@ -38,10 +38,10 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
     private static ImmutableArray<InterfaceInfo> GetReferencedInterfaces(Compilation compilation, CancellationToken cancellationToken)
     {
         var result = new List<InterfaceInfo>();
-        
+
         bool isServer = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Routing.IEndpointRouteBuilder") != null;
         bool isClient = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Components.WebAssembly.Hosting.WebAssemblyHostBuilder") != null;
-        
+
         // We only search referenced assemblies if this is a top-level project (Server or Client)
         if (!isServer && !isClient)
             return ImmutableArray<InterfaceInfo>.Empty;
@@ -49,9 +49,10 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         foreach (var reference in compilation.SourceModule.ReferencedAssemblySymbols)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             // Skip system assemblies
-            if (reference.Name.StartsWith("System.") || reference.Name.StartsWith("Microsoft."))
+            if (reference.Name.StartsWith("System.", StringComparison.InvariantCulture)
+                || reference.Name.StartsWith("Microsoft.", StringComparison.InvariantCulture))
                 continue;
 
             // Search for interfaces with the attribute
@@ -101,7 +102,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         }
     }
 
-        // Check if a syntax node could be an interface with our attribute
+    // Check if a syntax node could be an interface with our attribute
     private static bool IsCandidateInterface(SyntaxNode node) =>
         node is InterfaceDeclarationSyntax { AttributeLists.Count: > 0 };
 
@@ -117,7 +118,8 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             foreach (var attribute in attributeList.Attributes)
             {
                 var name = attribute.Name.ToString();
-                if (name == "ServerFunctionCollection" || name == "ServerFunctionCollectionAttribute")
+                if (string.Equals(name, "ServerFunctionCollection", StringComparison.OrdinalIgnoreCase)
+                    || string.Equals(name, "ServerFunctionCollectionAttribute", StringComparison.OrdinalIgnoreCase))
                 {
                     return interfaceDecl;
                 }
@@ -132,7 +134,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
     {
         // Detect Server by checking for IEndpointRouteBuilder (ASP.NET Core)
         bool isServer = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Routing.IEndpointRouteBuilder") != null;
-        
+
         // Detect Client by checking for WebAssemblyHostBuilder (Blazor WASM)
         bool isClient = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Components.WebAssembly.Hosting.WebAssemblyHostBuilder") != null;
 
@@ -228,7 +230,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
         // Get [ServerFunctionCollection] attribute data
         var attribute = interfaceSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "ServerFunctionCollectionAttribute");
+            .FirstOrDefault(a => string.Equals(a.AttributeClass?.Name, "ServerFunctionCollectionAttribute", StringComparison.OrdinalIgnoreCase));
 
         if (attribute is null)
             return null;
@@ -289,30 +291,19 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Skip property accessors, etc.
         if (methodSymbol.MethodKind != MethodKind.Ordinary)
             return null;
 
-        // Get return type
         var returnType = methodSymbol.ReturnType.ToDisplayString();
-        bool isAsync = returnType.StartsWith("System.Threading.Tasks.Task");
+        bool isAsync = returnType.StartsWith("System.Threading.Tasks.Task", StringComparison.InvariantCulture);
 
-        // Extract actual return type from Task<T>
         if (isAsync && methodSymbol.ReturnType is INamedTypeSymbol namedType)
-        {
-            if (namedType.TypeArguments.Length > 0)
-            {
-                returnType = namedType.TypeArguments[0].ToDisplayString();
-            }
-            else
-            {
-                returnType = "void"; // Task with no result
-            }
-        }
+            returnType = namedType.TypeArguments.Length > 0
+                ? namedType.TypeArguments[0].ToDisplayString()
+                : "void"; // Task with no result
 
-        // Get method attribute if exists
         var methodAttribute = methodSymbol.GetAttributes()
-            .FirstOrDefault(a => a.AttributeClass?.Name == "ServerFunctionAttribute");
+            .FirstOrDefault(a => string.Equals(a.AttributeClass?.Name, "ServerFunctionAttribute", StringComparison.OrdinalIgnoreCase));
 
         string? customRoute = null;
         bool requireAuthorization = false;
@@ -337,18 +328,15 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             }
         }
 
-        // Parse parameters
-        var parameters = new List<ParameterInfo>();
-        foreach (var param in methodSymbol.Parameters)
-        {
-            parameters.Add(new ParameterInfo
+        var parameters = methodSymbol.Parameters
+            .Select(parameter => new ParameterInfo
             {
-                Name = param.Name,
-                Type = param.Type.ToDisplayString(),
-                HasDefaultValue = param.HasExplicitDefaultValue,
-                DefaultValue = param.HasExplicitDefaultValue ? param.ExplicitDefaultValue?.ToString() : null
-            });
-        }
+                Name = parameter.Name,
+                Type = parameter.Type.ToDisplayString(),
+                HasDefaultValue = parameter.HasExplicitDefaultValue,
+                DefaultValue = parameter.HasExplicitDefaultValue ? parameter.ExplicitDefaultValue?.ToString() : null,
+            })
+            .ToList();
 
         return new MethodInfo
         {
@@ -358,7 +346,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             RequireAuthorization = requireAuthorization,
             Parameters = parameters,
             CustomRoute = customRoute,
-            HttpMethod = httpMethod
+            HttpMethod = httpMethod,
         };
     }
 }

@@ -69,7 +69,7 @@ internal static class ServerEndpointGenerator
     {
         var routeName = method.CustomRoute ?? method.Name;
         var hasParameters = method.Parameters.Count > 0;
-        var httpMethod = method.HttpMethod.Capitalize();
+        var httpMethod = method.HttpMethod.ToPascalCase();
 
         sb.Append("        group.Map").Append(httpMethod).Append("(\"/").Append(routeName).AppendLine("\",");
 
@@ -120,7 +120,7 @@ internal static class ServerEndpointGenerator
         if (method.Parameters.Count > 0)
         {
             var paramList = method.Parameters
-                .Select(p => $"request.{p.Name.Capitalize()}");
+                .Select(p => $"request.{p.Name.ToPascalCase()}");
             sb.Append(string.Join(", ", paramList));
         }
 
@@ -158,7 +158,7 @@ internal static class ServerEndpointGenerator
             .Append("Request(");
 
         var properties = method.Parameters
-            .Select(p => $"{p.Type} {p.Name.Capitalize()}");
+            .Select(p => $"{p.Type} {p.Name.ToPascalCase()}");
 
         sb.Append(string.Join(", ", properties));
         sb.AppendLine(");");

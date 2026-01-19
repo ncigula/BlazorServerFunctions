@@ -98,7 +98,7 @@ internal static class ClientProxyGenerator
         foreach (var parameterName in parameters.Select(p => p.Name))
         {
             sb.Append("            ")
-                .Append(parameterName.Capitalize())
+                .Append(parameterName.ToPascalCase())
                 .Append(" = ")
                 .Append(parameterName)
                 .AppendLine(",");
@@ -186,7 +186,7 @@ internal static class ClientProxyGenerator
             foreach (var parameterName in parameters.Select(p =>p.Name))
             {
                 sb.Append("        queryString[\"")
-                    .Append(parameterName.Capitalize())
+                    .Append(parameterName.ToPascalCase())
                     .Append("\"] = ")
                     .Append(parameterName)
                     .AppendLine("?.ToString();");

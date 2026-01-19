@@ -221,6 +221,9 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         SourceProductionContext context,
         List<InterfaceInfo> localInterfaces)
     {
+        if (localInterfaces.Count == 0)
+            return;
+        
         foreach (var interfaceInfo in localInterfaces)
         {
             var clientCode = ClientProxyGenerator.Generate(interfaceInfo);

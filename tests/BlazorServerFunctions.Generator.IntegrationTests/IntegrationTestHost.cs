@@ -79,14 +79,18 @@ public sealed class IntegrationTestHost
 
     public void AssertCompilationSucceeds()
     {
+        _updatedCompilation.GetDiagnostics()
+            .Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
+            .ShouldBeEmpty("there should be no compilation errors");
+        
         using var ms = new MemoryStream();
         var emit = _updatedCompilation.Emit(ms);
 
         emit.Diagnostics
             .Where(d => d.Severity is DiagnosticSeverity.Error or DiagnosticSeverity.Warning)
-            .ShouldBeEmpty("there should be no compilation errors");
+            .ShouldBeEmpty("there should be no compilation errors in the IL code");
         
-        emit.Success.ShouldBeTrue("the generated code must compile");
+        emit.Success.ShouldBeTrue("the generated code must compile to IL code");
     }
 
     public void AssertTypesExist(params string[] types)

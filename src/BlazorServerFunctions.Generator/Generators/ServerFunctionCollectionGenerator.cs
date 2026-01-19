@@ -1,4 +1,5 @@
 ﻿using System.Collections.Immutable;
+using BlazorServerFunctions.Abstractions;
 using BlazorServerFunctions.Generator.Helpers;
 using BlazorServerFunctions.Generator.Models;
 using Microsoft.CodeAnalysis;
@@ -10,31 +11,29 @@ namespace BlazorServerFunctions.Generator.Generators;
 [Generator]
 public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 {
+    private const string ServerTypeMarker = "Microsoft.AspNetCore.Routing.IEndpointRouteBuilder";
+    private const string ClientTypeMarker = "Microsoft.AspNetCore.Components.WebAssembly.Hosting.WebAssemblyHostBuilder";
+
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
-        // Step 1: Detect project type FIRST (only once)
         var projectInfo = context.CompilationProvider
             .Select(static (compilation, _) => GetProjectInfo(compilation));
 
-        // Step 1a: Find local interfaces
         var interfaceDeclarations = context.SyntaxProvider
             .CreateSyntaxProvider(
                 predicate: static (node, _) => IsCandidateInterface(node),
                 transform: static (ctx, _) => GetSemanticTargetForGeneration(ctx))
             .Where(static m => m is not null);
 
-        // Step 1b: Find referenced interfaces (only if needed)
         var referencedInterfaces = context.CompilationProvider
             .Combine(projectInfo)
             .Select(static (source, cancellationToken) =>
                 GetReferencedInterfaces(source.Left, source.Right, cancellationToken));
 
-        // Step 2: Combine everything
         var compilationAndInterfaces = context.CompilationProvider.Combine(interfaceDeclarations.Collect());
         var withReferenced = compilationAndInterfaces.Combine(referencedInterfaces);
         var compilationAndProject = withReferenced.Combine(projectInfo);
 
-        // Step 3: Generate code
         context.RegisterSourceOutput(compilationAndProject,
             static (spc, data) =>
             {
@@ -52,7 +51,8 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         ProjectInfo projectInfo,
         CancellationToken cancellationToken)
     {
-        if (projectInfo is { GenerateEndpoints: false, GenerateClients: false })
+        // Only search referenced assemblies for top-level projects
+        if (!projectInfo.GenerateEndpoints && !projectInfo.GenerateClients)
             return ImmutableArray<InterfaceInfo>.Empty;
 
         var result = new List<InterfaceInfo>();
@@ -88,14 +88,14 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
     {
         var interfaceDecl = (InterfaceDeclarationSyntax)context.Node;
 
-        // Check if it has [ServerFunctionCollection] attribute
         foreach (var attributeList in interfaceDecl.AttributeLists)
         {
             foreach (var attribute in attributeList.Attributes)
             {
-                var name = attribute.Name.ToString();
-                if (string.Equals(name, "ServerFunctionCollection", StringComparison.OrdinalIgnoreCase)
-                    || string.Equals(name, "ServerFunctionCollectionAttribute", StringComparison.OrdinalIgnoreCase))
+                var attributeName = attribute.Name.ToString();
+                var requiredAttributeName = nameof(ServerFunctionCollectionAttribute).Replace("Attribute", "");
+                if (string.Equals(attributeName, requiredAttributeName,
+                        StringComparison.OrdinalIgnoreCase))
                 {
                     return interfaceDecl;
                 }
@@ -107,23 +107,14 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
     private static ProjectInfo GetProjectInfo(Compilation compilation)
     {
-        // Detect Server by checking for IEndpointRouteBuilder (ASP.NET Core)
-        bool isServer = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Routing.IEndpointRouteBuilder") != null;
-
-        // Detect Client by checking for WebAssemblyHostBuilder (Blazor WASM)
-        bool isClient = compilation.GetTypeByMetadataName("Microsoft.AspNetCore.Components.WebAssembly.Hosting.WebAssemblyHostBuilder") != null;
-
-        // If it's a Server project, we DON'T want to generate clients for referenced interfaces
-        // because those clients are already generated in the referenced libraries.
-        // We only generate server endpoints for everything.
-
-        // The user specifically wants Shared projects to NOT contain server code.
+        bool isServer = compilation.GetTypeByMetadataName(ServerTypeMarker) != null;
+        bool isClient = compilation.GetTypeByMetadataName(ClientTypeMarker) != null;
         bool isLibrary = !isServer && !isClient;
 
         return new ProjectInfo
         {
-            GenerateEndpoints = isServer, // Only generate endpoints if it IS a server project
-            GenerateClients = isClient || isLibrary // Generate clients for client projects OR libraries
+            GenerateEndpoints = isServer,
+            GenerateClients = isClient || isLibrary
         };
     }
 
@@ -134,23 +125,19 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         ImmutableArray<InterfaceInfo> referencedInterfaces,
         ProjectInfo projectInfo)
     {
-        // Early exit if nothing to do
         if (interfaces.IsDefaultOrEmpty && referencedInterfaces.IsDefaultOrEmpty)
             return;
 
         var localInterfaceInfos = ParseLocalInterfaces(context, compilation, interfaces);
 
-        // Another early exit
         if (localInterfaceInfos.Count == 0 && referencedInterfaces.Length == 0)
             return;
 
-        // Generate endpoints if needed
         if (projectInfo.GenerateEndpoints)
         {
             GenerateEndpoints(context, localInterfaceInfos, referencedInterfaces);
         }
 
-        // Generate clients if needed
         if (projectInfo.GenerateClients && localInterfaceInfos.Count > 0)
         {
             GenerateClients(context, localInterfaceInfos);
@@ -163,7 +150,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         ImmutableArray<InterfaceDeclarationSyntax?> interfaces)
     {
         var result = new List<InterfaceInfo>(interfaces.Length);
-        var semanticModelCache = new Dictionary<SyntaxTree, SemanticModel>(); // 👈 Cache
+        var semanticModelCache = new Dictionary<SyntaxTree, SemanticModel>();
 
         foreach (var interfaceDecl in interfaces)
         {
@@ -177,9 +164,8 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
                 semanticModel = compilation.GetSemanticModel(interfaceDecl.SyntaxTree);
                 semanticModelCache[interfaceDecl.SyntaxTree] = semanticModel;
             }
-            
-            var interfaceSymbol = semanticModel.GetDeclaredSymbol(interfaceDecl);
 
+            var interfaceSymbol = semanticModel.GetDeclaredSymbol(interfaceDecl);
             if (interfaceSymbol is null)
                 continue;
 
@@ -199,7 +185,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         ImmutableArray<InterfaceInfo> referencedInterfaces)
     {
         var allInterfaceInfos = new List<InterfaceInfo>(
-            localInterfaces.Count + referencedInterfaces.Length); // 👈 Pre-size
+            localInterfaces.Count + referencedInterfaces.Length);
 
         allInterfaceInfos.AddRange(localInterfaces);
         allInterfaceInfos.AddRange(referencedInterfaces);
@@ -221,9 +207,6 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         SourceProductionContext context,
         List<InterfaceInfo> localInterfaces)
     {
-        if (localInterfaces.Count == 0)
-            return;
-        
         foreach (var interfaceInfo in localInterfaces)
         {
             var clientCode = ClientProxyGenerator.Generate(interfaceInfo);

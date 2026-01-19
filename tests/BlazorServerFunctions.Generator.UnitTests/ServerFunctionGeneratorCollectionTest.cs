@@ -4,14 +4,17 @@ namespace BlazorServerFunctions.Generator.UnitTests;
 
 public class ServerFunctionGeneratorCollectionTest
 {
-    [Fact]
-    public Task Generates_Server_Functions_For_WeatherService()
+    [Theory]
+    [InlineData(ProjectType.Server)]
+    [InlineData(ProjectType.Client)]
+    [InlineData(ProjectType.Library)]
+    public Task Generates_Server_Files_For_WeatherService(ProjectType projectType)
     {
         var source = """
                      using BlazorServerFunctions.Abstractions;
-                     
+
                      namespace BlazorServerFunctions.Sample.Shared;
-                     
+
                      [ServerFunctionCollection]
                      public interface IWeatherService
                      {
@@ -24,8 +27,8 @@ public class ServerFunctionGeneratorCollectionTest
         var result = GeneratorTestHelper.RunGenerator(
             source,
             generator,
-            MetadataReference.CreateFromFile(typeof(ServerFunctionCollectionAttribute).Assembly.Location));
+            projectType);
 
-        return Verify(result);
+        return Verify(result).UseParameters(projectType);
     }
 }

@@ -24,10 +24,16 @@
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing.XUnit"/>
         <PackageReference Include="Verify.Xunit"/>
         <PackageReference Include="Verify.SourceGenerators"/>
+        <PackageReference Include="Microsoft.AspNetCore.App"/>
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly"/>
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\..\src\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj" />
-        <ProjectReference Include="..\..\src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.csproj" />
+        <ProjectReference Include="..\..\src\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj"/>
+        <ProjectReference Include="..\..\src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="_snapshots\" />
     </ItemGroup>
 </Project>

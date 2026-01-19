@@ -1,14 +1,15 @@
 using BlazorServerFunctions.Generator.Generators;
+using BlazorServerFunctions.Generator.UnitTests.Helpers;
 
 namespace BlazorServerFunctions.Generator.UnitTests;
 
-public class ServerFunctionGeneratorCollectionTest
+public class ServerFunctionCollectionTests
 {
     [Theory]
     [InlineData(ProjectType.Server)]
     [InlineData(ProjectType.Client)]
     [InlineData(ProjectType.Library)]
-    public Task Generates_Server_Files_For_WeatherService(ProjectType projectType)
+    public Task ServerFunctionCollectionAttribute_On_Interface_Generates_Files_Successfully(ProjectType projectType)
     {
         var source = """
                      using BlazorServerFunctions.Abstractions;
@@ -22,11 +23,8 @@ public class ServerFunctionGeneratorCollectionTest
                      }
                      """;
 
-        var generator = new ServerFunctionCollectionGenerator();
-
-        var result = GeneratorTestHelper.RunGenerator(
+        var result = GeneratorTestHelper.RunServerFunctionCollectionGenerator(
             source,
-            generator,
             projectType);
 
         return Verify(result).UseParameters(projectType);

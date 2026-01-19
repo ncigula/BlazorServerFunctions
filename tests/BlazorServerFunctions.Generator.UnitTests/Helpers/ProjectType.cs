@@ -1,4 +1,4 @@
-﻿namespace BlazorServerFunctions.Generator.UnitTests;
+﻿namespace BlazorServerFunctions.Generator.UnitTests.Helpers;
 
 public enum ProjectType
 {

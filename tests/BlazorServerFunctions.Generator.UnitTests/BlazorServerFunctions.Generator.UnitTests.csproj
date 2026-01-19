@@ -32,8 +32,4 @@
         <ProjectReference Include="..\..\src\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj"/>
         <ProjectReference Include="..\..\src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.csproj"/>
     </ItemGroup>
-
-    <ItemGroup>
-      <Folder Include="_snapshots\" />
-    </ItemGroup>
 </Project>

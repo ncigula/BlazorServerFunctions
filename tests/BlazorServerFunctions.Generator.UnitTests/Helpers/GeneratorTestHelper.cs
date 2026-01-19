@@ -1,6 +1,7 @@
-﻿using Microsoft.CodeAnalysis.CSharp;
+﻿using BlazorServerFunctions.Generator.Generators;
+using Microsoft.CodeAnalysis.CSharp;
 
-namespace BlazorServerFunctions.Generator.UnitTests;
+namespace BlazorServerFunctions.Generator.UnitTests.Helpers;
 
 public static class GeneratorTestHelper
 {
@@ -95,4 +96,12 @@ public static class GeneratorTestHelper
             _ => throw new ArgumentOutOfRangeException(nameof(projectType)),
         };
     }
+
+    public static GeneratorDriverRunResult RunServerFunctionCollectionGenerator(
+        string source,
+        ProjectType projectType) =>
+        RunGenerator(
+            source,
+            new ServerFunctionCollectionGenerator(),
+            projectType);
 }

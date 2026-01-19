@@ -1,6 +1,4 @@
-﻿using Xunit;
-
-namespace BlazorServerFunctions.Generator.IntegrationTests;
+﻿namespace BlazorServerFunctions.Generator.IntegrationTests;
 
 public class WeatherServiceServerSnapshotTests
 {

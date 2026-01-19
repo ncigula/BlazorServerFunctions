@@ -18,6 +18,7 @@
     <Project Path="src/BlazorServerFunctions.Generator/BlazorServerFunctions.Generator.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <File Path="tests/tests.md" />
     <Project Path="tests/BlazorServerFunctions.EndToEndTests/BlazorServerFunctions.EndToEndTests.csproj" />
     <Project Path="tests/BlazorServerFunctions.Generator.IntegrationTests/BlazorServerFunctions.Generator.IntegrationTests.csproj" />
     <Project Path="tests/BlazorServerFunctions.Generator.UnitTests/BlazorServerFunctions.Generator.UnitTests.csproj" />

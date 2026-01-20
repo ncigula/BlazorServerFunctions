@@ -23,11 +23,11 @@
         <PackageReference Include="xunit"/>
         <PackageReference Include="xunit.runner.visualstudio"/>
         <PackageReference Include="Microsoft.CodeAnalysis.CSharp.SourceGenerators.Testing.XUnit"/>
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server"/>
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly"/>
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\samples\BlazorServerFunctions.Sample.Shared\BlazorServerFunctions.Sample.Shared.csproj" />
-      <ProjectReference Include="..\..\samples\BlazorServerFunctions.Sample\BlazorServerFunctions.Sample.csproj" />
       <ProjectReference Include="..\..\src\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj" />
       <ProjectReference Include="..\..\src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.csproj" />
     </ItemGroup>

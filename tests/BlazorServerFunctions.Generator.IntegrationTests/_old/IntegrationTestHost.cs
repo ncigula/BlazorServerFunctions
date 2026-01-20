@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Shouldly;
 
-namespace BlazorServerFunctions.Generator.IntegrationTests;
+namespace BlazorServerFunctions.Generator.IntegrationTests._old;
 
 public sealed class IntegrationTestHost
 {

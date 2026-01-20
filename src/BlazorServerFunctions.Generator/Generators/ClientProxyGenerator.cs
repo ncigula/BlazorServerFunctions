@@ -238,7 +238,7 @@ internal static class ClientProxyGenerator
 
         if (string.Equals(type, "bool", StringComparison.OrdinalIgnoreCase))
         {
-            return defaultValue.ToString().ToLowerInvariant();
+            return defaultValue.ToString()?.ToLowerInvariant() ?? false.ToString();
         }
 
         if (type.Contains('?') && string.Equals(defaultValue.ToString(), "null", StringComparison.OrdinalIgnoreCase))
@@ -246,6 +246,6 @@ internal static class ClientProxyGenerator
             return "null";
         }
 
-        return defaultValue.ToString();
+        return defaultValue!.ToString()!;
     }
 }

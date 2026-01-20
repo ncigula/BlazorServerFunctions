@@ -1,7 +1,7 @@
 ﻿using BlazorServerFunctions.Abstractions;
 using Microsoft.CodeAnalysis;
 
-namespace BlazorServerFunctions.Generator.IntegrationTests;
+namespace BlazorServerFunctions.Generator.IntegrationTests._old;
 
 public static class IntegrationTestReferences
 {

@@ -1,6 +1,6 @@
 ﻿namespace BlazorServerFunctions.Generator.Models;
 
-internal sealed class ParameterInfo
+internal sealed record ParameterInfo
 {
     public string Name { get; set; } = "";
     public string Type { get; set; } = "";

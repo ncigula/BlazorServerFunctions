@@ -1,6 +1,6 @@
 ﻿namespace BlazorServerFunctions.Generator.Models;
 
-internal sealed class ProjectInfo
+internal sealed record ProjectInfo
 {
     public bool GenerateEndpoints { get; set; }
     public bool GenerateClients { get; set; }

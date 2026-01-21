@@ -108,15 +108,19 @@ internal static class ClientProxyGenerator
         sb.AppendLine();
     }
 
-    private static void GenerateMethodSignature(
+    internal static void GenerateMethodSignature(
         StringBuilder sb,
         MethodInfo method)
     {
-        sb.Append("    public async Task");
-        if (!string.Equals(method.ReturnType, "void", StringComparison.OrdinalIgnoreCase))
-        {
-            sb.Append('<').Append(method.ReturnType).Append('>');
-        }
+        sb.Append("    public ");
+
+        if (method.AsyncType is not AsyncType.None)
+            sb.Append("async ")
+                .Append(method.AsyncType.ToString())
+                .Append('<')
+                .Append(method.ReturnType)
+                .Append('>');
+        else sb.Append(method.ReturnType);
 
         sb.Append(' ').Append(method.Name).Append('(');
 
@@ -183,7 +187,7 @@ internal static class ClientProxyGenerator
         {
             sb.AppendLine("        var queryString = System.Web.HttpUtility.ParseQueryString(string.Empty);");
 
-            foreach (var parameterName in parameters.Select(p =>p.Name))
+            foreach (var parameterName in parameters.Select(p => p.Name))
             {
                 sb.Append("        queryString[\"")
                     .Append(parameterName.ToPascalCase())

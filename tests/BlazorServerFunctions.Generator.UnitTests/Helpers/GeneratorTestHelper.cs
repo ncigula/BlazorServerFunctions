@@ -1,5 +1,4 @@
-﻿using BlazorServerFunctions.Generator.Generators;
-using Microsoft.CodeAnalysis.CSharp;
+﻿using Microsoft.CodeAnalysis.CSharp;
 
 namespace BlazorServerFunctions.Generator.UnitTests.Helpers;
 

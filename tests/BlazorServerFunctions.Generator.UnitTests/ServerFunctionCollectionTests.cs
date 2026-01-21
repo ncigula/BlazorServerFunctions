@@ -19,6 +19,7 @@ public class ServerFunctionCollectionTests
                      [ServerFunctionCollection]
                      public interface IWeatherService
                      {
+                         [ServerFunction]
                          Task<WeatherForecastDto[]> GetWeatherForecastsAsync();
                      }
                      """;

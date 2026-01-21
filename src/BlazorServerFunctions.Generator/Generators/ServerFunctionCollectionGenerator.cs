@@ -170,10 +170,13 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
                 continue;
 
             var interfaceInfo = InterfaceParser.ParseInterface(interfaceSymbol, context.CancellationToken);
-            if (interfaceInfo is not null)
+            if (interfaceInfo.IsSuccess)
             {
-                result.Add(interfaceInfo);
+                result.Add(interfaceInfo.Value);
             }
+            
+            if (interfaceInfo.IsFailure)
+                context.ReportError(interfaceInfo.Error, interfaceSymbol);
         }
 
         return result;

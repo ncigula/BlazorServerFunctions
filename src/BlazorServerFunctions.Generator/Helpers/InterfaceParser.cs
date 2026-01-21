@@ -3,26 +3,42 @@ using Microsoft.CodeAnalysis;
 
 namespace BlazorServerFunctions.Generator.Helpers;
 
-public static class InterfaceParser
+internal static class InterfaceParser
 {
-    internal static InterfaceInfo? ParseInterface(
+    private static readonly DiagnosticDescriptor MissingServerFunctionCollectionAttribute = new(
+        id: "BSF001",
+        title: "Missing server function collection attribute",
+        messageFormat: "Method '{0}' must have a [ServerFunctionCollection] attribute",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+    
+    private static readonly DiagnosticDescriptor MissingServerFunctionAttribute = new(
+        id: "BSF002",
+        title: "Missing server function attribute",
+        messageFormat: "Method '{0}' must have a [ServerFunction] attribute",
+        category: "Usage",
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    internal static Result<InterfaceInfo> ParseInterface(
         INamedTypeSymbol interfaceSymbol,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        // Get [ServerFunctionCollection] attribute data
-        var attribute = interfaceSymbol.GetAttributes()
+        var serverFunctionCollectionAttribute = interfaceSymbol.GetAttributes()
             .FirstOrDefault(a => string.Equals(a.AttributeClass?.Name, "ServerFunctionCollectionAttribute", StringComparison.OrdinalIgnoreCase));
 
-        if (attribute is null)
-            return null;
+        if (serverFunctionCollectionAttribute is null)
+            return Result.Failure<InterfaceInfo>(
+                Error.Diagnostic(MissingServerFunctionCollectionAttribute, interfaceSymbol.Name));
 
         // Extract attribute parameters
         string? routePrefix = null;
         bool requireAuth = false;
 
-        foreach (var namedArg in attribute.NamedArguments)
+        foreach (var namedArg in serverFunctionCollectionAttribute.NamedArguments)
         {
             switch (namedArg.Key)
             {
@@ -43,74 +59,58 @@ public static class InterfaceParser
             ? "Generated"
             : interfaceSymbol.ContainingNamespace.ToDisplayString();
 
-        // Parse methods
-        var methods = new List<MethodInfo>();
-        foreach (var member in interfaceSymbol.GetMembers())
-        {
-            if (member is not IMethodSymbol methodSymbol)
-                continue;
-
-            var methodInfo = ParseMethod(methodSymbol, cancellationToken);
-            if (methodInfo is not null)
-            {
-                methods.Add(methodInfo);
-            }
-        }
-
-        return new InterfaceInfo
+        var interfaceInfo = new InterfaceInfo
         {
             Name = interfaceSymbol.Name,
             Namespace = namespaceName,
             RoutePrefix = routePrefix,
             RequireAuthorization = requireAuth,
-            Methods = methods
         };
+
+        foreach (var member in interfaceSymbol.GetMembers())
+        {
+            if (member is not IMethodSymbol { MethodKind: MethodKind.Ordinary } methodSymbol)
+                continue;
+
+            var methodInfo = ParseMethod(interfaceInfo, methodSymbol, cancellationToken);
+            if (methodInfo.IsSuccess)
+            {
+                interfaceInfo.Methods.Add(methodInfo.Value);
+                continue;
+            }
+
+            return Result.Failure<InterfaceInfo>(methodInfo.Error);
+        }
+
+        return interfaceInfo;
     }
 
-    private static MethodInfo? ParseMethod(
+    private static Result<MethodInfo> ParseMethod(
+        InterfaceInfo interfaceInfo,
         IMethodSymbol methodSymbol,
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
-        if (methodSymbol.MethodKind != MethodKind.Ordinary)
-            return null;
-
+        var methodInfo = new MethodInfo();
+        methodInfo.Name = methodSymbol.Name;
         var returnType = methodSymbol.ReturnType.ToDisplayString();
-        bool isAsync = returnType.StartsWith("System.Threading.Tasks.Task", StringComparison.InvariantCulture);
+        bool isAsync = RegexExpressions.IsAsyncType().IsMatch(returnType);
+
+        methodInfo.AsyncType = (isAsync, returnType) switch
+        {
+            (false, _) => AsyncType.None,
+            (true, var type) when type.StartsWith("ValueTask", StringComparison.Ordinal) => AsyncType.ValueTask,
+            (true, var type) when type.StartsWith("Task", StringComparison.Ordinal) => AsyncType.Task,
+            _ => throw new ArgumentOutOfRangeException(returnType),
+        };
 
         if (isAsync && methodSymbol.ReturnType is INamedTypeSymbol namedType)
-            returnType = namedType.TypeArguments.Length > 0
+            methodInfo.ReturnType = namedType.TypeArguments.Length > 0
                 ? namedType.TypeArguments[0].ToDisplayString()
-                : "void"; // Task with no result
+                : "void";
 
-        var methodAttribute = methodSymbol.GetAttributes()
-            .FirstOrDefault(a => string.Equals(a.AttributeClass?.Name, "ServerFunctionAttribute", StringComparison.OrdinalIgnoreCase));
-
-        string? customRoute = null;
-        bool requireAuthorization = false;
-        string httpMethod = "POST";
-
-        if (methodAttribute is not null)
-        {
-            foreach (var namedArg in methodAttribute.NamedArguments)
-            {
-                switch (namedArg.Key)
-                {
-                    case "Route":
-                        customRoute = namedArg.Value.Value?.ToString();
-                        break;
-                    case "HttpMethod":
-                        httpMethod = namedArg.Value.Value?.ToString() ?? "POST";
-                        break;
-                    case "RequireAuthorization":
-                        requireAuthorization = namedArg.Value.Value is true;
-                        break;
-                }
-            }
-        }
-
-        var parameters = methodSymbol.Parameters
+        methodInfo.Parameters = methodSymbol.Parameters
             .Select(parameter => new ParameterInfo
             {
                 Name = parameter.Name,
@@ -120,15 +120,31 @@ public static class InterfaceParser
             })
             .ToList();
 
-        return new MethodInfo
+        methodInfo.RequireAuthorization = interfaceInfo.RequireAuthorization;
+
+        var serverFunctionAttribute = methodSymbol.GetAttributes()
+            .FirstOrDefault(a => string.Equals(a.AttributeClass?.Name, "ServerFunctionAttribute", StringComparison.OrdinalIgnoreCase));
+
+        if (serverFunctionAttribute is null)
+            return Result.Failure<MethodInfo>(
+                Error.Diagnostic(MissingServerFunctionAttribute, methodInfo.Name));
+
+        foreach (var attribute in serverFunctionAttribute.NamedArguments)
         {
-            Name = methodSymbol.Name,
-            ReturnType = returnType,
-            IsAsync = isAsync,
-            RequireAuthorization = requireAuthorization,
-            Parameters = parameters,
-            CustomRoute = customRoute,
-            HttpMethod = httpMethod,
-        };
+            switch (attribute.Key)
+            {
+                case "Route":
+                    methodInfo.CustomRoute = attribute.Value.Value?.ToString();
+                    break;
+                case "HttpMethod":
+                    methodInfo.HttpMethod = attribute.Value.Value!.ToString()!;
+                    break;
+                case "RequireAuthorization":
+                    methodInfo.RequireAuthorization = attribute.Value.Value is true;
+                    break;
+            }
+        }
+
+        return methodInfo;
     }
 }

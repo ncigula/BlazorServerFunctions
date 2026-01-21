@@ -9,7 +9,7 @@ public class ServerFunctionCollectionTests
     [InlineData(ProjectType.Server)]
     [InlineData(ProjectType.Client)]
     [InlineData(ProjectType.Library)]
-    public Task ServerFunctionCollectionAttribute_On_Interface_Generates_Files_Successfully(ProjectType projectType)
+    public Task ServerFunctionCollectionAttribute_On_Interface_Generates_Files(ProjectType projectType)
     {
         var source = """
                      using BlazorServerFunctions.Abstractions;
@@ -28,6 +28,7 @@ public class ServerFunctionCollectionTests
             source,
             projectType);
 
-        return Verify(result).UseParameters(projectType);
+        return VerifyExtensions.VerifyNoDiagnostics(result)
+            .UseParameters(projectType);
     }
 }

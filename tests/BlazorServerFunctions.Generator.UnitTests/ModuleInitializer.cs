@@ -7,13 +7,12 @@ public static class ModuleInitializer
     [ModuleInitializer]
     public static void Initialize()
     {
-        DerivePathInfo((file, _, type, method) =>
+        DerivePathInfo((file, projectDirectory, type, method) =>
         {
-            var directory = Path.GetDirectoryName(file)!;
-        
+            var path = Path.Combine(projectDirectory, "_snapshots", type.Name);
             return new PathInfo(
-                directory: Path.Combine(directory, "_snapshots"),
-                typeName: type.Name,
+                directory: path,
+                typeName: "_",
                 methodName: method.Name);
         });
 

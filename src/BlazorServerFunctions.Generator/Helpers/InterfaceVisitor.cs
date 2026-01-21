@@ -29,9 +29,9 @@ internal sealed class InterfaceVisitor : SymbolVisitor
         if (symbol.TypeKind == TypeKind.Interface)
         {
             var interfaceInfo = InterfaceParser.ParseInterface(symbol, _cancellationToken);
-            if (interfaceInfo != null)
+            if (interfaceInfo.IsSuccess)
             {
-                _result.Add(interfaceInfo);
+                _result.Add(interfaceInfo.Value);
             }
         }
 

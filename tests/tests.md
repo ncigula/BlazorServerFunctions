@@ -1,775 +1,1154 @@
-﻿# BlazorServerFunctions Generator Test Suite Reference
+﻿# BlazorServerFunctions Source Generator - Test Plan
 
-This document outlines all the tests that should be implemented for the BlazorServerFunctions source generator.
+## Overview
+
+This document outlines the complete test strategy for the BlazorServerFunctions source generator. The test suite is divided into three projects: Unit Tests, Integration Tests, and End-to-End Tests.
+
+## Project Structure
+
+```
+BlazorServerFunctions.Generator.Tests/
+├── BlazorServerFunctions.Generator.UnitTests/
+│   ├── ClientProxyGeneratorTests.cs
+│   ├── ServerEndpointGeneratorTests.cs
+│   ├── ClientRegistrationGeneratorTests.cs
+│   ├── ServerRegistrationGeneratorTests.cs
+│   ├── Helpers/
+│   │   ├── InterfaceInfoBuilder.cs (✅ Already created)
+│   │   ├── MethodInfoBuilder.cs (✅ Already created)
+│   │   ├── ParameterInfoBuilder.cs (✅ Already created)
+│   │   └── TestDataFactory.cs (Create this - see Test Data Builders section)
+│   └── Snapshots/
+│       └── *.verified.cs files
+├── BlazorServerFunctions.Generator.IntegrationTests/
+│   ├── SourceGeneratorTests.cs
+│   ├── ProjectTypeDetectionTests.cs
+│   ├── ReferencedAssemblyTests.cs
+│   ├── Helpers/
+│   │   └── TestDataFactory.cs (Can reuse from UnitTests)
+│   └── Snapshots/
+│       └── *.verified.cs files
+└── BlazorServerFunctions.Generator.E2ETests/
+    ├── TestShared/
+    │   └── ITestService.cs
+    ├── TestServer/
+    │   ├── Program.cs
+    │   └── Services/TestService.cs
+    └── ServerFunctionE2ETests.cs
+```
 
 ---
 
-## 1. Generator Contract Tests (Unit Tests)
+## 1. Unit Tests
 
-These are your primary tests that validate the generator produces correct code for various scenarios.
+**Purpose:** Test individual generator methods with pre-built `InterfaceInfo` objects  
+**Use Verify:** ✅ YES - for snapshot testing of generated code  
+**Focus:** String output correctness for each generator
 
-### 1.1 Project Type Tests
-
-```csharp
-[Theory]
-[InlineData(ProjectType.Server)]
-[InlineData(ProjectType.Client)]
-[InlineData(ProjectType.Library)]
-public Task Generates_Correct_Files_For_ProjectType(ProjectType projectType)
-{
-    // Tests that each project type generates the appropriate files:
-    // Server: 2 files (endpoints + endpoint registration)
-    // Client: 2 files (proxies + client registration)
-    // Library: 2 files (proxies + client registration)
-}
+### Required NuGet Packages
+```xml
+<PackageReference Include="xunit" Version="2.6.0" />
+<PackageReference Include="xunit.runner.visualstudio" Version="2.5.0" />
+<PackageReference Include="Verify.Xunit" Version="latest" />
 ```
 
-### 1.2 Interface Scenarios
+---
 
-```csharp
-[Fact]
-public Task Generates_Single_Interface_With_Single_Method()
-{
-    // Basic scenario: one interface, one method
-}
+### 1.1 ClientProxyGeneratorTests.cs
 
-[Fact]
-public Task Generates_Single_Interface_With_Multiple_Methods()
-{
-    // One interface with multiple methods
-}
+**Test Data Strategy:**
+- Use `TestDataFactory.BasicGetInterface()` for tests 1, 22, 23
+- Use `TestDataFactory.CrudInterface()` for test 2
+- Use `Builder` for tests 3-14, 21 (varying specific properties)
+- Use `Object Initializers` for tests 15-20, 24 (edge cases with specific values)
 
-[Fact]
-public Task Generates_Multiple_Interfaces_In_Same_File()
-{
-    // Multiple interfaces in the same source file
-}
+#### Test Methods:
 
-[Fact]
-public Task Generates_Multiple_Interfaces_In_Different_Namespaces()
-{
-    // Interfaces in different namespaces
-}
+1. **`Task Generate_BasicInterface_ProducesCorrectCode()`**
+    - Single method with one parameter
+    - Async Task<T> return type
+    - GET HTTP method
 
-[Fact]
-public Task Generates_Empty_Interface()
-{
-    // Interface with no methods (edge case)
-}
+2. **`Task Generate_MultipleMethodsInterface_ProducesCorrectCode()`**
+    - Interface with 3-5 methods
+    - Mix of HTTP methods
 
-[Fact]
-public Task Generates_Interface_With_Custom_RoutePrefix()
-{
-    // [ServerFunctionCollection(RoutePrefix = "custom")]
-}
+3. **`Task Generate_MethodWithNoParameters_ProducesCorrectCode()`**
+    - GET request without parameters
+    - Should not create request object
 
-[Fact]
-public Task Generates_Interface_With_RequireAuthorization()
-{
-    // [ServerFunctionCollection(RequireAuthorization = true)]
-}
-```
+4. **`Task Generate_MethodWithMultipleParameters_ProducesCorrectCode()`**
+    - POST request with 3+ parameters
+    - Should create request object with PascalCase properties
 
-### 1.3 HTTP Method Tests
+5. **`Task Generate_PostMethod_ProducesCorrectCode()`**
+    - POST with parameters → PostAsJsonAsync
+    - POST without parameters → PostAsync with null
 
-```csharp
-[Fact]
-public Task Generates_POST_Method()
-{
-    // Default HTTP method
-}
+6. **`Task Generate_GetMethod_ProducesCorrectCode()`**
+    - GET with parameters → query string
+    - GET without parameters → simple GetAsync
 
-[Fact]
-public Task Generates_GET_Method()
-{
-    // [ServerFunction(HttpMethod = "GET")]
-}
+7. **`Task Generate_PutMethod_ProducesCorrectCode()`**
+    - PUT request with HttpRequestMessage
+    - JsonContent.Create for body
 
-[Fact]
-public Task Generates_PUT_Method()
-{
-    // [ServerFunction(HttpMethod = "PUT")]
-}
+8. **`Task Generate_DeleteMethod_ProducesCorrectCode()`**
+    - DELETE request with HttpRequestMessage
 
-[Fact]
-public Task Generates_DELETE_Method()
-{
-    // [ServerFunction(HttpMethod = "DELETE")]
-}
+9. **`Task Generate_PatchMethod_ProducesCorrectCode()`**
+    - PATCH request with HttpRequestMessage
 
-[Fact]
-public Task Generates_PATCH_Method()
-{
-    // [ServerFunction(HttpMethod = "PATCH")]
-}
+10. **`Task Generate_VoidReturnType_ProducesCorrectCode()`**
+    - No return value handling
+    - No ReadFromJsonAsync call
 
-[Fact]
-public Task Generates_Multiple_Methods_With_Different_HTTP_Verbs()
-{
-    // Mix of GET, POST, PUT, DELETE in same interface
-}
-```
+11. **`Task Generate_TaskReturnType_ProducesCorrectCode()`**
+    - Non-generic Task return
+    - Should return result correctly
 
-### 1.4 Parameter Tests
+12. **`Task Generate_ComplexReturnType_ProducesCorrectCode()`**
+    - List<T>, Dictionary<K,V>
+    - Nested generic types
 
-```csharp
-[Fact]
-public Task Generates_Method_With_No_Parameters()
-{
-    // Task<string> GetData()
-}
+13. **`Task Generate_CustomRoute_UsesCustomRouteName()`**
+    - CustomRoute property set
+    - Uses custom route instead of method name
 
-[Fact]
-public Task Generates_Method_With_Single_Parameter()
-{
-    // Task<string> GetData(int id)
-}
+14. **`Task Generate_DefaultRoute_UsesMethodName()`**
+    - CustomRoute is null
+    - Uses method name as route
 
-[Fact]
-public Task Generates_Method_With_Multiple_Parameters()
-{
-    // Task<string> GetData(int id, string name, bool isActive)
-}
+15. **`Task Generate_DefaultParameterValue_String_FormatsCorrectly()`**
+    - String default value → `"value"`
 
-[Fact]
-public Task Generates_Method_With_Optional_Parameters()
-{
-    // Task<string> GetData(int id, string name = "default")
-}
+16. **`Task Generate_DefaultParameterValue_Bool_FormatsCorrectly()`**
+    - Bool default value → lowercase `true`/`false`
 
-[Fact]
-public Task Generates_Method_With_All_Optional_Parameters()
-{
-    // Task<string> GetData(int id = 0, string name = "default")
-}
+17. **`Task Generate_DefaultParameterValue_Null_FormatsCorrectly()`**
+    - Nullable type with null default
 
-[Fact]
-public Task Generates_Method_With_Complex_Type_Parameters()
-{
-    // Task<User> CreateUser(UserRequest request)
-}
+18. **`Task Generate_DefaultParameterValue_Numeric_FormatsCorrectly()`**
+    - Int, double, decimal defaults
 
-[Fact]
-public Task Generates_Method_With_Nullable_Parameters()
-{
-    // Task<string> GetData(int? id, string? name)
-}
+19. **`Task Generate_NullableReferenceType_HandlesCorrectly()`**
+    - string? parameters
+    - Nullable handling in query strings
 
-[Fact]
-public Task Generates_GET_Method_With_Parameters()
-{
-    // GET methods should use query strings
-    // Task<string> GetData(int id, string name)
-}
-```
+20. **`Task Generate_NullableValueType_HandlesCorrectly()`**
+    - int?, bool? parameters
 
-### 1.5 Return Type Tests
+21. **`Task Generate_CorrectNamespace_IsUsed()`**
+    - Namespace from InterfaceInfo
 
-```csharp
-[Fact]
-public Task Generates_Method_With_Void_Return()
-{
-    // Task DoSomething()
-}
+22. **`Task Generate_CorrectClassName_RemovesIPrefix()`**
+    - IUserService → UserServiceClient
 
-[Fact]
-public Task Generates_Method_With_Primitive_Return()
-{
-    // Task<int>, Task<string>, Task<bool>
-}
+23. **`Task Generate_CorrectBaseRoute_UsesRoutePrefix()`**
+    - BaseRoute = "/api/functions/{RoutePrefix}"
 
-[Fact]
-public Task Generates_Method_With_Complex_Return()
-{
-    // Task<UserDto>
-}
+24. **`Task Generate_QueryStringParameters_UsePascalCase()`**
+    - Parameter names converted to PascalCase in query string
 
-[Fact]
-public Task Generates_Method_With_Collection_Return()
-{
-    // Task<List<User>>, Task<User[]>
-}
+---
 
-[Fact]
-public Task Generates_Method_With_Nullable_Return()
-{
-    // Task<User?>
-}
+### 1.2 ServerEndpointGeneratorTests.cs
 
-[Fact]
-public Task Generates_Async_Method()
-{
-    // Task<string> GetDataAsync()
-}
+**Test Data Strategy:**
+- Use `TestDataFactory.BasicGetInterface()` for tests 1, 17, 18
+- Use `TestDataFactory.CrudInterface()` for test 2
+- Use `Builder` for tests 3-16, 19, 20 (varying HTTP methods and parameters)
 
-[Fact]
-public Task Generates_Non_Async_Method()
-{
-    // string GetData() - should this be supported?
-}
-```
+#### Test Methods:
 
-### 1.6 Route Configuration Tests
+1. **`Task Generate_BasicInterface_ProducesCorrectCode()`**
+    - Single method endpoint
+    - MapGet/MapPost/etc
 
-```csharp
-[Fact]
-public Task Generates_Method_With_Custom_Route()
-{
-    // [ServerFunction(Route = "custom-endpoint")]
-}
+2. **`Task Generate_MultipleMethodsInterface_ProducesCorrectCode()`**
+    - Multiple endpoints in same group
 
-[Fact]
-public Task Generates_Method_With_Default_Route()
-{
-    // Uses method name as route
-}
+3. **`Task Generate_MethodWithNoParameters_ProducesCorrectCode()`**
+    - No [FromBody] parameter
+    - Only service parameter in lambda
 
-[Fact]
-public Task Generates_Methods_With_Mixed_Route_Configurations()
-{
-    // Some with custom routes, some without
-}
-```
+4. **`Task Generate_MethodWithParameters_ProducesCorrectCode()`**
+    - [FromBody] request parameter
+    - Request DTO usage
 
-### 1.7 Authorization Tests
+5. **`Task Generate_GetEndpoint_ProducesCorrectCode()`**
+    - MapGet method
 
-```csharp
-[Fact]
-public Task Generates_Method_With_RequireAuthorization()
-{
-    // [ServerFunction(RequireAuthorization = true)]
-}
+6. **`Task Generate_PostEndpoint_ProducesCorrectCode()`**
+    - MapPost method
 
-[Fact]
-public Task Generates_Interface_Level_Authorization()
-{
-    // [ServerFunctionCollection(RequireAuthorization = true)]
-}
+7. **`Task Generate_PutEndpoint_ProducesCorrectCode()`**
+    - MapPut method
 
-[Fact]
-public Task Generates_Mixed_Authorization_Requirements()
-{
-    // Interface requires auth, some methods override
-}
-```
+8. **`Task Generate_DeleteEndpoint_ProducesCorrectCode()`**
+    - MapDelete method
 
-### 1.8 Edge Cases & Error Scenarios
+9. **`Task Generate_PatchEndpoint_ProducesCorrectCode()`**
+    - MapPatch method
 
-```csharp
-[Fact]
-public Task Handles_Interface_Without_Attribute()
-{
-    // Should not generate anything
-}
+10. **`Task Generate_VoidReturnType_ReturnsOk()`**
+    - Returns Results.Ok() without parameter
 
-[Fact]
-public Task Handles_Special_Characters_In_Method_Names()
-{
-    // Method names with underscores, etc.
-}
+11. **`Task Generate_NonVoidReturnType_ReturnsOkWithResult()`**
+    - Returns Results.Ok(result)
 
-[Fact]
-public Task Handles_Reserved_Keywords_In_Parameter_Names()
-{
-    // Parameters named "string", "class", etc.
-}
+12. **`Task Generate_RequestDto_OnlyForMethodsWithParameters()`**
+    - No DTO for parameterless methods
+    - DTO generated for methods with parameters
 
-[Fact]
-public Task Handles_Generic_Types_In_Parameters()
-{
-    // Task<T> GetData<T>() - if supported
-}
+13. **`Task Generate_RequestDto_UsesPascalCaseProperties()`**
+    - Parameter names converted to PascalCase
 
-[Fact]
-public Task Handles_Very_Long_Method_Names()
-{
-    // Edge case for route generation
-}
+14. **`Task Generate_ServiceCall_PassesParametersCorrectly()`**
+    - request.PropertyName passed to service method
 
-[Fact]
-public Task Handles_Interface_In_Global_Namespace()
-{
-    // No namespace declared
-}
+15. **`Task Generate_EndpointName_IsUnique()`**
+    - WithName("{InterfaceName}_{MethodName}")
 
-[Fact]
-public Task Handles_Nested_Interface()
-{
-    // Interface inside a class
-}
-```
+16. **`Task Generate_CustomRoute_UsesCustomRouteName()`**
+    - Custom route in MapGet/MapPost
 
-### 1.9 Real-World Scenarios
+17. **`Task Generate_RouteGroup_UsesRoutePrefix()`**
+    - MapGroup("/api/functions/{RoutePrefix}")
 
-```csharp
-[Fact]
-public Task Generates_CRUD_Interface()
-{
-    // Complete CRUD operations: Create, Read, Update, Delete
-}
+18. **`Task Generate_CorrectNamespace_IsUsed()`**
+    - Namespace from InterfaceInfo
 
-[Fact]
-public Task Generates_Weather_Service_Interface()
-{
-    // Your sample Weather service
-}
+19. **`Task Generate_ExtensionClassName_IsCorrect()`**
+    - {InterfaceName}ServerExtensions
 
-[Fact]
-public Task Generates_User_Management_Interface()
-{
-    // Realistic user management service
-}
+20. **`Task Generate_MapEndpointsMethod_ReturnsIEndpointRouteBuilder()`**
+    - Fluent API support
 
-[Fact]
-public Task Generates_File_Upload_Interface()
-{
-    // POST with file/stream parameters
-}
-```
+---
+
+### 1.3 ClientRegistrationGeneratorTests.cs
+
+**Test Data Strategy:**
+- Use `TestDataFactory.BasicGetInterface()` for tests 2, 4-7
+- Use `Builder` to create lists of interfaces for tests 3, 8, 9
+- Use `empty list` for test 1
+
+#### Test Methods:
+
+1. **`Task Generate_EmptyInterfaceList_ReturnsEmptyString()`**
+    - No interfaces → empty string
+
+2. **`Task Generate_SingleInterface_ProducesCorrectCode()`**
+    - One AddHttpClient call
+
+3. **`Task Generate_MultipleInterfaces_ProducesCorrectCode()`**
+    - Multiple AddHttpClient calls
+
+4. **`Task Generate_CorrectInterfaceName_IsUsed()`**
+    - AddHttpClient<IInterface, InterfaceClient>
+
+5. **`Task Generate_CorrectClientClassName_IsUsed()`**
+    - Removes 'I' prefix and adds 'Client' suffix
+
+6. **`Task Generate_ReturnsIServiceCollection_ForFluentApi()`**
+    - Method returns IServiceCollection
+
+7. **`Task Generate_CorrectNamespace_IsUsed()`**
+    - Uses namespace from first interface
+
+8. **`Task Generate_StaticClassName_IsCorrect()`**
+    - ServerFunctionClientsRegistration
+
+9. **`Task Generate_MethodName_IsCorrect()`**
+    - AddServerFunctionClients
+
+---
+
+### 1.4 ServerRegistrationGeneratorTests.cs
+
+**Test Data Strategy:**
+- Use `TestDataFactory.BasicGetInterface()` for tests 2, 4-6
+- Use `Builder` to create lists of interfaces for tests 3, 7, 8
+- Use `empty list` for test 1
+
+#### Test Methods:
+
+1. **`Task Generate_EmptyInterfaceList_ReturnsEmptyString()`**
+    - No interfaces → empty string
+
+2. **`Task Generate_SingleInterface_ProducesCorrectCode()`**
+    - One Map{InterfaceName}Endpoints call
+
+3. **`Task Generate_MultipleInterfaces_ProducesCorrectCode()`**
+    - Multiple Map calls
+
+4. **`Task Generate_CorrectInterfaceName_IsUsed()`**
+    - endpoints.Map{InterfaceName}Endpoints()
+
+5. **`Task Generate_ReturnsIEndpointRouteBuilder_ForFluentApi()`**
+    - Method returns IEndpointRouteBuilder
+
+6. **`Task Generate_CorrectNamespace_IsUsed()`**
+    - Uses namespace from first interface
+
+7. **`Task Generate_StaticClassName_IsCorrect()`**
+    - ServerFunctionEndpointsRegistration
+
+8. **`Task Generate_MethodName_IsCorrect()`**
+    - MapServerFunctionEndpoints
 
 ---
 
 ## 2. Integration Tests
 
-These tests validate cross-project scenarios and compilation.
+**Purpose:** Test full source generator pipeline using `CSharpGeneratorDriver`  
+**Use Verify:** ✅ YES - for both generated code and diagnostics  
+**Focus:** Code generation correctness and compilation success
 
-### 2.1 Multi-Project Tests
+**Test Data Strategy:**
+- Can reuse `TestDataFactory` from Unit Tests for consistency
+- Source code strings should be defined as constants or in a separate `TestSources.cs` file
+- Use realistic interface definitions that reflect actual usage patterns
 
-```csharp
-[Fact]
-public void Server_Project_Generates_Endpoints_From_Local_Interfaces()
-{
-    // Server project with local interface generates endpoints
-}
-
-[Fact]
-public void Server_Project_Generates_Endpoints_From_Referenced_Shared_Library()
-{
-    // Server project references Shared library
-    // Should generate endpoints for Shared interfaces
-}
-
-[Fact]
-public void Client_Project_Generates_Proxies_From_Local_Interfaces()
-{
-    // Client project generates proxies for local interfaces
-}
-
-[Fact]
-public void Client_Project_Uses_Proxies_From_Referenced_Shared_Library()
-{
-    // Client references Shared library
-    // Should use proxies from Shared, not regenerate
-}
-
-[Fact]
-public void Shared_Library_Generates_Only_Client_Proxies()
-{
-    // Library project should NOT generate server endpoints
-}
-
-[Fact]
-public void Multiple_Shared_Libraries_Are_All_Discovered()
-{
-    // Server references Shared.Users + Shared.Products
-    // Should generate endpoints for both
-}
-
-[Fact]
-public void Transitive_Dependencies_Are_Discovered()
-{
-    // Server → Shared.A → Shared.B
-    // Should discover interfaces in Shared.B
-}
-
-[Fact]
-public void System_Assemblies_Are_Skipped()
-{
-    // Should not scan System.* or Microsoft.* assemblies
-}
+### Required NuGet Packages
+```xml
+<PackageReference Include="xunit" Version="2.6.0" />
+<PackageReference Include="xunit.runner.visualstudio" Version="2.5.0" />
+<PackageReference Include="Verify.Xunit" Version="latest" />
+<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.8.0" />
+<PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
 ```
 
-### 2.2 Compilation Tests
+---
 
-```csharp
-[Fact]
-public void Generated_Server_Code_Compiles_Without_Errors()
-{
-    // Take generated server code and try to compile it
-    // Should have no compilation errors
-}
+### 2.1 SourceGeneratorTests.cs
 
-[Fact]
-public void Generated_Client_Code_Compiles_Without_Errors()
-{
-    // Take generated client code and try to compile it
-    // Should have no compilation errors
-}
+#### Test Methods:
 
-[Fact]
-public void Generated_Registration_Code_Compiles_Without_Errors()
-{
-    // Both server and client registration classes compile
-}
+1. **`Task Generator_BasicInterface_GeneratesClientAndServer()`**
+    - Simple interface with 1-2 methods
+    - Verify all generated files
 
-[Fact]
-public void Generated_Code_With_Complex_Types_Compiles()
-{
-    // Generated code using custom DTOs compiles
-}
+2. **`Task Generator_BasicInterface_CompilesWithoutErrors()`**
+    - Verify no compilation errors
+    - Verify no warnings
 
-[Fact]
-public void Multiple_Generated_Files_Compile_Together()
-{
-    // All generated files compile in the same project
-}
+3. **`Task Generator_MultipleInterfaces_GeneratesAllFiles()`**
+    - 2-3 interfaces in same namespace
+    - Verify client + server for each
 
-[Fact]
-public void Generated_Code_Has_No_Compiler_Warnings()
-{
-    // Check for warnings like unused variables, etc.
-}
+4. **`Task Generator_MultipleNamespaces_GeneratesCorrectly()`**
+    - Interfaces in different namespaces
+    - Verify namespace isolation
+
+5. **`Task Generator_InterfaceWithoutAttribute_IsIgnored()`**
+    - No [ServerFunctionCollection]
+    - Should generate nothing
+
+6. **`Task Generator_EmptyInterface_GeneratesCorrectly()`**
+    - Interface with no methods
+    - Should still generate structure
+
+7. **`Task Generator_ComplexReturnTypes_GeneratesCorrectly()`**
+    - List<T>, Dictionary<K,V>, tuples
+    - Verify type handling
+
+8. **`Task Generator_ComplexParameterTypes_GeneratesCorrectly()`**
+    - Custom classes as parameters
+    - Verify serialization
+
+9. **`Task Generator_AllHttpMethods_GenerateCorrectly()`**
+    - GET, POST, PUT, DELETE, PATCH
+    - Verify each method type
+
+10. **`Task Generator_CustomRoutes_AreUsedCorrectly()`**
+    - Methods with custom route attributes
+    - Verify route names
+
+11. **`Task Generator_DefaultParameterValues_AreHandledCorrectly()`**
+    - Methods with default parameters
+    - Verify generation
+
+12. **`Task Generator_NullableTypes_AreHandledCorrectly()`**
+    - string?, int?, reference types
+    - Verify nullable handling
+
+13. **`Task Generator_GenericTypes_AreHandledCorrectly()`**
+    - Generic methods or return types
+    - Verify type parameters
+
+14. **`Task Generator_VoidMethods_GenerateCorrectly()`**
+    - Methods returning void or Task
+    - Verify return handling
+
+15. **`Task Generator_AsyncMethods_GenerateCorrectly()`**
+    - Task<T> return types
+    - Verify async/await
+
+---
+
+### 2.2 ProjectTypeDetectionTests.cs
+
+#### Test Methods:
+
+1. **`Task ServerProject_GeneratesEndpointsAndClients()`**
+    - Has IEndpointRouteBuilder reference
+    - Generates 4 files: Client, Server, ClientReg, ServerReg
+
+2. **`Task ClientProject_GeneratesClientsOnly()`**
+    - Has WebAssemblyHostBuilder reference
+    - Generates 2 files: Client, ClientReg
+
+3. **`Task LibraryProject_GeneratesClientsOnly()`**
+    - No special references
+    - Generates 2 files: Client, ClientReg
+
+4. **`Task ServerProject_IncludesServerRegistration()`**
+    - Verify ServerFunctionEndpointsRegistration exists
+
+5. **`Task ClientProject_DoesNotIncludeServerRegistration()`**
+    - Verify no server files generated
+
+6. **`Task LibraryProject_DoesNotIncludeServerRegistration()`**
+    - Verify no server files generated
+
+---
+
+### 2.3 ReferencedAssemblyTests.cs
+
+#### Test Methods:
+
+1. **`Task ReferencedInterface_GeneratesEndpoints()`**
+    - Interface in referenced assembly
+    - Server project generates endpoints for it
+
+2. **`Task ReferencedInterface_DoesNotGenerateClients()`**
+    - Client should not be generated for referenced interface
+
+3. **`Task MultipleReferencedInterfaces_GenerateEndpoints()`**
+    - Multiple interfaces from dependencies
+    - All endpoints generated
+
+4. **`Task SystemAssemblies_AreSkipped()`**
+    - System.* assemblies ignored
+    - Microsoft.* assemblies ignored
+
+5. **`Task LocalAndReferencedInterfaces_BothWork()`**
+    - Combination scenario
+    - Verify no duplicates
+
+6. **`Task ClientProject_DoesNotSearchReferencedAssemblies()`**
+    - Client projects skip referenced assembly scan
+    - Performance optimization
+
+7. **`Task LibraryProject_DoesNotSearchReferencedAssemblies()`**
+    - Library projects skip referenced assembly scan
+
+---
+
+### 2.4 CompilationTests.cs
+
+#### Test Methods:
+
+1. **`Task GeneratedClientCode_Compiles()`**
+    - Create compilation with generated client
+    - Assert no errors
+
+2. **`Task GeneratedServerCode_Compiles()`**
+    - Create compilation with generated server
+    - Assert no errors
+
+3. **`Task GeneratedRegistrationCode_Compiles()`**
+    - Both registration classes compile
+
+4. **`Task CompleteGeneration_ProducesValidCSharp()`**
+    - All generated code together
+    - Full compilation succeeds
+
+5. **`Task GeneratedCode_HasNoWarnings()`**
+    - Verify clean compilation
+    - No nullable warnings, etc.
+
+---
+
+## 3. End-to-End Tests
+
+**Purpose:** Test runtime behavior in actual Blazor applications  
+**Use Verify:** ⚠️ Minimal - focus on runtime assertions  
+**Focus:** HTTP calls, DI, actual functionality
+
+### Required NuGet Packages
+```xml
+<PackageReference Include="xunit" Version="2.6.0" />
+<PackageReference Include="xunit.runner.visualstudio" Version="2.5.0" />
+<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
 ```
 
-### 2.3 Namespace & Assembly Tests
+---
 
+### Test Project Structure
+
+**TestShared/ITestService.cs:**
 ```csharp
-[Fact]
-public void Interfaces_In_Different_Namespaces_Generate_Correctly()
+using BlazorServerFunctions.Abstractions;
+
+namespace TestShared;
+
+[ServerFunctionCollection]
+public interface ITestService
 {
-    // Namespace.A.IService1 and Namespace.B.IService2
+    Task<string> GetMessageAsync();
+    Task<User> GetUserAsync(int id);
+    Task<User> CreateUserAsync(string name, string email);
+    Task DeleteUserAsync(int id);
+    Task<int> AddNumbersAsync(int a, int b);
+    Task UpdateUserAsync(int id, string name);
 }
 
-[Fact]
-public void Generated_Code_Uses_Correct_Namespaces()
-{
-    // Generated code in same namespace as interface
-}
-
-[Fact]
-public void Registration_Class_Uses_First_Interface_Namespace()
-{
-    // When multiple namespaces, uses first one
-}
-
-[Fact]
-public void Referenced_Assembly_Names_Are_Filtered_Correctly()
-{
-    // Only scans user assemblies, not system assemblies
-}
+public record User(int Id, string Name, string Email);
 ```
 
-### 2.4 Incremental Generation Tests
-
+**TestServer/Program.cs:**
 ```csharp
-[Fact]
-public void Adding_New_Interface_Generates_Additional_Files()
-{
-    // Add a new interface, should generate new files
-}
+var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddScoped<ITestService, TestService>();
 
-[Fact]
-public void Removing_Interface_Removes_Generated_Files()
-{
-    // Remove interface, should not generate files for it
-}
+var app = builder.Build();
+app.MapServerFunctionEndpoints(); // Auto-generated
 
-[Fact]
-public void Modifying_Interface_Regenerates_Files()
-{
-    // Change method signature, should regenerate
-}
-
-[Fact]
-public void Unchanged_Interface_Does_Not_Trigger_Regeneration()
-{
-    // Incremental generator optimization
-}
+app.Run();
 ```
 
-### 2.5 Dependency Tests
+---
+
+### 3.1 ServerFunctionE2ETests.cs
+
+#### Test Methods:
+
+1. **`async Task GetRequest_WithParameter_ReturnsCorrectResult()`**
+    - Call GetUserAsync(1)
+    - Assert user returned with correct data
+
+2. **`async Task GetRequest_WithoutParameters_ReturnsResult()`**
+    - Call GetMessageAsync()
+    - Assert message returned
+
+3. **`async Task GetRequest_WithMultipleParameters_BuildsQueryStringCorrectly()`**
+    - Call AddNumbersAsync(5, 10)
+    - Assert result is 15
+    - Verify query string format
+
+4. **`async Task PostRequest_WithMultipleParameters_CreatesResource()`**
+    - Call CreateUserAsync("John", "john@test.com")
+    - Assert user created correctly
+
+5. **`async Task PostRequest_WithNoParameters_CallsEndpoint()`**
+    - Method with no parameters
+    - Verify POST with null body
+
+6. **`async Task PutRequest_UpdatesResource()`**
+    - Call UpdateUserAsync(1, "Updated Name")
+    - Verify update works
+
+7. **`async Task DeleteRequest_CallsEndpointSuccessfully()`**
+    - Call DeleteUserAsync(1)
+    - Should not throw
+
+8. **`async Task VoidMethod_CompletesSuccessfully()`**
+    - Call void method
+    - Assert no exception
+
+9. **`async Task ComplexReturnType_DeserializesCorrectly()`**
+    - Method returning List<T> or Dictionary<K,V>
+    - Verify deserialization
+
+10. **`async Task NullableParameter_HandledCorrectly()`**
+    - Pass null for nullable parameter
+    - Verify server receives null
+
+11. **`async Task ErrorResponse_ThrowsHttpRequestException()`**
+    - Call with invalid parameter (e.g., -1)
+    - Assert throws HttpRequestException
+
+12. **`async Task ServerError_ThrowsHttpRequestException()`**
+    - Trigger 500 error on server
+    - Assert EnsureSuccessStatusCode throws
+
+13. **`async Task CustomRoute_IsUsedCorrectly()`**
+    - Method with custom route attribute
+    - Verify correct endpoint called
+
+14. **`async Task DefaultParameterValue_IsUsedWhenNotProvided()`**
+    - Call method without optional parameter
+    - Verify default value used
+
+---
+
+### 3.2 DependencyInjectionTests.cs
+
+#### Test Methods:
+
+1. **`void ClientRegistration_AddsHttpClientCorrectly()`**
+    - Call AddServerFunctionClients()
+    - Resolve ITestService
+    - Assert type is ITestServiceClient
+
+2. **`void ServerRegistration_MapsEndpointsCorrectly()`**
+    - Call MapServerFunctionEndpoints()
+    - Verify endpoints registered
+
+3. **`void ClientService_CanBeResolvedFromDI()`**
+    - Register services
+    - Resolve ITestService
+    - Assert not null
+
+4. **`void ServerService_CanBeResolvedFromDI()`**
+    - Register service implementation
+    - Resolve from endpoint
+    - Assert not null
+
+5. **`void HttpClientFactory_IsUsedCorrectly()`**
+    - Verify HttpClient is injected
+    - Verify factory pattern
+
+6. **`void MultipleInterfaces_AllRegisteredCorrectly()`**
+    - Multiple service interfaces
+    - All can be resolved
+
+---
+
+### 3.3 RouteTests.cs
+
+#### Test Methods:
+
+1. **`async Task DefaultRoute_UsesMethodName()`**
+    - Verify /api/functions/{prefix}/{methodName}
+
+2. **`async Task CustomRoute_IsRespected()`**
+    - Method with custom route
+    - Verify custom route used
+
+3. **`async Task RoutePrefix_IsAppliedCorrectly()`**
+    - Interface with specific route prefix
+    - Verify all methods use prefix
+
+4. **`async Task MultipleInterfaces_HaveSeparateRoutes()`**
+    - Different interfaces
+    - Verify no route conflicts
+
+---
+
+## Test Execution Order
+
+### Phase 1: Foundation (Start Here)
+1. Unit Tests - ClientProxyGeneratorTests (basic scenarios)
+2. Unit Tests - ServerEndpointGeneratorTests (basic scenarios)
+3. Integration Tests - Basic interface generation
+
+### Phase 2: Core Functionality
+4. Unit Tests - Complete all generator tests
+5. Integration Tests - Project type detection
+6. Integration Tests - Compilation tests
+7. E2E Tests - Basic GET/POST requests
+
+### Phase 3: Advanced Features
+8. Integration Tests - Referenced assemblies
+9. E2E Tests - All HTTP methods
+10. E2E Tests - DI tests
+11. All edge cases and error scenarios
+
+---
+
+## Verify Configuration
+
+### ModuleInitializer.cs (for both Unit and Integration tests)
 
 ```csharp
-[Fact]
-public void Generated_Code_References_Required_Packages()
-{
-    // System.Net.Http.Json, Microsoft.AspNetCore.Mvc, etc.
-}
+using System.Runtime.CompilerServices;
+using VerifyTests;
 
-[Fact]
-public void Client_Code_Can_Be_Used_Without_Server_Dependencies()
+public static class ModuleInitializer
 {
-    // Client proxies don't require ASP.NET Core
-}
-
-[Fact]
-public void Server_Code_Requires_ASP_NET_Core_Dependencies()
-{
-    // Endpoints require proper packages
+    [ModuleInitializer]
+    public static void Init()
+    {
+        VerifySourceGenerators.Initialize();
+        
+        // Customize Verify settings
+        VerifierSettings.DontScrubDateTimes();
+        
+        // Use directory for snapshots
+        UseProjectRelativeDirectory("Snapshots");
+    }
 }
 ```
 
 ---
 
-## 3. End-to-End Tests (Optional but Recommended)
+## Test Data Builders - Strategy & Usage
 
-These tests validate actual runtime behavior with real HTTP calls.
+### Overview
 
-### 3.1 Basic Communication Tests
+Use a **hybrid approach**: combine fluent builders for reusable scenarios with object initializers for one-off edge cases.
 
-```csharp
-[Fact]
-public async Task Generated_Client_Can_Call_Generated_Server_Endpoint()
-{
-    // Basic POST/GET request works
-}
+### Project Structure
 
-[Fact]
-public async Task Client_Sends_Request_Body_Correctly()
-{
-    // POST with body parameters
-}
-
-[Fact]
-public async Task Client_Sends_Query_Parameters_Correctly()
-{
-    // GET with query string
-}
-
-[Fact]
-public async Task Client_Receives_Response_Body_Correctly()
-{
-    // Response deserialization works
-}
-
-[Fact]
-public async Task Server_Returns_Correct_Status_Codes()
-{
-    // 200 OK, 400 Bad Request, etc.
-}
+```
+BlazorServerFunctions.Generator.UnitTests/
+└── Helpers/
+    ├── InterfaceInfoBuilder.cs    (✅ Already created)
+    ├── MethodInfoBuilder.cs        (✅ Already created)
+    ├── ParameterInfoBuilder.cs     (✅ Already created)
+    └── TestDataFactory.cs          (⚠️ Create this)
 ```
 
-### 3.2 Serialization Tests
+---
+
+### When to Use Builders vs Object Initializers
+
+| Scenario | Use This | Why |
+|----------|----------|-----|
+| Common CRUD interface | **TestDataFactory** | Reusable across tests |
+| Testing different route prefixes | **Builder** | Easy to vary one property |
+| Testing default parameter edge case | **Object Initializer** | One-off, clear intent |
+| Building 5 similar tests | **Builder** | DRY principle |
+| Testing weird type combinations | **Object Initializer** | Not reusable |
+| Setup for integration tests | **TestDataFactory** | Consistency |
+| Complex nested structures | **Builder** | More readable |
+
+---
+
+### TestDataFactory.cs - Create This Helper
+
+This is your central factory for common test scenarios:
 
 ```csharp
-[Fact]
-public async Task Complex_Types_Serialize_Correctly()
+namespace BlazorServerFunctions.Generator.UnitTests.Helpers;
+
+public static class TestDataFactory
 {
-    // DTOs with nested objects
-}
+    // ========================================
+    // COMMON INTERFACES
+    // ========================================
+    
+    public static InterfaceInfo BasicGetInterface() =>
+        new InterfaceInfoBuilder()
+            .WithName("IUserService")
+            .WithNamespace("MyApp.Services")
+            .WithRoutePrefix("users")
+            .WithMethod(Method.BasicGet())
+            .Build();
 
-[Fact]
-public async Task Collections_Serialize_Correctly()
-{
-    // Arrays, Lists, etc.
-}
+    public static InterfaceInfo BasicPostInterface() =>
+        new InterfaceInfoBuilder()
+            .WithName("IUserService")
+            .WithNamespace("MyApp.Services")
+            .WithRoutePrefix("users")
+            .WithMethod(Method.BasicPost())
+            .Build();
 
-[Fact]
-public async Task Nullable_Types_Serialize_Correctly()
-{
-    // Nullable reference types
-}
+    public static InterfaceInfo CrudInterface() =>
+        new InterfaceInfoBuilder()
+            .WithName("IUserService")
+            .WithNamespace("MyApp.Services")
+            .WithRoutePrefix("users")
+            .WithMethods(
+                Method.GetList(),
+                Method.GetById(),
+                Method.Create(),
+                Method.Update(),
+                Method.Delete())
+            .Build();
 
-[Fact]
-public async Task DateTime_Serializes_Correctly()
-{
-    // Dates, times, timezones
-}
+    public static InterfaceInfo EmptyInterface() =>
+        new InterfaceInfoBuilder()
+            .WithName("IEmptyService")
+            .WithNamespace("MyApp.Services")
+            .WithRoutePrefix("empty")
+            .Build();
 
-[Fact]
-public async Task Enums_Serialize_Correctly()
-{
-    // Enum types
-}
-```
+    // ========================================
+    // COMMON METHODS
+    // ========================================
+    
+    public static class Method
+    {
+        public static MethodInfo BasicGet() =>
+            new MethodInfoBuilder()
+                .WithName("GetUserAsync")
+                .Returning("User")
+                .UsingHttp("GET")
+                .IsAsyncMethod()
+                .WithParameter(Param.Id())
+                .Build();
 
-### 3.3 Error Handling Tests
+        public static MethodInfo GetList() =>
+            new MethodInfoBuilder()
+                .WithName("GetUsersAsync")
+                .Returning("List<User>")
+                .UsingHttp("GET")
+                .IsAsyncMethod()
+                .Build();
 
-```csharp
-[Fact]
-public async Task Client_Handles_404_Not_Found()
-{
-    // Endpoint doesn't exist
-}
+        public static MethodInfo GetById() =>
+            new MethodInfoBuilder()
+                .WithName("GetUserAsync")
+                .Returning("User")
+                .UsingHttp("GET")
+                .IsAsyncMethod()
+                .WithParameter(Param.Id())
+                .Build();
 
-[Fact]
-public async Task Client_Handles_500_Server_Error()
-{
-    // Server throws exception
-}
+        public static MethodInfo BasicPost() =>
+            new MethodInfoBuilder()
+                .WithName("CreateUserAsync")
+                .Returning("User")
+                .UsingHttp("POST")
+                .IsAsyncMethod()
+                .WithParameters(Param.Name(), Param.Email())
+                .Build();
 
-[Fact]
-public async Task Client_Handles_Network_Timeout()
-{
-    // Request times out
-}
+        public static MethodInfo Create() =>
+            new MethodInfoBuilder()
+                .WithName("CreateUserAsync")
+                .Returning("User")
+                .UsingHttp("POST")
+                .IsAsyncMethod()
+                .WithParameters(Param.Name(), Param.Email())
+                .Build();
 
-[Fact]
-public async Task Client_Handles_Deserialization_Errors()
-{
-    // Invalid response format
-}
+        public static MethodInfo Update() =>
+            new MethodInfoBuilder()
+                .WithName("UpdateUserAsync")
+                .Returning("User")
+                .UsingHttp("PUT")
+                .IsAsyncMethod()
+                .WithParameters(Param.Id(), Param.Name(), Param.Email())
+                .Build();
 
-[Fact]
-public async Task Server_Returns_Validation_Errors()
-{
-    // Model validation fails
-}
-```
+        public static MethodInfo Delete() =>
+            new MethodInfoBuilder()
+                .WithName("DeleteUserAsync")
+                .Returning("void")
+                .UsingHttp("DELETE")
+                .IsAsyncMethod()
+                .WithParameter(Param.Id())
+                .Build();
 
-### 3.4 Authorization Tests
+        public static MethodInfo VoidMethod() =>
+            new MethodInfoBuilder()
+                .WithName("DoSomethingAsync")
+                .Returning("void")
+                .UsingHttp("POST")
+                .IsAsyncMethod()
+                .Build();
 
-```csharp
-[Fact]
-public async Task Unauthorized_Request_Returns_401()
-{
-    // Endpoint requires auth, no token provided
-}
+        public static MethodInfo WithNoParameters() =>
+            new MethodInfoBuilder()
+                .WithName("GetMessageAsync")
+                .Returning("string")
+                .UsingHttp("GET")
+                .IsAsyncMethod()
+                .Build();
+    }
 
-[Fact]
-public async Task Authorized_Request_Succeeds()
-{
-    // Valid token, request succeeds
-}
+    // ========================================
+    // COMMON PARAMETERS
+    // ========================================
+    
+    public static class Param
+    {
+        public static ParameterInfo Id() =>
+            new ParameterInfoBuilder()
+                .WithName("id")
+                .WithType("int")
+                .Build();
 
-[Fact]
-public async Task Invalid_Token_Returns_401()
-{
-    // Expired or invalid token
-}
+        public static ParameterInfo Name() =>
+            new ParameterInfoBuilder()
+                .WithName("name")
+                .WithType("string")
+                .Build();
 
-[Fact]
-public async Task Role_Based_Authorization_Works()
-{
-    // User doesn't have required role
-}
-```
+        public static ParameterInfo Email() =>
+            new ParameterInfoBuilder()
+                .WithName("email")
+                .WithType("string")
+                .Build();
 
-### 3.5 HTTP Method Tests
+        public static ParameterInfo OptionalString() =>
+            new ParameterInfoBuilder()
+                .WithName("optional")
+                .WithType("string?")
+                .Build();
 
-```csharp
-[Fact]
-public async Task POST_Endpoint_Works()
-{
-    // POST request succeeds
-}
-
-[Fact]
-public async Task GET_Endpoint_Works()
-{
-    // GET request succeeds
-}
-
-[Fact]
-public async Task PUT_Endpoint_Works()
-{
-    // PUT request succeeds
-}
-
-[Fact]
-public async Task DELETE_Endpoint_Works()
-{
-    // DELETE request succeeds
-}
-
-[Fact]
-public async Task PATCH_Endpoint_Works()
-{
-    // PATCH request succeeds
-}
-```
-
-### 3.6 Performance Tests
-
-```csharp
-[Fact]
-public async Task Handles_Concurrent_Requests()
-{
-    // Multiple simultaneous requests
-}
-
-[Fact]
-public async Task Handles_Large_Payloads()
-{
-    // Large request/response bodies
-}
-
-[Fact]
-public async Task Response_Time_Is_Acceptable()
-{
-    // Performance benchmarking
+        public static ParameterInfo WithDefault(string name, string type, object defaultValue) =>
+            new ParameterInfoBuilder()
+                .WithName(name)
+                .WithType(type)
+                .WithDefault(defaultValue?.ToString() ?? "null")
+                .Build();
+    }
 }
 ```
 
 ---
 
-## Test Organization
+### Usage Examples in Tests
 
-### Folder Structure
+#### ✅ Example 1: Use TestDataFactory for Common Scenarios
+
+```csharp
+public class ClientProxyGeneratorTests
+{
+    [Fact]
+    public Task Generate_BasicInterface_ProducesCorrectCode()
+    {
+        // Use factory - this is a common scenario
+        var interfaceInfo = TestDataFactory.BasicGetInterface();
+        
+        var generated = ClientProxyGenerator.Generate(interfaceInfo);
+        return Verify(generated);
+    }
+
+    [Fact]
+    public Task Generate_CrudInterface_ProducesCorrectCode()
+    {
+        // Use factory - common CRUD pattern
+        var interfaceInfo = TestDataFactory.CrudInterface();
+        
+        var generated = ClientProxyGenerator.Generate(interfaceInfo);
+        return Verify(generated);
+    }
+}
+```
+
+#### ✅ Example 2: Use Builders for Variations
+
+```csharp
+[Fact]
+public Task Generate_CustomRoutePrefix_UsesCorrectRoute()
+{
+    // Use builder to customize one property
+    var interfaceInfo = new InterfaceInfoBuilder()
+        .WithName("ICustomService")
+        .WithNamespace("Custom.Namespace")
+        .WithRoutePrefix("my-custom-prefix") // ← The variation
+        .WithMethod(TestDataFactory.Method.GetList())
+        .Build();
+    
+    var generated = ClientProxyGenerator.Generate(interfaceInfo);
+    return Verify(generated);
+}
+
+[Fact]
+public Task Generate_MultipleHttpMethods_ProducesCorrectCode()
+{
+    // Use builder to compose custom combinations
+    var interfaceInfo = new InterfaceInfoBuilder()
+        .WithName("ITestService")
+        .WithNamespace("Test")
+        .WithRoutePrefix("test")
+        .WithMethods(
+            TestDataFactory.Method.GetList(),
+            TestDataFactory.Method.Create(),
+            TestDataFactory.Method.Delete())
+        .Build();
+    
+    var generated = ClientProxyGenerator.Generate(interfaceInfo);
+    return Verify(generated);
+}
+```
+
+#### ✅ Example 3: Use Object Initializers for Edge Cases
+
+```csharp
+[Fact]
+public Task Generate_DefaultParameterValue_String_FormatsCorrectly()
+{
+    // One-off edge case - object initializer is clearer
+    var interfaceInfo = new InterfaceInfo
+    {
+        Name = "ITestService",
+        Namespace = "Test",
+        RoutePrefix = "test",
+        Methods = new List<MethodInfo>
+        {
+            new()
+            {
+                Name = "TestMethod",
+                ReturnType = "string",
+                HttpMethod = "GET",
+                AsyncType = AsyncType.Task,
+                Parameters = new List<ParameterInfo>
+                {
+                    new() 
+                    { 
+                        Name = "value", 
+                        Type = "string", 
+                        HasDefaultValue = true, 
+                        DefaultValue = "\"hello\"" // ← Focus is here
+                    }
+                }
+            }
+        }
+    };
+    
+    var generated = ClientProxyGenerator.Generate(interfaceInfo);
+    return Verify(generated);
+}
+
+[Fact]
+public Task Generate_ComplexReturnType_ProducesCorrectCode()
+{
+    // Edge case with weird types
+    var interfaceInfo = new InterfaceInfo
+    {
+        Name = "IWeirdService",
+        Namespace = "Edge.Cases",
+        RoutePrefix = "weird",
+        Methods = new List<MethodInfo>
+        {
+            new()
+            {
+                Name = "GetComplexDataAsync",
+                ReturnType = "Dictionary<string, List<int?>>", // ← Complex type
+                HttpMethod = "GET",
+                AsyncType = AsyncType.Task,
+                Parameters = new List<ParameterInfo>()
+            }
+        }
+    };
+    
+    var generated = ClientProxyGenerator.Generate(interfaceInfo);
+    return Verify(generated);
+}
+```
+
+---
+
+### Builder Enhancement - Add Static Factories (Optional)
+
+You can optionally enhance your builders with static factory methods:
+
+```csharp
+// In MethodInfoBuilder.cs
+internal sealed class MethodInfoBuilder
+{
+    // ... existing code ...
+    
+    // Static factory methods for common patterns
+    public static MethodInfoBuilder Get(string name, string returnType) =>
+        new MethodInfoBuilder()
+            .WithName(name)
+            .Returning(returnType)
+            .UsingHttp("GET")
+            .IsAsyncMethod();
+    
+    public static MethodInfoBuilder Post(string name, string returnType) =>
+        new MethodInfoBuilder()
+            .WithName(name)
+            .Returning(returnType)
+            .UsingHttp("POST")
+            .IsAsyncMethod();
+    
+    public static MethodInfoBuilder Put(string name, string returnType) =>
+        new MethodInfoBuilder()
+            .WithName(name)
+            .Returning(returnType)
+            .UsingHttp("PUT")
+            .IsAsyncMethod();
+    
+    public static MethodInfoBuilder Delete(string name) =>
+        new MethodInfoBuilder()
+            .WithName(name)
+            .Returning("void")
+            .UsingHttp("DELETE")
+            .IsAsyncMethod();
+}
+
+// Usage becomes even cleaner:
+var method = MethodInfoBuilder.Get("GetUserAsync", "User")
+    .WithParameter(TestDataFactory.Param.Id())
+    .Build();
+```
+
+---
+
+### Decision Tree: Which Approach to Use?
 
 ```
-tests/
-├── BlazorServerFunctions.Generator.Tests/
-│   ├── GeneratorContractTests/
-│   │   ├── ProjectTypeTests.cs
-│   │   ├── InterfaceScenarioTests.cs
-│   │   ├── HttpMethodTests.cs
-│   │   ├── ParameterTests.cs
-│   │   ├── ReturnTypeTests.cs
-│   │   ├── RouteConfigurationTests.cs
-│   │   ├── AuthorizationTests.cs
-│   │   ├── EdgeCaseTests.cs
-│   │   └── RealWorldScenarioTests.cs
-│   │
-│   ├── IntegrationTests/
-│   │   ├── MultiProjectTests.cs
-│   │   ├── CompilationTests.cs
-│   │   ├── NamespaceAssemblyTests.cs
-│   │   ├── IncrementalGenerationTests.cs
-│   │   └── DependencyTests.cs
-│   │
-│   ├── Helpers/
-│   │   ├── GeneratorTestHelper.cs
-│   │   └── ProjectTypeTestData.cs
-│   │
-│   └── _snapshots/
-│       └── [Verify snapshot files]
+Is the test data reusable across multiple tests?
+├─ YES → Use TestDataFactory
 │
-└── BlazorServerFunctions.EndToEnd.Tests/
-    ├── BasicCommunicationTests.cs
-    ├── SerializationTests.cs
-    ├── ErrorHandlingTests.cs
-    ├── AuthorizationTests.cs
-    ├── HttpMethodTests.cs
-    └── PerformanceTests.cs
+└─ NO → Is it a variation of common data?
+    ├─ YES → Use Builder with TestDataFactory helpers
+    │
+    └─ NO → Is it testing a specific edge case?
+        ├─ YES → Use Object Initializer
+        │
+        └─ NO → Is the structure complex/nested?
+            ├─ YES → Use Builder
+            └─ NO → Use Object Initializer
 ```
 
 ---
 
-## Test Naming Conventions
+### Summary: Where to Use Each Approach
 
-- **Contract Tests**: `Generates_[Scenario]_[ExpectedResult]`
-- **Integration Tests**: `[Component]_[Action]_[ExpectedResult]`
-- **E2E Tests**: `[Action]_[ExpectedBehavior]`
+**Use TestDataFactory when:**
+- ✅ Testing basic/common scenarios (GET, POST, CRUD)
+- ✅ Need consistency across multiple tests
+- ✅ Setting up integration test data
+
+**Use Builders when:**
+- ✅ Need to customize one property (e.g., different route prefix)
+- ✅ Composing methods from factory (mix and match)
+- ✅ Building complex nested structures
+- ✅ Creating variations of common patterns
+
+**Use Object Initializers when:**
+- ✅ One-off edge cases
+- ✅ Testing specific property combinations
+- ✅ Simple structures with few properties
+- ✅ The focus is on a particular field/value
 
 ---
 
-## Snapshot Testing Guidelines
+## Success Criteria
 
-When using Verify for snapshot testing:
-
-1. Use `.UseParameters()` for theory tests
-2. Use `.UseDirectory("Snapshots/[Category]")` to organize snapshots
-3. Review snapshot diffs carefully in PR reviews
-4. Commit snapshot files to version control
-5. Use `[UsesVerify]` attribute on test classes
+- ✅ All unit tests pass (100+ tests)
+- ✅ All integration tests pass (30+ tests)
+- ✅ All E2E tests pass (20+ tests)
+- ✅ Code coverage > 90% for generator code
+- ✅ All Verify snapshots are reviewed and approved
+- ✅ Generated code compiles without warnings
+- ✅ E2E tests run in < 30 seconds
+- ✅ CI/CD pipeline runs all tests successfully
 
 ---
 
-## Coverage Goals
+## CI/CD Considerations
 
-- **Contract Tests**: 100% of generation scenarios
-- **Integration Tests**: Key multi-project scenarios
-- **E2E Tests**: Critical user workflows
+1. **Unit Tests**: Run on every commit (fast)
+2. **Integration Tests**: Run on every PR (medium)
+3. **E2E Tests**: Run on every PR + before release (slower)
 
-Focus on contract tests first, then add integration and E2E tests as needed.
+## Maintenance
+
+- Review Verify snapshots on every generator change
+- Update test data when adding new features
+- Keep E2E test projects up to date with latest Blazor version
+- Run full test suite before each release
+
+---
+
+## Total Test Count
+
+- **Unit Tests**: ~100 tests
+- **Integration Tests**: ~30 tests
+- **E2E Tests**: ~20 tests
+- **Total**: ~150 tests
+
+This comprehensive test suite ensures the source generator is robust, maintainable, and catches issues early in development.

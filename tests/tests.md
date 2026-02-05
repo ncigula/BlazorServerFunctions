@@ -4,9 +4,126 @@
 
 This document outlines the complete test strategy for the BlazorServerFunctions source generator. The test suite is divided into three projects: Unit Tests, Integration Tests, and End-to-End Tests.
 
+---
+
+## Diagnostics & Error Handling Strategy
+
+### Error Placement Recommendation: Centralized Approach ✅
+
+**Recommended File Structure:**
+```
+BlazorServerFunctions.Generator/
+├── Diagnostics/
+│   └── DiagnosticDescriptors.cs  ← All error/warning definitions
+├── Helpers/
+│   ├── InterfaceParser.cs
+│   └── DiagnosticExtensions.cs   ← Helper methods for reporting (optional)
+└── Generators/
+    └── ServerFunctionCollectionGenerator.cs
+```
+
+**Why Centralized:**
+- ✅ All diagnostic codes visible in one place
+- ✅ Easy to document and maintain
+- ✅ Prevents duplicate error codes
+- ✅ Follows Roslyn analyzer conventions
+- ✅ Easy to generate documentation from
+
+### Error Codes Catalog
+
+#### Currently Implemented (BSF001-BSF002)
+
+| Code | Severity | Message | Location |
+|------|----------|---------|----------|
+| **BSF001** | Error | Interface '{0}' must have a [ServerFunctionCollection] attribute | Interface |
+| **BSF002** | Error | Method '{0}' must have a [ServerFunction] attribute | Method |
+
+#### Should Be Implemented (BSF003-BSF016)
+
+| Code | Severity | Message | Location | Priority |
+|------|----------|---------|----------|----------|
+| **BSF003** | Error | Interface '{0}' must be public | Interface | High |
+| **BSF004** | Error | Interface '{0}' cannot have generic type parameters | Interface | Medium |
+| **BSF005** | Error | Interface '{0}' contains properties. Only methods are supported | Interface | Low |
+| **BSF006** | Error | Interface '{0}' contains events. Only methods are supported | Interface | Low |
+| **BSF007** | Error | Method '{0}' must return Task, Task\<T\>, ValueTask, or ValueTask\<T\> | Method | **Critical** |
+| **BSF008** | Error | Method '{0}' cannot have generic type parameters | Method | Medium |
+| **BSF009** | Error | Method '{0}' has 'out' parameter '{1}'. Out parameters are not supported | Method | Medium |
+| **BSF010** | Error | Method '{0}' has 'ref' parameter '{1}'. Ref parameters are not supported | Method | Medium |
+| **BSF011** | Error | Method '{0}' has 'params' parameter '{1}'. Params arrays are not supported | Method | Low |
+| **BSF012** | Error | Method '{0}' must specify HttpMethod in [ServerFunction] attribute | Method | **Critical** |
+| **BSF013** | Error | Method '{0}' has invalid HttpMethod '{1}'. Valid values: GET, POST, PUT, DELETE, PATCH | Method | High |
+| **BSF014** | Error | Method '{0}' has duplicate route '{1}' already used by method '{2}' | Method | Medium |
+| **BSF015** | Error | Method '{0}' has invalid route format '{1}' | Method | Low |
+| **BSF016** | Error | Failed to parse referenced interface '{0}' in assembly '{1}' | Interface | Low |
+
+#### Warnings (BSF101+)
+
+| Code | Severity | Message | Location |
+|------|----------|---------|----------|
+| **BSF101** | Warning | Interface '{0}' has no methods. No code will be generated | Interface |
+| **BSF102** | Warning | Method '{0}' has {1} parameters. Consider using a request object | Method |
+
+### Critical Issues in Current Code
+
+**⚠️ Line 105 in InterfaceParser.cs:**
+```csharp
+_ => throw new ArgumentOutOfRangeException(returnType),
+```
+**Problem:** Throws exception instead of emitting diagnostic BSF007  
+**Impact:** Crashes generator instead of showing helpful error  
+**Fix Priority:** HIGH - Replace with diagnostic emission
+
+**⚠️ Line 140 in InterfaceParser.cs:**
+```csharp
+methodInfo.HttpMethod = attribute.Value.Value!.ToString()!;
+```
+**Problem:** Null-forgiving operator could hide null  
+**Impact:** Could crash if HttpMethod not specified  
+**Fix Priority:** HIGH - Emit BSF012 if null
+
+### Parsing Error Handling: Pass Context Approach ✅
+
+**Recommended Signature:**
+```csharp
+internal static InterfaceInfo? ParseInterface(
+    INamedTypeSymbol interfaceSymbol,
+    SourceProductionContext context,  // ← Pass context for error reporting
+    CancellationToken cancellationToken)
+{
+    // Report errors directly to context
+    // Return null on fatal errors
+    // Continue parsing to collect all errors when possible
+}
+```
+
+**Why This Approach:**
+1. ✅ Simpler than Result<T> pattern for this use case
+2. ✅ Errors reported immediately (better user experience)
+3. ✅ Testing via integration tests (verify diagnostics are emitted)
+4. ✅ Standard pattern in Roslyn generators
+5. ✅ Can collect multiple errors before returning
+
+**Testing Strategy:**
+- ❌ No separate InterfaceParserTests.cs with mocked symbols
+- ✅ Test parsing via DiagnosticTests.cs integration tests
+- ✅ Verify correct diagnostics are emitted (or not emitted)
+- ✅ Simpler and tests real behavior
+
+---
+
 ## Project Structure
 
 ```
+BlazorServerFunctions.Generator/
+├── Diagnostics/
+│   └── DiagnosticDescriptors.cs       ⚠️ CREATE THIS - All error codes
+├── Helpers/
+│   ├── InterfaceParser.cs             ✅ Update to pass context
+│   └── DiagnosticExtensions.cs        ⚠️ CREATE THIS (optional helpers)
+└── Generators/
+    └── ServerFunctionCollectionGenerator.cs
+
 BlazorServerFunctions.Generator.Tests/
 ├── BlazorServerFunctions.Generator.UnitTests/
 │   ├── ClientProxyGeneratorTests.cs
@@ -17,15 +134,19 @@ BlazorServerFunctions.Generator.Tests/
 │   │   ├── InterfaceInfoBuilder.cs (✅ Already created)
 │   │   ├── MethodInfoBuilder.cs (✅ Already created)
 │   │   ├── ParameterInfoBuilder.cs (✅ Already created)
-│   │   └── TestDataFactory.cs (Create this - see Test Data Builders section)
+│   │   └── TestDataFactory.cs (⚠️ Create this - see Test Data Builders section)
 │   └── Snapshots/
 │       └── *.verified.cs files
 ├── BlazorServerFunctions.Generator.IntegrationTests/
 │   ├── SourceGeneratorTests.cs
 │   ├── ProjectTypeDetectionTests.cs
 │   ├── ReferencedAssemblyTests.cs
+│   ├── DiagnosticTests.cs                 ⭐ NEW - Tests parsing via diagnostics
+│   ├── CompilationTests.cs
 │   ├── Helpers/
-│   │   └── TestDataFactory.cs (Can reuse from UnitTests)
+│   │   ├── GeneratorTestHelper.cs         ✅ Runs full generator
+│   │   ├── GeneratorResult.cs             ✅ Result wrapper
+│   │   └── VerifyExtensions.cs            ✅ Verification helpers
 │   └── Snapshots/
 │       └── *.verified.cs files
 └── BlazorServerFunctions.Generator.E2ETests/
@@ -302,14 +423,15 @@ BlazorServerFunctions.Generator.Tests/
 
 ## 2. Integration Tests
 
-**Purpose:** Test full source generator pipeline using `CSharpGeneratorDriver`  
+**Purpose:** Test full source generator pipeline using `CSharpGeneratorDriver` AND test the Roslyn → InterfaceInfo transformation  
 **Use Verify:** ✅ YES - for both generated code and diagnostics  
-**Focus:** Code generation correctness and compilation success
+**Focus:** Code generation correctness, compilation success, and parsing accuracy
 
 **Test Data Strategy:**
-- Can reuse `TestDataFactory` from Unit Tests for consistency
-- Source code strings should be defined as constants or in a separate `TestSources.cs` file
-- Use realistic interface definitions that reflect actual usage patterns
+- ❌ **DO NOT** reuse `TestDataFactory` from Unit Tests
+- ✅ **DO** create `TestSources.cs` with realistic C# source code strings
+- ✅ **DO** use complete, realistic interface examples that users would actually write
+- ✅ Source code should include all necessary using statements and namespace declarations
 
 ### Required NuGet Packages
 ```xml
@@ -320,9 +442,34 @@ BlazorServerFunctions.Generator.Tests/
 <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.8.0" />
 ```
 
+### Integration Test Structure
+
+```
+BlazorServerFunctions.Generator.IntegrationTests/
+├── Helpers/
+│   ├── GeneratorTestHelper.cs        ✅ Runs full generator
+│   ├── GeneratorResult.cs            ✅ Result wrapper
+│   └── VerifyExtensions.cs           ✅ Verification helpers
+├── ModuleInitializer.cs
+├── SourceGeneratorTests.cs
+├── ProjectTypeDetectionTests.cs
+├── ReferencedAssemblyTests.cs
+├── DiagnosticTests.cs                ⭐ Tests parsing via diagnostics
+└── CompilationTests.cs
+```
+
+**Note on Testing Strategy:**
+- ❌ No separate `InterfaceParserTests.cs` with mocked Roslyn symbols
+- ✅ Parser tested via `DiagnosticTests.cs` by running full generator
+- ✅ Verify diagnostics are emitted (error testing)
+- ✅ Verify no diagnostics (success testing)
+- ✅ Simpler and tests actual behavior
+
 ---
 
 ### 2.1 SourceGeneratorTests.cs
+
+**Test Data Strategy:** Use `TestSources.BasicInterface`, `TestSources.CrudInterface`, etc. from the TestSources helper class
 
 #### Test Methods:
 
@@ -390,6 +537,8 @@ BlazorServerFunctions.Generator.Tests/
 
 ### 2.2 ProjectTypeDetectionTests.cs
 
+**Test Data Strategy:** Use `TestSources.BasicInterface`
+
 #### Test Methods:
 
 1. **`Task ServerProject_GeneratesEndpointsAndClients()`**
@@ -416,6 +565,8 @@ BlazorServerFunctions.Generator.Tests/
 ---
 
 ### 2.3 ReferencedAssemblyTests.cs
+
+**Test Data Strategy:** Create simple test assemblies with interfaces
 
 #### Test Methods:
 
@@ -447,7 +598,102 @@ BlazorServerFunctions.Generator.Tests/
 
 ---
 
-### 2.4 CompilationTests.cs
+### 2.4 DiagnosticTests.cs ⭐ NEW
+
+**Purpose:** Test that the generator correctly reports diagnostic errors through integration tests (no separate InterfaceParserTests needed)
+
+**Test Data Strategy:** Create inline source code strings for each error scenario
+
+**Approach:** Test parsing by verifying diagnostics are emitted (or not) via full generator runs
+
+#### Test Methods:
+
+**Currently Implemented Errors:**
+
+1. **`Task MissingServerFunctionCollectionAttribute_EmitsBSF001()`**
+    - Interface without `[ServerFunctionCollection]`
+    - Verify diagnostic BSF001 is emitted
+    - Verify diagnostic message and location
+
+2. **`Task MissingServerFunctionAttribute_EmitsBSF002()`**
+    - Method without `[ServerFunction]`
+    - Verify diagnostic BSF002 is emitted
+    - Verify diagnostic points to correct method
+
+3. **`Task MultipleMethodsMissingAttribute_EmitsFirstError()`**
+    - Interface with 3 methods, all missing `[ServerFunction]`
+    - Current behavior: Stops on first error (line 82 in InterfaceParser)
+    - Verify only first BSF002 is emitted
+    - **NOTE:** Consider updating to collect all errors for better UX
+
+4. **`Task PartiallyValidInterface_EmitsErrorAndStops()`**
+    - Interface with 2 valid methods, 1 invalid (no `[ServerFunction]`)
+    - Verify BSF002 emitted for invalid method
+    - Verify parsing stops (no code generated)
+
+5. **`Task ValidInterface_EmitsNoDiagnostics()`**
+    - Completely valid interface
+    - Verify no diagnostics emitted
+    - Verify code generation succeeded
+
+**Errors That Should Be Implemented:**
+
+6. **`Task NonAsyncReturnType_EmitsBSF007()`** ⚠️ NOT IMPLEMENTED
+    - Method returning `void`, `string`, `int` directly (not Task/ValueTask)
+    - Current: Throws `ArgumentOutOfRangeException` at line 105
+    - Should emit: BSF007 diagnostic
+    - **TODO:** Replace exception with diagnostic
+
+7. **`Task MissingHttpMethod_EmitsBSF012()`** ⚠️ NOT IMPLEMENTED
+    - `[ServerFunction]` without HttpMethod property
+    - Current: Line 140 uses `!` assertion (could throw)
+    - Should emit: BSF012 diagnostic
+
+8. **`Task InvalidHttpMethod_EmitsBSF013()`** ⚠️ NOT IMPLEMENTED
+    - HttpMethod = "INVALID"
+    - Should emit: BSF013 diagnostic
+
+9. **`Task GenericInterface_EmitsBSF004()`** ⚠️ NOT IMPLEMENTED
+    - `interface IService<T>`
+    - Should emit: BSF004 diagnostic
+
+10. **`Task GenericMethod_EmitsBSF008()`** ⚠️ NOT IMPLEMENTED
+    - `Task<T> GetAsync<T>()`
+    - Should emit: BSF008 diagnostic
+
+11. **`Task OutParameter_EmitsBSF009()`** ⚠️ NOT IMPLEMENTED
+    - Method with `out` parameter
+    - Should emit: BSF009 diagnostic
+
+12. **`Task RefParameter_EmitsBSF010()`** ⚠️ NOT IMPLEMENTED
+    - Method with `ref` parameter
+    - Should emit: BSF010 diagnostic
+
+13. **`Task InternalInterface_EmitsBSF003()`** ⚠️ NOT IMPLEMENTED
+    - Internal/private interface
+    - Should emit: BSF003 diagnostic
+
+14. **`Task InterfaceWithProperties_EmitsBSF005()`** ⚠️ NOT IMPLEMENTED
+    - Interface with property declarations
+    - Should emit: BSF005 diagnostic
+
+15. **`Task InterfaceWithEvents_EmitsBSF006()`** ⚠️ NOT IMPLEMENTED
+    - Interface with event declarations
+    - Should emit: BSF006 diagnostic
+
+16. **`Task DuplicateRoutes_EmitsBSF014()`** ⚠️ NOT IMPLEMENTED
+    - Two methods resolve to same route
+    - Should emit: BSF014 diagnostic
+
+**Warning Tests:**
+
+17. **`Task EmptyInterface_EmitsBSF101Warning()`** ⚠️ NOT IMPLEMENTED
+    - Interface with no methods
+    - Should emit: BSF101 warning (not error)
+
+---
+
+### 2.5 CompilationTests.cs
 
 #### Test Methods:
 
@@ -1147,8 +1393,29 @@ Is the test data reusable across multiple tests?
 ## Total Test Count
 
 - **Unit Tests**: ~100 tests
-- **Integration Tests**: ~30 tests
+    - ClientProxyGeneratorTests: ~25 tests
+    - ServerEndpointGeneratorTests: ~20 tests
+    - ClientRegistrationGeneratorTests: ~9 tests
+    - ServerRegistrationGeneratorTests: ~8 tests
+
+- **Integration Tests**: ~45 tests
+    - SourceGeneratorTests: ~15 tests
+    - ProjectTypeDetectionTests: ~6 tests
+    - ReferencedAssemblyTests: ~7 tests
+    - DiagnosticTests: ~17 tests (5 implemented, 12 TODO)
+    - CompilationTests: ~5 tests
+
 - **E2E Tests**: ~20 tests
-- **Total**: ~150 tests
+    - ServerFunctionE2ETests: ~14 tests
+    - DependencyInjectionTests: ~6 tests
+
+- **Total**: ~165 tests
+
+**Priority Implementation:**
+1. ✅ Unit tests (test string generation)
+2. ✅ Basic integration tests (5 currently implemented diagnostics)
+3. ⚠️ Critical diagnostics (BSF007, BSF012) - HIGH PRIORITY
+4. ⚠️ Remaining diagnostics (BSF003-BSF016)
+5. ✅ E2E tests (runtime behavior)
 
 This comprehensive test suite ensures the source generator is robust, maintainable, and catches issues early in development.

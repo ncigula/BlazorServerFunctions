@@ -2,7 +2,7 @@
 
 internal static class VerifyExtensions
 {
-    internal static SettingsTask VerifyNoDiagnostics(GeneratorDriverRunResult result)
+    internal static SettingsTask VerifyNoDiagnostics(this GeneratorDriverRunResult result)
     {
         Assert.Empty(result.Diagnostics);
         return Verify(result);

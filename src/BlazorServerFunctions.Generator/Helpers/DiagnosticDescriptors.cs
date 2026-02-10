@@ -2,7 +2,7 @@
 
 using Microsoft.CodeAnalysis;
 
-namespace BlazorServerFunctions.Generator.Diagnostics;
+namespace BlazorServerFunctions.Generator.Helpers;
 
 /// <summary>
 /// Centralized diagnostic descriptors for the BlazorServerFunctions source generator.
@@ -69,7 +69,7 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor InterfaceCannotHaveProperties = new(
         id: "BSF005",
         title: "Interface cannot have properties",
-        messageFormat: "Interface '{0}' contains properties. Only methods are supported",
+        messageFormat: "Interface '{0}' contains properties. Only methods are supported.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -81,7 +81,7 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor InterfaceCannotHaveEvents = new(
         id: "BSF006",
         title: "Interface cannot have events",
-        messageFormat: "Interface '{0}' contains events. Only methods are supported",
+        messageFormat: "Interface '{0}' contains events. Only methods are supported.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -117,7 +117,7 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor OutParametersNotSupported = new(
         id: "BSF009",
         title: "Out parameters not supported",
-        messageFormat: "Method '{0}' has 'out' parameter '{1}'. Out parameters are not supported",
+        messageFormat: "Method '{0}' has 'out' parameter '{1}'. Out parameters are not supported.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -129,7 +129,7 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor RefParametersNotSupported = new(
         id: "BSF010",
         title: "Ref parameters not supported",
-        messageFormat: "Method '{0}' has 'ref' parameter '{1}'. Ref parameters are not supported",
+        messageFormat: "Method '{0}' has 'ref' parameter '{1}'. Ref parameters are not supported.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -141,7 +141,7 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor ParamsNotSupported = new(
         id: "BSF011",
         title: "Params parameters not supported",
-        messageFormat: "Method '{0}' has 'params' parameter '{1}'. Params arrays are not supported",
+        messageFormat: "Method '{0}' has 'params' parameter '{1}'. Params arrays are not supported.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -165,7 +165,7 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor InvalidHttpMethod = new(
         id: "BSF013",
         title: "Invalid HttpMethod",
-        messageFormat: "Method '{0}' has invalid HttpMethod '{1}'. Valid values: GET, POST, PUT, DELETE, PATCH",
+        messageFormat: "Method '{0}' has invalid HttpMethod '{1}'. Valid values: GET, POST, PUT, DELETE, PATCH.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
@@ -216,7 +216,7 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor EmptyInterface = new(
         id: "BSF101",
         title: "Interface has no methods",
-        messageFormat: "Interface '{0}' has no methods. No code will be generated",
+        messageFormat: "Interface '{0}' has no methods. No code will be generated.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
@@ -227,7 +227,7 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor TooManyParameters = new(
         id: "BSF102",
         title: "Method has many parameters",
-        messageFormat: "Method '{0}' has {1} parameters. Consider using a request object",
+        messageFormat: "Method '{0}' has {1} parameters. Consider using a request object.",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);

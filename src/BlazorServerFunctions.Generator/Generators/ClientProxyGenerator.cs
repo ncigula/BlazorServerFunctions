@@ -1,7 +1,7 @@
-﻿using System.Globalization;
-using System.Text;
+﻿using System.Text;
 using BlazorServerFunctions.Generator.Helpers;
 using BlazorServerFunctions.Generator.Models;
+using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
 
 namespace BlazorServerFunctions.Generator.Generators;
 
@@ -65,7 +65,7 @@ internal static class ClientProxyGenerator
         sb.AppendLine("    {");
 
         var hasParameters = methodInfo.Parameters.Count > 0;
-        if (hasParameters)
+        if (hasParameters && methodInfo.HttpMethod is HttpMethod.Post or HttpMethod.Put or HttpMethod.Patch)
             BuildRequestObject(sb: sb, parameters: methodInfo.Parameters);
 
         GenerateHttpRequest(
@@ -108,7 +108,7 @@ internal static class ClientProxyGenerator
         sb.AppendLine();
     }
 
-    internal static void GenerateMethodSignature(
+    private static void GenerateMethodSignature(
         StringBuilder sb,
         MethodInfo method)
     {
@@ -142,21 +142,20 @@ internal static class ClientProxyGenerator
     private static void GenerateHttpRequest(StringBuilder sb, MethodInfo method)
     {
         var routeName = method.CustomRoute ?? method.Name;
-        var httpMethod = method.HttpMethod.ToLowerInvariant();
         var hasParameters = method.Parameters.Count > 0;
 
-        switch (httpMethod)
+        switch (method.HttpMethod)
         {
-            case "post":
+            case HttpMethod.Post:
                 GeneratePostRequest(sb, routeName, hasParameters);
                 break;
 
-            case "get":
-                GenerateGetRequest(sb, routeName, hasParameters, method.Parameters);
+            case HttpMethod.Get:
+                GenerateGetRequest(sb, routeName, method.Parameters);
                 break;
 
             default: // PUT, DELETE, PATCH
-                GenerateOtherRequest(sb, routeName, httpMethod, hasParameters);
+                GenerateOtherRequest(sb, routeName, method.HttpMethod, hasParameters);
                 break;
         }
     }
@@ -180,20 +179,19 @@ internal static class ClientProxyGenerator
     private static void GenerateGetRequest(
         StringBuilder sb,
         string routeName,
-        bool hasParameters,
         List<ParameterInfo> parameters)
     {
-        if (hasParameters)
+        if (parameters.Count > 0)
         {
             sb.AppendLine("        var queryString = System.Web.HttpUtility.ParseQueryString(string.Empty);");
 
-            foreach (var parameterName in parameters.Select(p => p.Name))
+            foreach (var parameter in parameters)
             {
                 sb.Append("        queryString[\"")
-                    .Append(parameterName.ToPascalCase())
+                    .Append(parameter.Name.ToPascalCase())
                     .Append("\"] = ")
-                    .Append(parameterName)
-                    .AppendLine("?.ToString();");
+                    .Append(parameter.Name)
+                    .AppendLine($"{(parameter.Type.EndsWith('?') ? "?" : string.Empty)}.ToString();");
             }
 
             sb.AppendLine("        var response = await _httpClient.GetAsync(");
@@ -209,10 +207,10 @@ internal static class ClientProxyGenerator
     private static void GenerateOtherRequest(
         StringBuilder sb,
         string routeName,
-        string httpMethod,
+        HttpMethod httpMethod,
         bool hasParameters)
     {
-        var httpMethodUpper = httpMethod.ToUpperInvariant();
+        var httpMethodUpper = httpMethod.ToString().ToUpperInvariant();
 
         sb.AppendLine("        var requestMessage = new HttpRequestMessage");
         sb.AppendLine("        {");

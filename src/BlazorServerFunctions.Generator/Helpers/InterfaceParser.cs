@@ -1,26 +1,11 @@
 ﻿using BlazorServerFunctions.Generator.Models;
 using Microsoft.CodeAnalysis;
+using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
 
 namespace BlazorServerFunctions.Generator.Helpers;
 
 internal static class InterfaceParser
 {
-    private static readonly DiagnosticDescriptor MissingServerFunctionCollectionAttribute = new(
-        id: "BSF001",
-        title: "Missing server function collection attribute",
-        messageFormat: "Method '{0}' must have a [ServerFunctionCollection] attribute",
-        category: "Usage",
-        defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
-    
-    private static readonly DiagnosticDescriptor MissingServerFunctionAttribute = new(
-        id: "BSF002",
-        title: "Missing server function attribute",
-        messageFormat: "Method '{0}' must have a [ServerFunction] attribute",
-        category: "Usage",
-        defaultSeverity: DiagnosticSeverity.Error,
-        isEnabledByDefault: true);
-
     internal static Result<InterfaceInfo> ParseInterface(
         INamedTypeSymbol interfaceSymbol,
         CancellationToken cancellationToken)
@@ -32,7 +17,7 @@ internal static class InterfaceParser
 
         if (serverFunctionCollectionAttribute is null)
             return Result.Failure<InterfaceInfo>(
-                Error.Diagnostic(MissingServerFunctionCollectionAttribute, interfaceSymbol.Name));
+                Error.Diagnostic(DiagnosticDescriptors.MissingServerFunctionCollectionAttribute, interfaceSymbol.Name));
 
         // Extract attribute parameters
         string? routePrefix = null;
@@ -127,7 +112,7 @@ internal static class InterfaceParser
 
         if (serverFunctionAttribute is null)
             return Result.Failure<MethodInfo>(
-                Error.Diagnostic(MissingServerFunctionAttribute, methodInfo.Name));
+                Error.Diagnostic(DiagnosticDescriptors.MissingServerFunctionAttribute, methodInfo.Name));
 
         foreach (var attribute in serverFunctionAttribute.NamedArguments)
         {
@@ -137,7 +122,7 @@ internal static class InterfaceParser
                     methodInfo.CustomRoute = attribute.Value.Value?.ToString();
                     break;
                 case "HttpMethod":
-                    methodInfo.HttpMethod = attribute.Value.Value!.ToString()!;
+                    methodInfo.HttpMethod = Enum.Parse<HttpMethod>(attribute.Value.Value!.ToString()!);
                     break;
                 case "RequireAuthorization":
                     methodInfo.RequireAuthorization = attribute.Value.Value is true;

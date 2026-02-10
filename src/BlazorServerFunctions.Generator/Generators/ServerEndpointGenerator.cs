@@ -69,7 +69,7 @@ internal static class ServerEndpointGenerator
     {
         var routeName = method.CustomRoute ?? method.Name;
         var hasParameters = method.Parameters.Count > 0;
-        var httpMethod = method.HttpMethod.ToPascalCase();
+        var httpMethod = method.HttpMethod.ToString().ToPascalCase();
 
         sb.Append("        group.Map").Append(httpMethod).Append("(\"/").Append(routeName).AppendLine("\",");
 

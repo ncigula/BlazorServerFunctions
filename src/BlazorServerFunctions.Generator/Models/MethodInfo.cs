@@ -6,7 +6,7 @@ internal sealed record MethodInfo
     public string ReturnType { get; set; } = "void";
     public string? CustomRoute { get; set; }
     public bool RequireAuthorization { get; set; }
-    public string HttpMethod { get; set; } = "GET";
+    public HttpMethod HttpMethod { get; set; }
     public AsyncType AsyncType { get; set; }
-    public List<ParameterInfo> Parameters { get; set; } = new();
+    public List<ParameterInfo> Parameters { get; set; } = [];
 }

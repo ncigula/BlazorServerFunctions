@@ -49,6 +49,9 @@ public static class GeneratorTestHelper
                    display.Contains("Microsoft.Extensions.Http", StringComparison.OrdinalIgnoreCase);
         });
 
+        references.Add(MetadataReference.CreateFromFile(
+            typeof(ServerFunctionCollectionAttribute).Assembly.Location));
+        
         switch (projectType)
         {
             case ProjectType.Server:
@@ -84,14 +87,14 @@ public static class GeneratorTestHelper
         IIncrementalGenerator generator,
         ProjectType projectType)
     {
-        var metadata = MetadataReference.CreateFromFile(
-            typeof(ServerFunctionCollectionAttribute).Assembly.Location);
+        //var metadata = MetadataReference.CreateFromFile(
+        //    typeof(ServerFunctionCollectionAttribute).Assembly.Location);
 
         return projectType switch
         {
-            ProjectType.Server => RunGeneratorAsServer(source, generator, metadata),
-            ProjectType.Client => RunGeneratorAsClient(source, generator, metadata),
-            ProjectType.Library => RunGeneratorAsLibrary(source, generator, metadata),
+            ProjectType.Server => RunGeneratorAsServer(source, generator),
+            ProjectType.Client => RunGeneratorAsClient(source, generator),
+            ProjectType.Library => RunGeneratorAsLibrary(source, generator),
             _ => throw new ArgumentOutOfRangeException(nameof(projectType)),
         };
     }

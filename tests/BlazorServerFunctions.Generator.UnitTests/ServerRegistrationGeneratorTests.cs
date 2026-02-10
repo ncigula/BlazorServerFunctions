@@ -1,4 +1,6 @@
-﻿namespace BlazorServerFunctions.Generator.UnitTests;
+﻿using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
+
+namespace BlazorServerFunctions.Generator.UnitTests;
 
 public class ServerRegistrationGeneratorTests
 {
@@ -14,7 +16,7 @@ public class ServerRegistrationGeneratorTests
                 new MethodInfoBuilder()
                     .WithName("GetUser")
                     .Returning("UserDto")
-                    .UsingHttp("GET")
+                    .UsingHttp(HttpMethod.Get)
                     .WithParameter(
                         new ParameterInfoBuilder()
                             .WithName("id")

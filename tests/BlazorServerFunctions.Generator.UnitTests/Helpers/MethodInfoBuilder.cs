@@ -1,4 +1,6 @@
-﻿namespace BlazorServerFunctions.Generator.UnitTests.Helpers;
+﻿using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
+
+namespace BlazorServerFunctions.Generator.UnitTests.Helpers;
 
 internal sealed class MethodInfoBuilder
 {
@@ -8,7 +10,7 @@ internal sealed class MethodInfoBuilder
         ReturnType = "void",
         CustomRoute = null,
         RequireAuthorization = false,
-        HttpMethod = "POST",
+        HttpMethod = HttpMethod.Post,
         AsyncType = AsyncType.Task,
         Parameters = new List<ParameterInfo>()
     };
@@ -37,7 +39,7 @@ internal sealed class MethodInfoBuilder
         return this;
     }
 
-    internal MethodInfoBuilder UsingHttp(string httpMethod)
+    internal MethodInfoBuilder UsingHttp(HttpMethod httpMethod)
     {
         _method.HttpMethod = httpMethod;
         return this;

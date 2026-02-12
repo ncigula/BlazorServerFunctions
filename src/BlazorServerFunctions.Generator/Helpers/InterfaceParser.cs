@@ -6,20 +6,26 @@ namespace BlazorServerFunctions.Generator.Helpers;
 
 internal static class InterfaceParser
 {
-    internal static Result<InterfaceInfo> ParseInterface(
-        INamedTypeSymbol interfaceSymbol,
-        CancellationToken cancellationToken)
+    internal static InterfaceInfo? ParseInterface(
+        SourceProductionContext context,
+        INamedTypeSymbol interfaceSymbol)
     {
-        cancellationToken.ThrowIfCancellationRequested();
+        context.CancellationToken.ThrowIfCancellationRequested();
 
         var serverFunctionCollectionAttribute = interfaceSymbol.GetAttributes()
             .FirstOrDefault(a => string.Equals(a.AttributeClass?.Name, "ServerFunctionCollectionAttribute", StringComparison.OrdinalIgnoreCase));
 
         if (serverFunctionCollectionAttribute is null)
-            return Result.Failure<InterfaceInfo>(
-                Error.Diagnostic(DiagnosticDescriptors.MissingServerFunctionCollectionAttribute, interfaceSymbol.Name));
+        {
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.MissingServerFunctionCollectionAttribute,
+                    interfaceSymbol.Locations.FirstOrDefault(),
+                    interfaceSymbol.Name));
+            
+            return null;
+        }
 
-        // Extract attribute parameters
         string? routePrefix = null;
         bool requireAuth = false;
 
@@ -33,13 +39,12 @@ internal static class InterfaceParser
                 case "RequireAuthorization":
                     requireAuth = namedArg.Value.Value is true;
                     break;
+                default:
+                    routePrefix = interfaceSymbol.Name.TrimStart('I').ToLowerInvariant();
+                    break;
             }
         }
 
-        // Default route prefix from interface name (remove leading 'I')
-        routePrefix ??= interfaceSymbol.Name.TrimStart('I').ToLowerInvariant();
-
-        // Get namespace
         var namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
             ? "Generated"
             : interfaceSymbol.ContainingNamespace.ToDisplayString();
@@ -51,49 +56,41 @@ internal static class InterfaceParser
             RoutePrefix = routePrefix,
             RequireAuthorization = requireAuth,
         };
+        
+        interfaceInfo.Methods.AddRange(ParseMethods(context, interfaceInfo, interfaceSymbol));
 
+        return interfaceInfo;
+    }
+
+    private static IEnumerable<MethodInfo> ParseMethods(
+        SourceProductionContext context,
+        InterfaceInfo interfaceInfo,
+        INamedTypeSymbol interfaceSymbol)
+    {
         foreach (var member in interfaceSymbol.GetMembers())
         {
             if (member is not IMethodSymbol { MethodKind: MethodKind.Ordinary } methodSymbol)
                 continue;
 
-            var methodInfo = ParseMethod(interfaceInfo, methodSymbol, cancellationToken);
-            if (methodInfo.IsSuccess)
-            {
-                interfaceInfo.Methods.Add(methodInfo.Value);
+            var methodInfo = ParseMethod(context, interfaceInfo, methodSymbol);
+            
+            if (methodInfo is null)
                 continue;
-            }
 
-            return Result.Failure<InterfaceInfo>(methodInfo.Error);
+            yield return methodInfo;
         }
-
-        return interfaceInfo;
     }
 
-    private static Result<MethodInfo> ParseMethod(
+    private static MethodInfo? ParseMethod(
+        SourceProductionContext context,
         InterfaceInfo interfaceInfo,
-        IMethodSymbol methodSymbol,
-        CancellationToken cancellationToken)
+        IMethodSymbol methodSymbol)
     {
-        cancellationToken.ThrowIfCancellationRequested();
+        context.CancellationToken.ThrowIfCancellationRequested();
 
         var methodInfo = new MethodInfo();
         methodInfo.Name = methodSymbol.Name;
-        var returnType = methodSymbol.ReturnType.ToDisplayString();
-        bool isAsync = RegexExpressions.IsAsyncType().IsMatch(returnType);
-
-        methodInfo.AsyncType = (isAsync, returnType) switch
-        {
-            (false, _) => AsyncType.None,
-            (true, var type) when type.StartsWith("ValueTask", StringComparison.Ordinal) => AsyncType.ValueTask,
-            (true, var type) when type.StartsWith("Task", StringComparison.Ordinal) => AsyncType.Task,
-            _ => throw new ArgumentOutOfRangeException(returnType),
-        };
-
-        if (isAsync && methodSymbol.ReturnType is INamedTypeSymbol namedType)
-            methodInfo.ReturnType = namedType.TypeArguments.Length > 0
-                ? namedType.TypeArguments[0].ToDisplayString()
-                : "void";
+        (methodInfo.AsyncType, methodInfo.ReturnType) = ParseReturnType(methodSymbol);
 
         methodInfo.Parameters = methodSymbol.Parameters
             .Select(parameter => new ParameterInfo
@@ -111,25 +108,50 @@ internal static class InterfaceParser
             .FirstOrDefault(a => string.Equals(a.AttributeClass?.Name, "ServerFunctionAttribute", StringComparison.OrdinalIgnoreCase));
 
         if (serverFunctionAttribute is null)
-            return Result.Failure<MethodInfo>(
-                Error.Diagnostic(DiagnosticDescriptors.MissingServerFunctionAttribute, methodInfo.Name));
+        {
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.MissingServerFunctionAttribute,
+                    methodSymbol.Locations.First(),
+                    methodInfo.Name,
+                    methodSymbol.Name));
+
+            return null;
+        }
 
         foreach (var attribute in serverFunctionAttribute.NamedArguments)
         {
-            switch (attribute.Key)
-            {
-                case "Route":
-                    methodInfo.CustomRoute = attribute.Value.Value?.ToString();
-                    break;
-                case "HttpMethod":
-                    methodInfo.HttpMethod = Enum.Parse<HttpMethod>(attribute.Value.Value!.ToString()!);
-                    break;
-                case "RequireAuthorization":
-                    methodInfo.RequireAuthorization = attribute.Value.Value is true;
-                    break;
-            }
+            if (string.Equals(attribute.Key, "Route", StringComparison.Ordinal))
+                methodInfo.CustomRoute = attribute.Value.Value?.ToString();
+            
+            if (string.Equals(attribute.Key, "HttpMethod", StringComparison.Ordinal))
+                methodInfo.HttpMethod = Enum.Parse<HttpMethod>(attribute.Value.Value!.ToString()!);
+            
+            if (string.Equals(attribute.Key, "RequireAuthorization", StringComparison.Ordinal))
+                methodInfo.RequireAuthorization = attribute.Value.Value is true;
         }
 
         return methodInfo;
+    }
+
+    private static (AsyncType AsyncType, string ReturnType) ParseReturnType(IMethodSymbol methodSymbol)
+    {
+        var returnType = methodSymbol.ReturnType.ToDisplayString();
+        bool isAsync = RegexExpressions.IsAsyncType().IsMatch(returnType);
+
+        var asyncType = (isAsync, returnType) switch
+        {
+            (false, _) => AsyncType.None,
+            (true, var type) when type.StartsWith("ValueTask", StringComparison.Ordinal) => AsyncType.ValueTask,
+            (true, var type) when type.StartsWith("Task", StringComparison.Ordinal) => AsyncType.Task,
+            _ => throw new ArgumentOutOfRangeException(returnType),
+        };
+
+        if (isAsync && methodSymbol.ReturnType is INamedTypeSymbol namedType)
+            returnType = namedType.TypeArguments.Length > 0
+                ? namedType.TypeArguments[0].ToDisplayString()
+                : "void";
+        
+        return (asyncType, returnType);
     }
 }

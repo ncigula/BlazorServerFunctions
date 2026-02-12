@@ -25,13 +25,14 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
                 transform: static (ctx, _) => GetSemanticTargetForGeneration(ctx))
             .Where(static m => m is not null);
 
-        var referencedInterfaces = context.CompilationProvider
+        // Just collect SYMBOLS, don't parse yet
+        var referencedInterfaceSymbols = context.CompilationProvider
             .Combine(projectInfo)
             .Select(static (source, cancellationToken) =>
-                GetReferencedInterfaces(source.Left, source.Right, cancellationToken));
+                GetReferencedInterfaceSymbols(source.Left, source.Right, cancellationToken));
 
         var compilationAndInterfaces = context.CompilationProvider.Combine(interfaceDeclarations.Collect());
-        var withReferenced = compilationAndInterfaces.Combine(referencedInterfaces);
+        var withReferenced = compilationAndInterfaces.Combine(referencedInterfaceSymbols);
         var compilationAndProject = withReferenced.Combine(projectInfo);
 
         context.RegisterSourceOutput(compilationAndProject,
@@ -39,23 +40,27 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             {
                 var compilation = data.Left.Left.Left;
                 var localInterfaces = data.Left.Left.Right;
-                var referencedInterfaces = data.Left.Right;
+                var referencedSymbols = data.Left.Right;
                 var projectInfo = data.Right;
 
-                Execute(spc, compilation, localInterfaces, referencedInterfaces, projectInfo);
+                Execute(spc, compilation, localInterfaces, referencedSymbols, projectInfo);
             });
     }
 
-    private static ImmutableArray<InterfaceInfo> GetReferencedInterfaces(
+    /// <summary>
+    /// Collects interface SYMBOLS from referenced assemblies (doesn't parse yet).
+    /// Parsing happens later in Execute() where we have SourceProductionContext.
+    /// </summary>
+    private static ImmutableArray<INamedTypeSymbol> GetReferencedInterfaceSymbols(
         Compilation compilation,
         ProjectInfo projectInfo,
         CancellationToken cancellationToken)
     {
         // Only search referenced assemblies for top-level projects
         if (!projectInfo.GenerateEndpoints && !projectInfo.GenerateClients)
-            return ImmutableArray<InterfaceInfo>.Empty;
+            return ImmutableArray<INamedTypeSymbol>.Empty;
 
-        var result = new List<InterfaceInfo>();
+        var result = new List<INamedTypeSymbol>();
 
         foreach (var reference in compilation.SourceModule.ReferencedAssemblySymbols)
         {
@@ -64,7 +69,8 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             if (ShouldSkipAssembly(reference))
                 continue;
 
-            var visitor = new InterfaceVisitor(result, cancellationToken);
+            // Collect symbols only - don't parse
+            var visitor = new InterfaceSymbolCollector(result, cancellationToken);
             visitor.Visit(reference.GlobalNamespace);
         }
 
@@ -122,25 +128,46 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         SourceProductionContext context,
         Compilation compilation,
         ImmutableArray<InterfaceDeclarationSyntax?> interfaces,
-        ImmutableArray<InterfaceInfo> referencedInterfaces,
+        ImmutableArray<INamedTypeSymbol> referencedSymbols,
         ProjectInfo projectInfo)
     {
-        if (interfaces.IsDefaultOrEmpty && referencedInterfaces.IsDefaultOrEmpty)
+        if (interfaces.IsDefaultOrEmpty && referencedSymbols.IsDefaultOrEmpty)
             return;
 
+        // Parse local interfaces (from this project's source code)
         var localInterfaceInfos = ParseLocalInterfaces(context, compilation, interfaces);
 
-        if (localInterfaceInfos.Count == 0 && referencedInterfaces.Length == 0)
+        // Parse referenced interfaces (from referenced assemblies)
+        // NOW we have context to emit diagnostics!
+        var referencedInterfaceInfos = ParseReferencedInterfaces(context, referencedSymbols);
+
+        if (localInterfaceInfos.Count == 0 && referencedInterfaceInfos.Count == 0)
             return;
 
+        // ── Generate Server Endpoints ────────────────────────────────────────
         if (projectInfo.GenerateEndpoints)
         {
-            GenerateEndpoints(context, localInterfaceInfos, referencedInterfaces);
+            var allInterfaces = new List<InterfaceInfo>(
+                localInterfaceInfos.Count + referencedInterfaceInfos.Count);
+
+            allInterfaces.AddRange(localInterfaceInfos);
+            allInterfaces.AddRange(referencedInterfaceInfos);
+
+            if (allInterfaces.Count > 0)
+                GenerateEndpoints(context, allInterfaces);
         }
 
-        if (projectInfo.GenerateClients && localInterfaceInfos.Count > 0)
+        // ── Generate Client Proxies ───────────────────────────────────────────
+        if (projectInfo.GenerateClients)
         {
-            GenerateClients(context, localInterfaceInfos);
+            var allInterfaces = new List<InterfaceInfo>(
+                localInterfaceInfos.Count + referencedInterfaceInfos.Count);
+
+            allInterfaces.AddRange(localInterfaceInfos);
+            allInterfaces.AddRange(referencedInterfaceInfos);
+
+            if (allInterfaces.Count > 0)
+                GenerateClients(context, allInterfaces);
         }
     }
 
@@ -169,14 +196,46 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             if (interfaceSymbol is null)
                 continue;
 
-            var interfaceInfo = InterfaceParser.ParseInterface(interfaceSymbol, context.CancellationToken);
-            if (interfaceInfo.IsSuccess)
-            {
-                result.Add(interfaceInfo.Value);
-            }
-            
-            if (interfaceInfo.IsFailure)
-                context.ReportError(interfaceInfo.Error, interfaceSymbol);
+            // Parse with context - emits diagnostics
+            var interfaceInfo = InterfaceParser.ParseInterface(
+                context,
+                interfaceSymbol);
+
+            if (interfaceInfo is not null)
+                result.Add(interfaceInfo);
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Parse referenced interface symbols.
+    /// We have context here so we CAN emit diagnostics if needed.
+    /// But typically we silently skip invalid ones since they're not our code.
+    /// </summary>
+    private static List<InterfaceInfo> ParseReferencedInterfaces(
+        SourceProductionContext context,
+        ImmutableArray<INamedTypeSymbol> symbols)
+    {
+        var result = new List<InterfaceInfo>(symbols.Length);
+
+        foreach (var symbol in symbols)
+        {
+            context.CancellationToken.ThrowIfCancellationRequested();
+
+            // Option A: Parse silently (don't emit diagnostics for referenced code)
+            //var interfaceInfo = InterfaceParser.ParseInterface(
+            //    symbol,
+            //    silently: true,  // Pass flag to skip diagnostics
+            //    context.CancellationToken);
+
+            // Option B: Parse with diagnostics (if you want to warn about referenced issues)
+            var interfaceInfo = InterfaceParser.ParseInterface(
+                context,
+                symbol);
+
+            if (interfaceInfo is not null)
+                result.Add(interfaceInfo);
         }
 
         return result;
@@ -184,39 +243,29 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
     private static void GenerateEndpoints(
         SourceProductionContext context,
-        List<InterfaceInfo> localInterfaces,
-        ImmutableArray<InterfaceInfo> referencedInterfaces)
+        List<InterfaceInfo> allInterfaces)
     {
-        var allInterfaceInfos = new List<InterfaceInfo>(
-            localInterfaces.Count + referencedInterfaces.Length);
-
-        allInterfaceInfos.AddRange(localInterfaces);
-        allInterfaceInfos.AddRange(referencedInterfaces);
-
-        if (allInterfaceInfos.Count == 0)
-            return;
-
-        foreach (var interfaceInfo in allInterfaceInfos)
+        foreach (var interfaceInfo in allInterfaces)
         {
             var serverCode = ServerEndpointGenerator.Generate(interfaceInfo);
             context.AddSource($"{interfaceInfo.Name}ServerExtensions.g.cs", serverCode);
         }
 
-        var registrationCode = ServerRegistrationGenerator.Generate(allInterfaceInfos);
+        var registrationCode = ServerRegistrationGenerator.Generate(allInterfaces);
         context.AddSource("ServerFunctionEndpointsRegistration.g.cs", registrationCode);
     }
 
     private static void GenerateClients(
         SourceProductionContext context,
-        List<InterfaceInfo> localInterfaces)
+        List<InterfaceInfo> allInterfaces)
     {
-        foreach (var interfaceInfo in localInterfaces)
+        foreach (var interfaceInfo in allInterfaces)
         {
             var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
             context.AddSource($"{interfaceInfo.Name}Client.g.cs", clientCode);
         }
 
-        var clientRegistrationCode = ClientRegistrationGenerator.Generate(localInterfaces);
+        var clientRegistrationCode = ClientRegistrationGenerator.Generate(allInterfaces);
         context.AddSource("ServerFunctionClientsRegistration.g.cs", clientRegistrationCode);
     }
 }

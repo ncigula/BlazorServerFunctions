@@ -64,24 +64,6 @@ BlazorServerFunctions.Generator/
 | **BSF101** | Warning | Interface '{0}' has no methods. No code will be generated | Interface |
 | **BSF102** | Warning | Method '{0}' has {1} parameters. Consider using a request object | Method |
 
-### Critical Issues in Current Code
-
-**⚠️ Line 105 in InterfaceParser.cs:**
-```csharp
-_ => throw new ArgumentOutOfRangeException(returnType),
-```
-**Problem:** Throws exception instead of emitting diagnostic BSF007  
-**Impact:** Crashes generator instead of showing helpful error  
-**Fix Priority:** HIGH - Replace with diagnostic emission
-
-**⚠️ Line 140 in InterfaceParser.cs:**
-```csharp
-methodInfo.HttpMethod = attribute.Value.Value!.ToString()!;
-```
-**Problem:** Null-forgiving operator could hide null  
-**Impact:** Could crash if HttpMethod not specified  
-**Fix Priority:** HIGH - Emit BSF012 if null
-
 ### Parsing Error Handling: Pass Context Approach ✅
 
 **Recommended Signature:**

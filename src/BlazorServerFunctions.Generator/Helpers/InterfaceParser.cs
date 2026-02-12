@@ -39,11 +39,10 @@ internal static class InterfaceParser
                 case "RequireAuthorization":
                     requireAuth = namedArg.Value.Value is true;
                     break;
-                default:
-                    routePrefix = interfaceSymbol.Name.TrimStart('I').ToLowerInvariant();
-                    break;
             }
         }
+        
+        routePrefix ??= interfaceSymbol.Name.TrimStart('I').ToLowerInvariant();
 
         var namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
             ? "Generated"

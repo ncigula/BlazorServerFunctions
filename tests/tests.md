@@ -446,6 +446,7 @@ BlazorServerFunctions.Generator.IntegrationTests/
 - ✅ Verify diagnostics are emitted (error testing)
 - ✅ Verify no diagnostics (success testing)
 - ✅ Simpler and tests actual behavior
+- ✅ Check that the generated files are in the correct folders and namespaces
 
 ---
 

@@ -45,7 +45,7 @@ internal sealed class MethodInfoBuilder
         return this;
     }
 
-    internal MethodInfoBuilder IsAsyncMethod(AsyncType asyncType = AsyncType.Task)
+    internal MethodInfoBuilder IsAsyncMethod(AsyncType asyncType)
     {
         _method.AsyncType = asyncType;
         return this;

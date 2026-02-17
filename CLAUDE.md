@@ -62,10 +62,65 @@ The generator detects project type by inspecting compilation references:
 
 ## Testing Patterns
 
-- **Unit tests** use fluent builders (`InterfaceInfoBuilder`, `MethodInfoBuilder`, `ParameterInfoBuilder`, `TestDataFactory`) to construct test data, and **Verify snapshot testing** to assert generated code
-- Snapshots live in `tests/BlazorServerFunctions.Generator.UnitTests/_snapshots/`
-- **Integration tests** use `CSharpGeneratorDriver` with `ProjectBuilder`/`MultiProjectScenario` to verify generated code compiles in multi-project setups
+### Unit Tests (String-Based Pipeline Testing)
+
+Unit tests verify the **full generator pipeline** (parsing → generation) using string-based interface code as input:
+
+- **Input**: C# interface code as strings (not pre-built `InterfaceInfo` objects)
+- **Pipeline**: String → `InterfaceParser` → Generators → Generated code + diagnostics
+- **Verification**: Snapshot testing via Verify + diagnostic assertions
+- **Benefits**: Tests both parser and generator logic, fast execution, comprehensive edge case coverage
+
+Test structure:
+```csharp
+[Fact]
+public Task Generate_BasicInterface_ProducesCorrectCode()
+{
+    string source = """
+        [ServerFunctionCollection]
+        public interface IUserService
+        {
+            [ServerFunction]
+            Task<User> GetUserAsync(int id);
+        }
+        """;
+
+    var result = GeneratorTestHelper.RunGeneratorAsClient(source, new ServerFunctionCollectionGenerator());
+    return result.VerifyNoDiagnostics(); // Verifies diagnostics + snapshots all generated files
+}
+```
+
+**What unit tests cover**:
+- All parsing edge cases (attributes, parameter types, return types, route prefixes, HTTP methods)
+- All generation variations (method signatures, request/response handling, async types)
+- Diagnostic reporting for invalid code
+- Both client and server code generation from a single interface
+
+**Test classes**:
+- `ClientGeneratorTests` — Tests client proxy + registration generation (Library/Client project types)
+- `ServerGeneratorTests` — Tests server endpoint + registration generation (Server project type)
+
+Snapshots live in `tests/BlazorServerFunctions.Generator.UnitTests/_snapshots/`
+
+### Integration Tests (Multi-Project Compilation)
+
+Integration tests focus on **cross-cutting concerns** that unit tests cannot verify:
+
+- Multi-project scenarios (client references server library)
+- Actual compilation success (generated code compiles without errors)
+- File placement and hint names
+- Project type detection logic
+- Incremental generator behavior
+- External assembly references (interfaces from NuGet packages)
+
+**What integration tests DON'T do**: Re-test all edge cases already covered in unit tests. They verify representative scenarios only.
+
+Integration tests use `CSharpGeneratorDriver` with `ProjectBuilder`/`MultiProjectScenario` to simulate multi-project builds.
+
+### General Rules
+
 - Test projects suppress `CA1707` (underscores in test names are allowed)
+- Use fluent builders (`InterfaceInfoBuilder`, `MethodInfoBuilder`, `ParameterInfoBuilder`, `TestDataFactory`) only when constructing test data for non-generator tests or helpers
 
 ## Diagnostics
 

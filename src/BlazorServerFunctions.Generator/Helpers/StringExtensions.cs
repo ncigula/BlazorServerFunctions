@@ -13,6 +13,6 @@ public static class StringExtensions
             return char.ToUpper(value[0], CultureInfo.InvariantCulture).ToString();
 
         return char.ToUpper(value[0], CultureInfo.InvariantCulture) 
-               + value.Substring(1).ToLowerInvariant();
+               + value.Substring(1);
     }
 }

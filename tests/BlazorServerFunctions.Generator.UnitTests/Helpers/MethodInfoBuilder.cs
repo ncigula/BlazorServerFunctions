@@ -61,6 +61,12 @@ internal sealed class MethodInfoBuilder
         return this;
     }
 
+    internal MethodInfoBuilder WithCancellationToken(bool value = true)
+    {
+        _method.HasCancellationToken = value;
+        return this;
+    }
+
     internal MethodInfo Build() =>
         new MethodInfo
         {
@@ -70,6 +76,7 @@ internal sealed class MethodInfoBuilder
             RequireAuthorization = _method.RequireAuthorization,
             HttpMethod = _method.HttpMethod,
             AsyncType = _method.AsyncType,
+            HasCancellationToken = _method.HasCancellationToken,
             Parameters = _method.Parameters.ToList()
         };
 }

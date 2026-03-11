@@ -8,5 +8,6 @@ internal sealed record MethodInfo
     public bool RequireAuthorization { get; set; }
     public string HttpMethod { get; set; } = "GET";
     public AsyncType AsyncType { get; set; }
+    public bool HasCancellationToken { get; set; }
     public List<ParameterInfo> Parameters { get; set; } = new();
 }

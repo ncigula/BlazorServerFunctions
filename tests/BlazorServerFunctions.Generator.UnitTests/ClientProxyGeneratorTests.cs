@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 
 namespace BlazorServerFunctions.Generator.UnitTests;
 
@@ -23,5 +23,28 @@ public class ClientProxyGeneratorTests
         ClientProxyGenerator.GenerateMethodSignature(sb, method);
 
         return Verify(sb.ToString()).UseParameters(returnType);
+    }
+
+    [Fact]
+    public Task GenerateMethodSignature_IncludesCancellationToken_When_MethodHasIt()
+    {
+        var method = new MethodInfoBuilder()
+            .WithName("GetUser")
+            .Returning("UserDto")
+            .IsAsyncMethod(AsyncType.Task)
+            .UsingHttp("GET")
+            .WithParameter(
+                new ParameterInfoBuilder()
+                    .WithName("id")
+                    .WithType("int")
+                    .Build()
+            )
+            .WithCancellationToken()
+            .Build();
+
+        StringBuilder sb = new StringBuilder();
+        ClientProxyGenerator.GenerateMethodSignature(sb, method);
+
+        return Verify(sb.ToString());
     }
 }

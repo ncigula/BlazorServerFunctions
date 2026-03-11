@@ -1,4 +1,4 @@
-﻿using System.Globalization;
+using System.Globalization;
 using System.Text;
 using BlazorServerFunctions.Generator.Helpers;
 using BlazorServerFunctions.Generator.Models;
@@ -15,7 +15,7 @@ internal static class ClientProxyGenerator
         sb.AppendLine("#nullable enable");
         sb.AppendLine();
 
-        AddUsingDirectives(sb: sb);
+        AddUsingDirectives(sb: sb, interfaceInfo: interfaceInfo);
 
         sb.Append("namespace ").Append(interfaceInfo.Namespace).Append(';').AppendLine();
         sb.AppendLine();
@@ -48,10 +48,14 @@ internal static class ClientProxyGenerator
         sb.AppendLine("    }");
     }
 
-    private static void AddUsingDirectives(StringBuilder sb)
+    private static void AddUsingDirectives(StringBuilder sb, InterfaceInfo interfaceInfo)
     {
         sb.AppendLine("using System.Net.Http;");
         sb.AppendLine("using System.Net.Http.Json;");
+
+        if (interfaceInfo.Methods.Any(m => m.HasCancellationToken))
+            sb.AppendLine("using System.Threading;");
+
         sb.AppendLine("using System.Threading.Tasks;");
         sb.AppendLine();
     }
@@ -82,7 +86,13 @@ internal static class ClientProxyGenerator
             sb.Append("        return await response.Content.ReadFromJsonAsync")
                 .Append('<')
                 .Append(methodInfo.ReturnType)
-                .AppendLine(">()");
+                .Append('>');
+
+            if (methodInfo.HasCancellationToken)
+                sb.AppendLine("(cancellationToken)");
+            else
+                sb.AppendLine("()");
+
             sb.AppendLine("            ?? throw new InvalidOperationException(\"Response deserialization returned null\");");
         }
 
@@ -133,7 +143,10 @@ internal static class ClientProxyGenerator
             }
 
             return declaration;
-        });
+        }).ToList();
+
+        if (method.HasCancellationToken)
+            paramDeclarations.Add("CancellationToken cancellationToken = default");
 
         sb.Append(string.Join(", ", paramDeclarations));
         sb.AppendLine(")");
@@ -144,36 +157,55 @@ internal static class ClientProxyGenerator
         var routeName = method.CustomRoute ?? method.Name;
         var httpMethod = method.HttpMethod.ToLowerInvariant();
         var hasParameters = method.Parameters.Count > 0;
+        var hasCt = method.HasCancellationToken;
 
         switch (httpMethod)
         {
             case "post":
-                GeneratePostRequest(sb, routeName, hasParameters);
+                GeneratePostRequest(sb, routeName, hasParameters, hasCt);
                 break;
 
             case "get":
-                GenerateGetRequest(sb, routeName, hasParameters, method.Parameters);
+                GenerateGetRequest(sb, routeName, hasParameters, method.Parameters, hasCt);
                 break;
 
             default: // PUT, DELETE, PATCH
-                GenerateOtherRequest(sb, routeName, httpMethod, hasParameters);
+                GenerateOtherRequest(sb, routeName, httpMethod, hasParameters, hasCt);
                 break;
         }
     }
 
-    private static void GeneratePostRequest(StringBuilder sb, string routeName, bool hasParameters)
+    private static void GeneratePostRequest(StringBuilder sb, string routeName, bool hasParameters, bool hasCt)
     {
         if (hasParameters)
         {
             sb.AppendLine("        var response = await _httpClient.PostAsJsonAsync(");
             sb.Append("            $\"{BaseRoute}/").Append(routeName).AppendLine("\",");
-            sb.AppendLine("            request);");
+
+            if (hasCt)
+            {
+                sb.AppendLine("            request,");
+                sb.AppendLine("            cancellationToken);");
+            }
+            else
+            {
+                sb.AppendLine("            request);");
+            }
         }
         else
         {
             sb.AppendLine("        var response = await _httpClient.PostAsync(");
             sb.Append("            $\"{BaseRoute}/").Append(routeName).AppendLine("\",");
-            sb.AppendLine("            null);");
+
+            if (hasCt)
+            {
+                sb.AppendLine("            null,");
+                sb.AppendLine("            cancellationToken);");
+            }
+            else
+            {
+                sb.AppendLine("            null);");
+            }
         }
     }
 
@@ -181,7 +213,8 @@ internal static class ClientProxyGenerator
         StringBuilder sb,
         string routeName,
         bool hasParameters,
-        List<ParameterInfo> parameters)
+        List<ParameterInfo> parameters,
+        bool hasCt)
     {
         if (hasParameters)
         {
@@ -191,18 +224,36 @@ internal static class ClientProxyGenerator
             {
                 sb.Append("        queryString[\"")
                     .Append(parameterName.ToPascalCase())
-                    .Append("\"] = ")
+                    .Append("\"] = System.Convert.ToString(")
                     .Append(parameterName)
-                    .AppendLine("?.ToString();");
+                    .AppendLine(");");
             }
 
             sb.AppendLine("        var response = await _httpClient.GetAsync(");
-            sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}?{{queryString}}\");");
+
+            if (hasCt)
+            {
+                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}?{{queryString}}\",");
+                sb.AppendLine("            cancellationToken);");
+            }
+            else
+            {
+                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}?{{queryString}}\");");
+            }
         }
         else
         {
             sb.AppendLine("        var response = await _httpClient.GetAsync(");
-            sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}\");");
+
+            if (hasCt)
+            {
+                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}\",");
+                sb.AppendLine("            cancellationToken);");
+            }
+            else
+            {
+                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}\");");
+            }
         }
     }
 
@@ -210,7 +261,8 @@ internal static class ClientProxyGenerator
         StringBuilder sb,
         string routeName,
         string httpMethod,
-        bool hasParameters)
+        bool hasParameters,
+        bool hasCt)
     {
         var httpMethodUpper = httpMethod.ToUpperInvariant();
 
@@ -225,7 +277,11 @@ internal static class ClientProxyGenerator
         }
 
         sb.AppendLine("        };");
-        sb.AppendLine("        var response = await _httpClient.SendAsync(requestMessage);");
+
+        if (hasCt)
+            sb.AppendLine("        var response = await _httpClient.SendAsync(requestMessage, cancellationToken);");
+        else
+            sb.AppendLine("        var response = await _httpClient.SendAsync(requestMessage);");
     }
 
     private static string FormatDefaultValue(string type, object? defaultValue)

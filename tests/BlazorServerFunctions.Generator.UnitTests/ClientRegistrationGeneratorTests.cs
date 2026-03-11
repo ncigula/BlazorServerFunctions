@@ -1,4 +1,4 @@
-﻿namespace BlazorServerFunctions.Generator.UnitTests;
+namespace BlazorServerFunctions.Generator.UnitTests;
 
 public class ClientRegistrationGeneratorTests
 {
@@ -26,7 +26,27 @@ public class ClientRegistrationGeneratorTests
             .Build();
 
         var generated = ClientRegistrationGenerator.Generate([interfaceInfo]);
-        
+
+        return Verify(generated);
+    }
+
+    [Fact]
+    public Task ClientRegistrationGenerator_UsesCommonNamespace_When_InterfacesAreInDifferentNamespaces()
+    {
+        var userService = new InterfaceInfoBuilder()
+            .WithName("IUserService")
+            .WithNamespace("MyApp.Services")
+            .WithRoutePrefix("users")
+            .Build();
+
+        var orderService = new InterfaceInfoBuilder()
+            .WithName("IOrderService")
+            .WithNamespace("MyApp.Orders")
+            .WithRoutePrefix("orders")
+            .Build();
+
+        var generated = ClientRegistrationGenerator.Generate([userService, orderService]);
+
         return Verify(generated);
     }
 }

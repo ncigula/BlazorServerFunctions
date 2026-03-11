@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using BlazorServerFunctions.Generator.Helpers;
 using BlazorServerFunctions.Generator.Models;
 
@@ -11,7 +11,7 @@ internal static class ServerEndpointGenerator
         var sb = new StringBuilder();
 
         GenerateFileHeader(sb);
-        GenerateUsingDirectives(sb);
+        GenerateUsingDirectives(sb, interfaceInfo);
 
         sb.Append("namespace ").Append(interfaceInfo.Namespace).AppendLine(";");
         sb.AppendLine();
@@ -33,13 +33,17 @@ internal static class ServerEndpointGenerator
         sb.AppendLine();
     }
 
-    private static void GenerateUsingDirectives(StringBuilder sb)
+    private static void GenerateUsingDirectives(StringBuilder sb, InterfaceInfo interfaceInfo)
     {
         sb.AppendLine("using Microsoft.AspNetCore.Builder;");
         sb.AppendLine("using Microsoft.AspNetCore.Routing;");
         sb.AppendLine("using Microsoft.AspNetCore.Http;");
         sb.AppendLine("using Microsoft.AspNetCore.Mvc;");
         sb.AppendLine("using System.Text.Json;");
+
+        if (interfaceInfo.Methods.Any(m => m.HasCancellationToken))
+            sb.AppendLine("using System.Threading;");
+
         sb.AppendLine();
     }
 
@@ -53,48 +57,44 @@ internal static class ServerEndpointGenerator
         sb.Append("        var group = endpoints.MapGroup(\"/api/functions/")
             .Append(interfaceInfo.RoutePrefix)
             .AppendLine("\");");
+
+        if (interfaceInfo.RequireAuthorization)
+            sb.AppendLine("        group = group.RequireAuthorization();");
+
         sb.AppendLine();
 
-        // Generate endpoint for each method
         foreach (var method in interfaceInfo.Methods)
-        {
-            GenerateEndpoint(sb, interfaceInfo.Name, method);
-        }
+            GenerateEndpoint(sb, interfaceInfo.Name, interfaceInfo.RequireAuthorization, method);
 
         sb.AppendLine("        return endpoints;");
         sb.AppendLine("    }");
     }
 
-    private static void GenerateEndpoint(StringBuilder sb, string interfaceName, MethodInfo method)
+    private static void GenerateEndpoint(StringBuilder sb, string interfaceName, bool interfaceRequiresAuth, MethodInfo method)
     {
         var routeName = method.CustomRoute ?? method.Name;
         var hasParameters = method.Parameters.Count > 0;
         var httpMethod = method.HttpMethod.ToPascalCase();
+        var isGet = string.Equals(method.HttpMethod, "GET", StringComparison.OrdinalIgnoreCase);
+        var bindingAttribute = isGet ? "[AsParameters]" : "[FromBody]";
 
         sb.Append("        group.Map").Append(httpMethod).Append("(\"/").Append(routeName).AppendLine("\",");
 
-        // Lambda parameters
+        // Build lambda parameter list
+        var lambdaParams = new List<string>();
         if (hasParameters)
-        {
-            sb.Append("            async ([FromBody] ")
-                .Append(method.Name)
-                .Append("Request request, ")
-                .Append(interfaceName)
-                .AppendLine(" service) =>");
-        }
-        else
-        {
-            sb.Append("            async (")
-                .Append(interfaceName)
-                .AppendLine(" service) =>");
-        }
+            lambdaParams.Add($"{bindingAttribute} {method.Name}Request request");
+        lambdaParams.Add($"{interfaceName} service");
+        if (method.HasCancellationToken)
+            lambdaParams.Add("CancellationToken cancellationToken");
+
+        sb.Append("            async (")
+            .Append(string.Join(", ", lambdaParams))
+            .AppendLine(") =>");
 
         sb.AppendLine("            {");
 
-        // Call the service
         GenerateServiceCall(sb, method);
-
-        // Return result
         GenerateResultReturn(sb, method.ReturnType);
 
         sb.AppendLine("            })");
@@ -102,7 +102,15 @@ internal static class ServerEndpointGenerator
             .Append(interfaceName)
             .Append('_')
             .Append(method.Name)
-            .AppendLine("\");");
+            .Append("\")");
+
+        if (method.RequireAuthorization && !interfaceRequiresAuth)
+        {
+            sb.AppendLine();
+            sb.Append("            .RequireAuthorization()");
+        }
+
+        sb.AppendLine(";");
         sb.AppendLine();
     }
 
@@ -111,32 +119,26 @@ internal static class ServerEndpointGenerator
         sb.Append("                ");
 
         if (!string.Equals(method.ReturnType, "void", StringComparison.Ordinal))
-        {
             sb.Append("var result = ");
-        }
 
         sb.Append("await service.").Append(method.Name).Append('(');
 
+        var args = new List<string>();
         if (method.Parameters.Count > 0)
-        {
-            var paramList = method.Parameters
-                .Select(p => $"request.{p.Name.ToPascalCase()}");
-            sb.Append(string.Join(", ", paramList));
-        }
+            args.AddRange(method.Parameters.Select(p => $"request.{p.Name.ToPascalCase()}"));
+        if (method.HasCancellationToken)
+            args.Add("cancellationToken");
 
+        sb.Append(string.Join(", ", args));
         sb.AppendLine(");");
     }
 
     private static void GenerateResultReturn(StringBuilder sb, string returnType)
     {
         if (!string.Equals(returnType, "void", StringComparison.Ordinal))
-        {
             sb.AppendLine("                return Results.Ok(result);");
-        }
         else
-        {
             sb.AppendLine("                return Results.Ok();");
-        }
     }
 
     private static void GenerateRequestDtos(StringBuilder sb, InterfaceInfo interfaceInfo)
@@ -144,9 +146,7 @@ internal static class ServerEndpointGenerator
         foreach (var method in interfaceInfo.Methods)
         {
             if (method.Parameters.Count > 0)
-            {
                 GenerateRequestDto(sb, method);
-            }
         }
     }
 

@@ -110,16 +110,7 @@ internal static class InterfaceParser
                 ? namedType.TypeArguments[0].ToDisplayString()
                 : "void";
 
-        methodInfo.Parameters = methodSymbol.Parameters
-            .Select(parameter => new ParameterInfo
-            {
-                Name = parameter.Name,
-                Type = parameter.Type.ToDisplayString(),
-                HasDefaultValue = parameter.HasExplicitDefaultValue,
-                DefaultValue = parameter.HasExplicitDefaultValue ? parameter.ExplicitDefaultValue?.ToString() : null,
-            })
-            .ToList();
-
+        ParseParameters(methodSymbol, methodInfo);
         methodInfo.RequireAuthorization = interfaceInfo.RequireAuthorization;
 
         var serverFunctionAttribute = methodSymbol.GetAttributes()
@@ -146,5 +137,24 @@ internal static class InterfaceParser
         }
 
         return methodInfo;
+    }
+
+    private static void ParseParameters(IMethodSymbol methodSymbol, MethodInfo methodInfo)
+    {
+        const string ctTypeName = "System.Threading.CancellationToken";
+
+        methodInfo.HasCancellationToken = methodSymbol.Parameters
+            .Any(p => string.Equals(p.Type.ToDisplayString(), ctTypeName, StringComparison.Ordinal));
+
+        methodInfo.Parameters = methodSymbol.Parameters
+            .Where(p => !string.Equals(p.Type.ToDisplayString(), ctTypeName, StringComparison.Ordinal))
+            .Select(parameter => new ParameterInfo
+            {
+                Name = parameter.Name,
+                Type = parameter.Type.ToDisplayString(),
+                HasDefaultValue = parameter.HasExplicitDefaultValue,
+                DefaultValue = parameter.HasExplicitDefaultValue ? parameter.ExplicitDefaultValue?.ToString() : null,
+            })
+            .ToList();
     }
 }

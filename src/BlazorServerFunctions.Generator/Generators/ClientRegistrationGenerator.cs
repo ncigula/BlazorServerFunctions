@@ -1,5 +1,4 @@
-﻿using System.Collections.ObjectModel;
-using System.Text;
+﻿using System.Text;
 using BlazorServerFunctions.Generator.Models;
 
 namespace BlazorServerFunctions.Generator.Generators;

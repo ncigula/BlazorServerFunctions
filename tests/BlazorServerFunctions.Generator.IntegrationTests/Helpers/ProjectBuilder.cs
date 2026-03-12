@@ -1,7 +1,4 @@
-﻿using BlazorServerFunctions.Abstractions;
-using Microsoft.CodeAnalysis;
-
-namespace BlazorServerFunctions.Generator.IntegrationTests.Helpers;
+﻿namespace BlazorServerFunctions.Generator.IntegrationTests.Helpers;
 
 /// <summary>
 /// Fluent builder for creating multi-project test scenarios

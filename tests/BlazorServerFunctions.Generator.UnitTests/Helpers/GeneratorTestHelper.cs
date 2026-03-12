@@ -76,6 +76,13 @@ public static class GeneratorTestHelper
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
+        // Debug: Print compilation diagnostics
+        var compilationDiagnostics = compilation.GetDiagnostics();
+        foreach (var diag in compilationDiagnostics)
+        {
+            Console.WriteLine($"[Test Compilation] {diag}");
+        }
+
         GeneratorDriver driver = CSharpGeneratorDriver.Create(generator);
         driver = driver.RunGenerators(compilation);
 

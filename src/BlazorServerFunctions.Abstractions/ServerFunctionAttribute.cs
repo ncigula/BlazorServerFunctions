@@ -6,6 +6,6 @@ public sealed class ServerFunctionAttribute : Attribute
     public string? Route { get; set; }
         
     public bool RequireAuthorization { get; set; }
-        
-    public string HttpMethod { get; set; } = "POST";
+
+    public string HttpMethod { get; set; } = string.Empty;
 }

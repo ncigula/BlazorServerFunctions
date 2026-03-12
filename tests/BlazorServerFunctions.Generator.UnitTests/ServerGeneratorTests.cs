@@ -1,5 +1,3 @@
-using HttpMethod = BlazorServerFunctions.Abstractions.HttpMethod;
-
 namespace BlazorServerFunctions.Generator.UnitTests;
 
 /// <summary>

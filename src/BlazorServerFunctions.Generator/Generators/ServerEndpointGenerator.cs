@@ -1,6 +1,7 @@
 ﻿using System.Text;
 using BlazorServerFunctions.Generator.Helpers;
 using BlazorServerFunctions.Generator.Models;
+using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
 
 namespace BlazorServerFunctions.Generator.Generators;
 
@@ -76,7 +77,11 @@ internal static class ServerEndpointGenerator
         // Lambda parameters
         if (hasParameters)
         {
-            sb.Append("            async ([FromBody] ")
+            var bindingAttribute = method.HttpMethod is HttpMethod.Get or HttpMethod.Delete
+                ? "[AsParameters]"
+                : "[FromBody]";
+
+            sb.Append("            async (").Append(bindingAttribute).Append(' ')
                 .Append(method.Name)
                 .Append("Request request, ")
                 .Append(interfaceName)

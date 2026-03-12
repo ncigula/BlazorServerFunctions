@@ -1,7 +1,4 @@
-﻿using BlazorServerFunctions.Generator.Models;
-using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
-
-namespace BlazorServerFunctions.Generator.UnitTests.Helpers;
+﻿namespace BlazorServerFunctions.Generator.UnitTests.Helpers;
 
 /// <summary>
 /// Factory for creating common test data scenarios

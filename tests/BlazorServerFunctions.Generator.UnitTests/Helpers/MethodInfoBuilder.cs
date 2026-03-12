@@ -1,6 +1,4 @@
-﻿using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
-
-namespace BlazorServerFunctions.Generator.UnitTests.Helpers;
+﻿namespace BlazorServerFunctions.Generator.UnitTests.Helpers;
 
 internal sealed class MethodInfoBuilder
 {

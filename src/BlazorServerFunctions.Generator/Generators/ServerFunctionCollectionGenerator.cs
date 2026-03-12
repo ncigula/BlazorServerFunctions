@@ -196,12 +196,14 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             if (interfaceSymbol is null)
                 continue;
 
+            var sourceProductionContextWrapper = new SourceProductionContextWrapper(context);
+            
             // Parse with context - emits diagnostics
             var interfaceInfo = InterfaceParser.ParseInterface(
-                context,
+                sourceProductionContextWrapper,
                 interfaceSymbol);
 
-            if (interfaceInfo is not null)
+            if (!sourceProductionContextWrapper.HasErrors)
                 result.Add(interfaceInfo);
         }
 
@@ -222,19 +224,14 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         foreach (var symbol in symbols)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
-
-            // Option A: Parse silently (don't emit diagnostics for referenced code)
-            //var interfaceInfo = InterfaceParser.ParseInterface(
-            //    symbol,
-            //    silently: true,  // Pass flag to skip diagnostics
-            //    context.CancellationToken);
-
-            // Option B: Parse with diagnostics (if you want to warn about referenced issues)
+            
+            var sourceProductionContextWrapper = new SourceProductionContextWrapper(context);
+            
             var interfaceInfo = InterfaceParser.ParseInterface(
-                context,
+                sourceProductionContextWrapper,
                 symbol);
 
-            if (interfaceInfo is not null)
+            if (!sourceProductionContextWrapper.HasErrors)
                 result.Add(interfaceInfo);
         }
 

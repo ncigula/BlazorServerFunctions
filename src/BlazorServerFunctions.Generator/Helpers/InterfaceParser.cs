@@ -6,8 +6,8 @@ namespace BlazorServerFunctions.Generator.Helpers;
 
 internal static class InterfaceParser
 {
-    internal static InterfaceInfo? ParseInterface(
-        SourceProductionContext context,
+    internal static InterfaceInfo ParseInterface(
+        SourceProductionContextWrapper context,
         INamedTypeSymbol interfaceSymbol)
     {
         context.CancellationToken.ThrowIfCancellationRequested();
@@ -22,14 +22,12 @@ internal static class InterfaceParser
                     DiagnosticDescriptors.MissingServerFunctionCollectionAttribute,
                     interfaceSymbol.Locations.FirstOrDefault(),
                     interfaceSymbol.Name));
-            
-            return null;
         }
 
         string? routePrefix = null;
         bool requireAuth = false;
 
-        foreach (var namedArg in serverFunctionCollectionAttribute.NamedArguments)
+        foreach (var namedArg in serverFunctionCollectionAttribute?.NamedArguments ?? [])
         {
             switch (namedArg.Key)
             {
@@ -41,7 +39,7 @@ internal static class InterfaceParser
                     break;
             }
         }
-        
+
         routePrefix ??= interfaceSymbol.Name.TrimStart('I').ToLowerInvariant();
 
         var namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
@@ -55,14 +53,14 @@ internal static class InterfaceParser
             RoutePrefix = routePrefix,
             RequireAuthorization = requireAuth,
         };
-        
+
         interfaceInfo.Methods.AddRange(ParseMethods(context, interfaceInfo, interfaceSymbol));
 
         return interfaceInfo;
     }
 
     private static IEnumerable<MethodInfo> ParseMethods(
-        SourceProductionContext context,
+        SourceProductionContextWrapper context,
         InterfaceInfo interfaceInfo,
         INamedTypeSymbol interfaceSymbol)
     {
@@ -72,37 +70,74 @@ internal static class InterfaceParser
                 continue;
 
             var methodInfo = ParseMethod(context, interfaceInfo, methodSymbol);
-            
-            if (methodInfo is null)
-                continue;
 
             yield return methodInfo;
         }
     }
 
-    private static MethodInfo? ParseMethod(
-        SourceProductionContext context,
+    private static MethodInfo ParseMethod(
+        SourceProductionContextWrapper context,
         InterfaceInfo interfaceInfo,
         IMethodSymbol methodSymbol)
     {
         context.CancellationToken.ThrowIfCancellationRequested();
 
-        var methodInfo = new MethodInfo();
-        methodInfo.Name = methodSymbol.Name;
+        var methodInfo = new MethodInfo
+        {
+            Name = methodSymbol.Name,
+            RequireAuthorization = interfaceInfo.RequireAuthorization
+        };
+
         (methodInfo.AsyncType, methodInfo.ReturnType) = ParseReturnType(methodSymbol);
+        methodInfo.Parameters = ParseParameters(methodSymbol);
 
-        methodInfo.Parameters = methodSymbol.Parameters
-            .Select(parameter => new ParameterInfo
+        var serverFunctionAttribute = GetServerFunctionAttribute(context, methodSymbol, methodInfo);
+        ParseServerFunctionAttributes(context, methodSymbol, methodInfo, serverFunctionAttribute);
+
+        return methodInfo;
+    }
+
+    private static void ParseServerFunctionAttributes(
+        SourceProductionContextWrapper context,
+        IMethodSymbol methodSymbol,
+        MethodInfo methodInfo,
+        AttributeData? serverFunctionAttribute)
+    {
+        foreach (var attribute in serverFunctionAttribute?.NamedArguments ?? [])
+        {
+            switch (attribute.Key)
             {
-                Name = parameter.Name,
-                Type = parameter.Type.ToDisplayString(),
-                HasDefaultValue = parameter.HasExplicitDefaultValue,
-                DefaultValue = parameter.HasExplicitDefaultValue ? parameter.ExplicitDefaultValue?.ToString() : null,
-            })
-            .ToList();
+                case "Route":
+                    methodInfo.CustomRoute = attribute.Value.Value?.ToString();
+                    break;
 
-        methodInfo.RequireAuthorization = interfaceInfo.RequireAuthorization;
+                case "HttpMethod":
+                    if (attribute.Value.Kind is not TypedConstantKind.Error && attribute.Value.Value != null)
+                    {
+                        methodInfo.HttpMethod = Enum.Parse<HttpMethod>(attribute.Value.Value!.ToString()!, ignoreCase: true);
+                        break;
+                    }
 
+                    context.ReportDiagnostic(
+                        Diagnostic.Create(
+                            DiagnosticDescriptors.InvalidHttpMethod,
+                            methodSymbol.Locations.First(),
+                            methodInfo.Name,
+                            attribute.Value.Value?.ToString() ?? "null"));
+                    break;
+
+                case "RequireAuthorization":
+                    methodInfo.RequireAuthorization = attribute.Value.Value is true;
+                    break;
+            }
+        }
+    }
+    
+    private static AttributeData? GetServerFunctionAttribute(
+        SourceProductionContextWrapper context,
+        IMethodSymbol methodSymbol,
+        MethodInfo methodInfo)
+    {
         var serverFunctionAttribute = methodSymbol.GetAttributes()
             .FirstOrDefault(a => string.Equals(a.AttributeClass?.Name, "ServerFunctionAttribute", StringComparison.OrdinalIgnoreCase));
 
@@ -114,23 +149,31 @@ internal static class InterfaceParser
                     methodSymbol.Locations.First(),
                     methodInfo.Name,
                     methodSymbol.Name));
-
-            return null;
         }
 
-        foreach (var attribute in serverFunctionAttribute.NamedArguments)
+        if (serverFunctionAttribute is not null && !serverFunctionAttribute.NamedArguments.Any(kvp => string.Equals(kvp.Key, "HttpMethod", StringComparison.Ordinal)))
         {
-            if (string.Equals(attribute.Key, "Route", StringComparison.Ordinal))
-                methodInfo.CustomRoute = attribute.Value.Value?.ToString();
-            
-            if (string.Equals(attribute.Key, "HttpMethod", StringComparison.Ordinal))
-                methodInfo.HttpMethod = Enum.Parse<HttpMethod>(attribute.Value.Value!.ToString()!);
-            
-            if (string.Equals(attribute.Key, "RequireAuthorization", StringComparison.Ordinal))
-                methodInfo.RequireAuthorization = attribute.Value.Value is true;
+            context.ReportDiagnostic(
+                Diagnostic.Create(
+                    DiagnosticDescriptors.HttpMethodRequired,
+                    methodSymbol.Locations.First(),
+                    methodInfo.Name));
         }
 
-        return methodInfo;
+        return serverFunctionAttribute;
+    }
+
+    private static List<ParameterInfo> ParseParameters(IMethodSymbol methodSymbol)
+    {
+        return methodSymbol.Parameters
+            .Select(parameter => new ParameterInfo
+            {
+                Name = parameter.Name,
+                Type = parameter.Type.ToDisplayString(),
+                HasDefaultValue = parameter.HasExplicitDefaultValue,
+                DefaultValue = parameter.HasExplicitDefaultValue ? parameter.ExplicitDefaultValue?.ToString() : null,
+            })
+            .ToList();
     }
 
     private static (AsyncType AsyncType, string ReturnType) ParseReturnType(IMethodSymbol methodSymbol)
@@ -141,8 +184,8 @@ internal static class InterfaceParser
         var asyncType = (isAsync, returnType) switch
         {
             (false, _) => AsyncType.None,
-            (true, var type) when type.StartsWith("ValueTask", StringComparison.Ordinal) => AsyncType.ValueTask,
-            (true, var type) when type.StartsWith("Task", StringComparison.Ordinal) => AsyncType.Task,
+            (true, var type) when type.Contains("ValueTask", StringComparison.Ordinal) => AsyncType.ValueTask,
+            (true, var type) when type.Contains("Task", StringComparison.Ordinal) => AsyncType.Task,
             _ => throw new ArgumentOutOfRangeException(returnType),
         };
 
@@ -150,7 +193,7 @@ internal static class InterfaceParser
             returnType = namedType.TypeArguments.Length > 0
                 ? namedType.TypeArguments[0].ToDisplayString()
                 : "void";
-        
+
         return (asyncType, returnType);
     }
 }

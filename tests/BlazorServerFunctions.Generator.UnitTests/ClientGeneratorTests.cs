@@ -1,5 +1,3 @@
-using HttpMethod = BlazorServerFunctions.Abstractions.HttpMethod;
-
 namespace BlazorServerFunctions.Generator.UnitTests;
 
 /// <summary>
@@ -45,14 +43,14 @@ public class ClientGeneratorTests
                      [ServerFunctionCollection("/users")]
                      public interface IUserService
                      {
-                         [ServerFunction]
+                         [ServerFunction(HttpMethod = "GET")]
                          Task<User> GetUserAsync(int id);
                      }
 
                      [ServerFunctionCollection("/products")]
                      public interface IProductService
                      {
-                         [ServerFunction]
+                         [ServerFunction(HttpMethod = "GET")]
                          Task<Product[]> GetAllProductsAsync();
                      }
                      """;
@@ -499,7 +497,7 @@ public class ClientGeneratorTests
                      [ServerFunctionCollection("/users")]
                      public interface IUserService
                      {
-                         [ServerFunction(HttpMethod = HttpMethod.Get)]
+                         [ServerFunction(HttpMethod = "GET")]
                          Task<User[]> GetAllUsersAsync();
                      }
                      """;

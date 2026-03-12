@@ -56,7 +56,6 @@ internal static class ServerEndpointGenerator
             .AppendLine("\");");
         sb.AppendLine();
 
-        // Generate endpoint for each method
         foreach (var method in interfaceInfo.Methods)
         {
             GenerateEndpoint(sb, interfaceInfo.Name, method);
@@ -74,14 +73,15 @@ internal static class ServerEndpointGenerator
 
         sb.Append("        group.Map").Append(httpMethod).Append("(\"/").Append(routeName).AppendLine("\",");
 
-        // Lambda parameters
+        var asyncKeyword = method.AsyncType is not AsyncType.None ? "async " : string.Empty;
+
         if (hasParameters)
         {
             var bindingAttribute = method.HttpMethod is HttpMethod.Get or HttpMethod.Delete
                 ? "[AsParameters]"
                 : "[FromBody]";
 
-            sb.Append("            async (").Append(bindingAttribute).Append(' ')
+            sb.Append($"            {asyncKeyword}(").Append(bindingAttribute).Append(' ')
                 .Append(method.Name)
                 .Append("Request request, ")
                 .Append(interfaceName)
@@ -89,17 +89,15 @@ internal static class ServerEndpointGenerator
         }
         else
         {
-            sb.Append("            async (")
+            sb.Append($"            {asyncKeyword}(")
                 .Append(interfaceName)
                 .AppendLine(" service) =>");
         }
 
         sb.AppendLine("            {");
 
-        // Call the service
         GenerateServiceCall(sb, method);
 
-        // Return result
         GenerateResultReturn(sb, method.ReturnType);
 
         sb.AppendLine("            })");
@@ -120,7 +118,10 @@ internal static class ServerEndpointGenerator
             sb.Append("var result = ");
         }
 
-        sb.Append("await service.").Append(method.Name).Append('(');
+        if (method.AsyncType is not AsyncType.None)
+            sb.Append("await ");
+
+        sb.Append("service.").Append(method.Name).Append('(');
 
         if (method.Parameters.Count > 0)
         {

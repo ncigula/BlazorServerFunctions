@@ -40,14 +40,14 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "GET")]
                          Task<User> GetUserAsync(int id);
                      }
 
-                     [ServerFunctionCollection("/products")]
+                     [ServerFunctionCollection(RoutePrefix = "/products")]
                      public interface IProductService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -71,10 +71,10 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface UserService
                      {
-                         [ServerFunction]
+                         [ServerFunction(HttpMethod = "GET")]
                          Task<User> GetUserAsync(int id);
                      }
                      """;
@@ -95,10 +95,10 @@ public class ClientGeneratorTests
 
                      namespace Custom.Deeply.Nested.Namespace.Services;
 
-                     [ServerFunctionCollection("/custom")]
+                     [ServerFunctionCollection(RoutePrefix = "/custom")]
                      public interface ICustomService
                      {
-                         [ServerFunction]
+                         [ServerFunction(HttpMethod = "GET")]
                          Task<string> GetAsync();
                      }
                      """;
@@ -122,7 +122,7 @@ public class ClientGeneratorTests
                      [ServerFunctionCollection]
                      public interface IServiceWithoutPrefix
                      {
-                         [ServerFunction]
+                         [ServerFunction(HttpMethod = "GET")]
                          Task<string> GetAsync();
                      }
                      """;
@@ -143,10 +143,10 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/api/v2/nested/service")]
+                     [ServerFunctionCollection(RoutePrefix = "/api/v2/nested/service")]
                      public interface INestedService
                      {
-                         [ServerFunction]
+                         [ServerFunction(HttpMethod = "GET")]
                          Task<string> GetAsync();
                      }
                      """;
@@ -167,7 +167,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/messages")]
+                     [ServerFunctionCollection(RoutePrefix = "/messages")]
                      public interface IMessageService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -192,7 +192,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/search")]
+                     [ServerFunctionCollection(RoutePrefix = "/search")]
                      public interface ISearchService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -216,7 +216,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/actions")]
+                     [ServerFunctionCollection(RoutePrefix = "/actions")]
                      public interface IActionService
                      {
                          [ServerFunction(HttpMethod = "POST")]
@@ -240,7 +240,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "POST")]
@@ -264,7 +264,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "PUT")]
@@ -288,7 +288,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/resources")]
+                     [ServerFunctionCollection(RoutePrefix = "/resources")]
                      public interface IResourceService
                      {
                          [ServerFunction(HttpMethod = "PUT")]
@@ -312,7 +312,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "PATCH")]
@@ -336,7 +336,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "DELETE")]
@@ -360,7 +360,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/cache")]
+                     [ServerFunctionCollection(RoutePrefix = "/cache")]
                      public interface ICacheService
                      {
                          [ServerFunction(HttpMethod = "DELETE")]
@@ -385,7 +385,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -421,7 +421,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/notifications")]
+                     [ServerFunctionCollection(RoutePrefix = "/notifications")]
                      public interface INotificationService
                      {
                          [ServerFunction(HttpMethod = "POST")]
@@ -445,7 +445,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/counter")]
+                     [ServerFunctionCollection(RoutePrefix = "/counter")]
                      public interface ICounterService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -470,7 +470,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -494,7 +494,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -519,7 +519,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/data")]
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
                      public interface IDataService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -543,7 +543,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -567,7 +567,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/counter")]
+                     [ServerFunctionCollection(RoutePrefix = "/counter")]
                      public interface ICounterService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -591,7 +591,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/tasks")]
+                     [ServerFunctionCollection(RoutePrefix = "/tasks")]
                      public interface ITaskService
                      {
                          [ServerFunction(HttpMethod = "POST")]
@@ -615,7 +615,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/valuetasks")]
+                     [ServerFunctionCollection(RoutePrefix = "/valuetasks")]
                      public interface IValueTaskService
                      {
                          [ServerFunction(HttpMethod = "POST")]
@@ -638,7 +638,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/sync")]
+                     [ServerFunctionCollection(RoutePrefix = "/sync")]
                      public interface ISyncService
                      {
                          [ServerFunction(HttpMethod = "POST")]
@@ -662,7 +662,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "GET", Route = "by-id")]
@@ -686,7 +686,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -710,7 +710,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/users")]
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
                      public interface IUserService
                      {
                          [ServerFunction(HttpMethod = "POST")]
@@ -735,7 +735,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/search")]
+                     [ServerFunctionCollection(RoutePrefix = "/search")]
                      public interface ISearchService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -763,7 +763,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/search")]
+                     [ServerFunctionCollection(RoutePrefix = "/search")]
                      public interface ISearchService
                      {
                          [ServerFunction(HttpMethod = "GET")]
@@ -789,7 +789,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/data")]
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
                      public interface IDataService
                      {
                          [ServerFunction(HttpMethod = "POST")]
@@ -817,7 +817,7 @@ public class ClientGeneratorTests
 
                      namespace MyApp.Services;
 
-                     [ServerFunctionCollection("/test")]
+                     [ServerFunctionCollection(RoutePrefix = "/test")]
                      public interface ITestService
                      {
                          [ServerFunction(HttpMethod = "GET")]

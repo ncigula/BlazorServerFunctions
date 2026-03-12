@@ -40,6 +40,10 @@ internal static class InterfaceParser
             }
         }
 
+        // Strip leading slash so route generation doesn't produce double-slashes
+        // e.g. [ServerFunctionCollection(RoutePrefix = "/users")] → "users"
+        routePrefix = routePrefix?.TrimStart('/');
+
         routePrefix ??= interfaceSymbol.Name.TrimStart('I').ToLowerInvariant();
 
         var namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
@@ -171,7 +175,9 @@ internal static class InterfaceParser
                 Name = parameter.Name,
                 Type = parameter.Type.ToDisplayString(),
                 HasDefaultValue = parameter.HasExplicitDefaultValue,
-                DefaultValue = parameter.HasExplicitDefaultValue ? parameter.ExplicitDefaultValue?.ToString() : null,
+                DefaultValue = parameter.HasExplicitDefaultValue && parameter.ExplicitDefaultValue is not null
+                    ? Convert.ToString(parameter.ExplicitDefaultValue, System.Globalization.CultureInfo.InvariantCulture)
+                    : null,
             })
             .ToList();
     }

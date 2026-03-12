@@ -29,7 +29,6 @@ internal static class ClientProxyGenerator
 
         sb.AppendLine();
 
-        // Generate method implementations
         foreach (var method in interfaceInfo.Methods)
         {
             GenerateClientMethod(sb, method);
@@ -56,6 +55,12 @@ internal static class ClientProxyGenerator
         sb.AppendLine();
     }
 
+    private static string GetAwaitKeyword(AsyncType asyncType) =>
+        asyncType is not AsyncType.None ? "await " : string.Empty;
+
+    private static string GetResultSuffix(AsyncType asyncType) =>
+        asyncType is AsyncType.None ? ".GetAwaiter().GetResult()" : string.Empty;
+
     private static void GenerateClientMethod(StringBuilder sb, MethodInfo methodInfo)
     {
         GenerateMethodSignature(
@@ -76,13 +81,15 @@ internal static class ClientProxyGenerator
         sb.AppendLine("        response.EnsureSuccessStatusCode();");
         sb.AppendLine();
 
-        // Handle response
         if (!string.Equals(methodInfo.ReturnType, "void", StringComparison.OrdinalIgnoreCase))
         {
-            sb.Append("        return await response.Content.ReadFromJsonAsync")
-                .Append('<')
+            sb.Append("        return ")
+                .Append(GetAwaitKeyword(methodInfo.AsyncType))
+                .Append("response.Content.ReadFromJsonAsync<")
                 .Append(methodInfo.ReturnType)
-                .AppendLine(">()");
+                .Append(">()")
+                .Append(GetResultSuffix(methodInfo.AsyncType))
+                .AppendLine();
             sb.AppendLine("            ?? throw new InvalidOperationException(\"Response deserialization returned null\");");
         }
 
@@ -115,11 +122,11 @@ internal static class ClientProxyGenerator
         sb.Append("    public ");
 
         if (method.AsyncType is not AsyncType.None)
-            sb.Append("async ")
-                .Append(method.AsyncType.ToString())
-                .Append('<')
-                .Append(method.ReturnType)
-                .Append('>');
+        {
+            sb.Append("async ").Append(method.AsyncType.ToString());
+            if (!string.Equals(method.ReturnType, "void", StringComparison.Ordinal))
+                sb.Append('<').Append(method.ReturnType).Append('>');
+        }
         else sb.Append(method.ReturnType);
 
         sb.Append(' ').Append(method.Name).Append('(');
@@ -142,45 +149,54 @@ internal static class ClientProxyGenerator
     private static void GenerateHttpRequest(StringBuilder sb, MethodInfo method)
     {
         var routeName = method.CustomRoute ?? method.Name;
-        var hasParameters = method.Parameters.Count > 0;
 
         switch (method.HttpMethod)
         {
             case HttpMethod.Post:
-                GeneratePostRequest(sb, routeName, hasParameters);
+                GeneratePostRequest(sb, routeName, method.Parameters.Count > 0, method.AsyncType);
                 break;
 
             case HttpMethod.Get:
-                GenerateGetRequest(sb, routeName, method.Parameters);
+            case HttpMethod.Delete:
+                GenerateQueryStringRequest(sb, routeName, method.HttpMethod, method.Parameters, method.AsyncType);
                 break;
 
-            default: // PUT, DELETE, PATCH
-                GenerateOtherRequest(sb, routeName, method.HttpMethod, hasParameters);
+            default:
+                GenerateOtherRequest(sb, routeName, method.HttpMethod, method.Parameters.Count > 0, method.AsyncType);
                 break;
         }
     }
 
-    private static void GeneratePostRequest(StringBuilder sb, string routeName, bool hasParameters)
+    private static void GeneratePostRequest(StringBuilder sb, string routeName, bool hasParameters, AsyncType asyncType)
     {
+        var awaitKeyword = GetAwaitKeyword(asyncType);
+        var resultSuffix = GetResultSuffix(asyncType);
+
         if (hasParameters)
         {
-            sb.AppendLine("        var response = await _httpClient.PostAsJsonAsync(");
+            sb.AppendLine($"        var response = {awaitKeyword}_httpClient.PostAsJsonAsync(");
             sb.Append("            $\"{BaseRoute}/").Append(routeName).AppendLine("\",");
-            sb.AppendLine("            request);");
+            sb.AppendLine($"            request){resultSuffix};");
         }
         else
         {
-            sb.AppendLine("        var response = await _httpClient.PostAsync(");
+            sb.AppendLine($"        var response = {awaitKeyword}_httpClient.PostAsync(");
             sb.Append("            $\"{BaseRoute}/").Append(routeName).AppendLine("\",");
-            sb.AppendLine("            null);");
+            sb.AppendLine($"            null){resultSuffix};");
         }
     }
 
-    private static void GenerateGetRequest(
+    private static void GenerateQueryStringRequest(
         StringBuilder sb,
         string routeName,
-        List<ParameterInfo> parameters)
+        HttpMethod httpMethod,
+        List<ParameterInfo> parameters,
+        AsyncType asyncType)
     {
+        var verb = httpMethod.ToString();
+        var awaitKeyword = GetAwaitKeyword(asyncType);
+        var resultSuffix = GetResultSuffix(asyncType);
+
         if (parameters.Count > 0)
         {
             sb.AppendLine("        var queryString = System.Web.HttpUtility.ParseQueryString(string.Empty);");
@@ -191,16 +207,16 @@ internal static class ClientProxyGenerator
                     .Append(parameter.Name.ToPascalCase())
                     .Append("\"] = ")
                     .Append(parameter.Name)
-                    .AppendLine($"{(parameter.Type.EndsWith('?') ? "?" : string.Empty)}.ToString();");
+                    .AppendLine($"{(parameter.Type.EndsWith('?') ? "?" : string.Empty)}.ToString(System.Globalization.CultureInfo.InvariantCulture);");
             }
 
-            sb.AppendLine("        var response = await _httpClient.GetAsync(");
-            sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}?{{queryString}}\");");
+            sb.AppendLine($"        var response = {awaitKeyword}_httpClient.{verb}Async(");
+            sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}?{{queryString}}\"){resultSuffix};");
         }
         else
         {
-            sb.AppendLine("        var response = await _httpClient.GetAsync(");
-            sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}\");");
+            sb.AppendLine($"        var response = {awaitKeyword}_httpClient.{verb}Async(");
+            sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}\"){resultSuffix};");
         }
     }
 
@@ -208,22 +224,28 @@ internal static class ClientProxyGenerator
         StringBuilder sb,
         string routeName,
         HttpMethod httpMethod,
-        bool hasParameters)
+        bool hasParameters,
+        AsyncType asyncType)
     {
-        var httpMethodUpper = httpMethod.ToString().ToUpperInvariant();
+        var awaitKeyword = GetAwaitKeyword(asyncType);
+        var resultSuffix = GetResultSuffix(asyncType);
 
         sb.AppendLine("        var requestMessage = new HttpRequestMessage");
         sb.AppendLine("        {");
-        sb.AppendLine($"            Method = HttpMethod.{httpMethodUpper},");
-        sb.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{routeName}\", UriKind.Relative)");
+        sb.AppendLine($"            Method = HttpMethod.{httpMethod},");
 
         if (hasParameters)
         {
-            sb.AppendLine(",            Content = JsonContent.Create(request)");
+            sb.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{routeName}\", UriKind.Relative),");
+            sb.AppendLine("            Content = JsonContent.Create(request)");
+        }
+        else
+        {
+            sb.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{routeName}\", UriKind.Relative)");
         }
 
         sb.AppendLine("        };");
-        sb.AppendLine("        var response = await _httpClient.SendAsync(requestMessage);");
+        sb.AppendLine($"        var response = {awaitKeyword}_httpClient.SendAsync(requestMessage){resultSuffix};");
     }
 
     private static string FormatDefaultValue(string type, object? defaultValue)
@@ -248,6 +270,6 @@ internal static class ClientProxyGenerator
             return "null";
         }
 
-        return defaultValue!.ToString()!;
+        return Convert.ToString(defaultValue, System.Globalization.CultureInfo.InvariantCulture)!;
     }
 }

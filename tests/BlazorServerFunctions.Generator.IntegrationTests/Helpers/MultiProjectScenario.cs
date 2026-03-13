@@ -55,20 +55,30 @@ public class MultiProjectScenario
                 break;
         }
 
-        // Add referenced project assemblies
-        foreach (var refName in project.References)
-        {
-            if (_compiledProjects.TryGetValue(refName, out var refProject))
-            {
-                references.Add(refProject.AssemblyReference);
-            }
-        }
+        // Add referenced project assemblies (and their transitive dependencies)
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        AddReferencesRecursive(project.References, references, seen);
 
         return CSharpCompilation.Create(
             project.Name,
             new[] { syntaxTree },
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+    }
+
+    private void AddReferencesRecursive(
+        IEnumerable<string> refNames,
+        List<MetadataReference> references,
+        HashSet<string> seen)
+    {
+        foreach (var refName in refNames)
+        {
+            if (!seen.Add(refName)) continue;
+            if (!_compiledProjects.TryGetValue(refName, out var refProject)) continue;
+
+            references.Add(refProject.AssemblyReference);
+            AddReferencesRecursive(refProject.Definition.References, references, seen);
+        }
     }
 
     private static GeneratorDriverRunResult RunGenerator(CSharpCompilation compilation)

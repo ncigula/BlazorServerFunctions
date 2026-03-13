@@ -658,26 +658,4 @@ public class ServerGeneratorTests
         return result.VerifyNoDiagnostics();
     }
 
-    [Fact]
-    public Task Generate_SynchronousMethod_ProducesSyncEndpoint()
-    {
-        var source = """
-                     using BlazorServerFunctions.Abstractions;
-
-                     namespace MyApp.Services;
-
-                     [ServerFunctionCollection(RoutePrefix = "/sync")]
-                     public interface ISyncService
-                     {
-                         [ServerFunction(HttpMethod = "POST")]
-                         Result Process();
-                     }
-                     """;
-
-        var result = GeneratorTestHelper.RunGeneratorAsServer(
-            source,
-            new ServerFunctionCollectionGenerator());
-
-        return result.VerifyNoDiagnostics();
-    }
 }

@@ -1,4 +1,4 @@
-﻿using BlazorServerFunctions.Generator.IntegrationTests.Helpers;
+using BlazorServerFunctions.Generator.IntegrationTests.Helpers;
 
 namespace BlazorServerFunctions.Generator.IntegrationTests;
 
@@ -19,6 +19,7 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface IWeatherService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<string> GetWeather();
                 }
                 """)
@@ -32,9 +33,11 @@ public class MultiProjectIntegrationTests
                 references: "MyApp.Client")
             .Build();
 
+        scenario.Client.AssertNoDiagnostics();
         scenario.Client.AssertHasClientFiles("IWeatherService");
         scenario.Client.AssertCompilesSuccessfully();
 
+        scenario.Server.AssertNoDiagnostics();
         scenario.Server.AssertHasServerFiles("IWeatherService");
         scenario.Server.AssertCompilesSuccessfully();
     }
@@ -54,6 +57,7 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface IUserService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<string> GetUser(int id);
                 }
                 """)
@@ -68,6 +72,7 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface IWeatherService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<string> GetWeather();
                 }
                 """,
@@ -83,12 +88,15 @@ public class MultiProjectIntegrationTests
             .Build();
 
         var shared = scenario.GetProject("MyApp.Shared");
+        shared.AssertNoDiagnostics();
         shared.AssertHasClientFiles("IUserService");
         shared.AssertCompilesSuccessfully();
 
+        scenario.Client.AssertNoDiagnostics();
         scenario.Client.AssertHasClientFiles("IWeatherService");
         scenario.Client.AssertCompilesSuccessfully();
 
+        scenario.Server.AssertNoDiagnostics();
         scenario.Server.AssertHasServerFiles("IWeatherService", "IUserService");
         scenario.Server.AssertCompilesSuccessfully();
     }
@@ -108,6 +116,7 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface IUserService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<string> GetUser(int id);
                 }
                 """)
@@ -122,6 +131,7 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface IWeatherService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<string> GetWeather();
                 }
                 """)
@@ -159,6 +169,7 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface IUserService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<string> GetUser(int id);
                 }
                 """)
@@ -172,6 +183,7 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface IWeatherService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<string> GetWeather();
                 }
                 """,
@@ -212,6 +224,7 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface IUserService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<string> GetUser(int id);
                 }
                 """)
@@ -224,6 +237,7 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface IProductService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<string> GetProduct(int id);
                 }
                 """)
@@ -251,6 +265,7 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface ISharedService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<string> GetData();
                 }
                 """)
@@ -287,7 +302,10 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface IUserService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<User> GetUser(int id);
+
+                    [ServerFunction(HttpMethod = "POST")]
                     Task CreateUser(string name);
                 }
 
@@ -302,6 +320,7 @@ public class MultiProjectIntegrationTests
                 [ServerFunctionCollection]
                 public interface IWeatherService
                 {
+                    [ServerFunction(HttpMethod = "GET")]
                     Task<Weather[]> GetForecast();
                 }
 
@@ -312,8 +331,14 @@ public class MultiProjectIntegrationTests
                 references: "MyApp.Client")
             .Build();
 
-        scenario.GetProject("MyApp.Shared").AssertCompilesSuccessfully();
+        var shared = scenario.GetProject("MyApp.Shared");
+        shared.AssertNoDiagnostics();
+        shared.AssertCompilesSuccessfully();
+
+        scenario.Client.AssertNoDiagnostics();
         scenario.Client.AssertCompilesSuccessfully();
+
+        scenario.Server.AssertNoDiagnostics();
         scenario.Server.AssertCompilesSuccessfully();
     }
 }

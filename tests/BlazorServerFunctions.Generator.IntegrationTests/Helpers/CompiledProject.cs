@@ -58,6 +58,27 @@ public class CompiledProject
         Assert.Equal(0, GeneratedFileCount);
     }
 
+    public IReadOnlyCollection<Diagnostic> Diagnostics =>
+        GeneratorResults.Diagnostics;
+
+    public void AssertNoDiagnostics()
+    {
+        if (GeneratorResults.Diagnostics.Length > 0)
+        {
+            var messages = string.Join(Environment.NewLine,
+                GeneratorResults.Diagnostics.Select(d => d.ToString()));
+            Assert.Fail($"Expected no diagnostics in {Definition.Name}, but got:{Environment.NewLine}{messages}");
+        }
+    }
+
+    public void AssertHasDiagnostic(string diagnosticId)
+    {
+        Assert.True(
+            GeneratorResults.Diagnostics.Any(d => string.Equals(d.Id, diagnosticId, StringComparison.Ordinal)),
+            $"Expected diagnostic {diagnosticId} in {Definition.Name}. " +
+            $"Got: [{string.Join(", ", GeneratorResults.Diagnostics.Select(d => d.Id))}]");
+    }
+
     public void AssertCompilesSuccessfully()
     {
         var compilationWithGenerated = Compilation.AddSyntaxTrees(GeneratorResults.GeneratedTrees);

@@ -9,4 +9,5 @@ internal sealed record MethodInfo
     public HttpMethod HttpMethod { get; set; }
     public AsyncType AsyncType { get; set; }
     public List<ParameterInfo> Parameters { get; set; } = [];
+    public bool HasCancellationToken { get; set; }
 }

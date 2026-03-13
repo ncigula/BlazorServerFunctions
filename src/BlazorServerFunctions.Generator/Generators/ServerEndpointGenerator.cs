@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using BlazorServerFunctions.Generator.Helpers;
 using BlazorServerFunctions.Generator.Models;
 using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
@@ -11,8 +11,11 @@ internal static class ServerEndpointGenerator
     {
         var sb = new StringBuilder();
 
+        var hasAuthorization = interfaceInfo.RequireAuthorization || interfaceInfo.Methods.Any(m => m.RequireAuthorization);
+        var hasCancellationToken = interfaceInfo.Methods.Any(m => m.HasCancellationToken);
+
         GenerateFileHeader(sb);
-        GenerateUsingDirectives(sb);
+        GenerateUsingDirectives(sb, hasAuthorization, hasCancellationToken);
 
         sb.Append("namespace ").Append(interfaceInfo.Namespace).AppendLine(";");
         sb.AppendLine();
@@ -34,13 +37,17 @@ internal static class ServerEndpointGenerator
         sb.AppendLine();
     }
 
-    private static void GenerateUsingDirectives(StringBuilder sb)
+    private static void GenerateUsingDirectives(StringBuilder sb, bool hasAuthorization, bool hasCancellationToken)
     {
+        if (hasAuthorization)
+            sb.AppendLine("using Microsoft.AspNetCore.Authorization;");
         sb.AppendLine("using Microsoft.AspNetCore.Builder;");
         sb.AppendLine("using Microsoft.AspNetCore.Routing;");
         sb.AppendLine("using Microsoft.AspNetCore.Http;");
         sb.AppendLine("using Microsoft.AspNetCore.Mvc;");
         sb.AppendLine("using System.Text.Json;");
+        if (hasCancellationToken)
+            sb.AppendLine("using System.Threading;");
         sb.AppendLine();
     }
 
@@ -54,18 +61,22 @@ internal static class ServerEndpointGenerator
         sb.Append("        var group = endpoints.MapGroup(\"/api/functions/")
             .Append(interfaceInfo.RoutePrefix)
             .AppendLine("\");");
+
+        if (interfaceInfo.RequireAuthorization)
+            sb.AppendLine("        group.RequireAuthorization();");
+
         sb.AppendLine();
 
         foreach (var method in interfaceInfo.Methods)
         {
-            GenerateEndpoint(sb, interfaceInfo.Name, method);
+            GenerateEndpoint(sb, interfaceInfo.Name, method, interfaceInfo.RequireAuthorization);
         }
 
         sb.AppendLine("        return endpoints;");
         sb.AppendLine("    }");
     }
 
-    private static void GenerateEndpoint(StringBuilder sb, string interfaceName, MethodInfo method)
+    private static void GenerateEndpoint(StringBuilder sb, string interfaceName, MethodInfo method, bool interfaceRequiresAuth)
     {
         var routeName = method.CustomRoute ?? method.Name;
         var hasParameters = method.Parameters.Count > 0;
@@ -85,15 +96,19 @@ internal static class ServerEndpointGenerator
                 .Append(method.Name)
                 .Append("Request request, ")
                 .Append(interfaceName)
-                .AppendLine(" service) =>");
+                .Append(" service");
         }
         else
         {
             sb.Append($"            {asyncKeyword}(")
                 .Append(interfaceName)
-                .AppendLine(" service) =>");
+                .Append(" service");
         }
 
+        if (method.HasCancellationToken)
+            sb.Append(", CancellationToken cancellationToken");
+
+        sb.AppendLine(") =>");
         sb.AppendLine("            {");
 
         GenerateServiceCall(sb, method);
@@ -101,11 +116,24 @@ internal static class ServerEndpointGenerator
         GenerateResultReturn(sb, method.ReturnType);
 
         sb.AppendLine("            })");
+
+        var methodRequiresAuth = method.RequireAuthorization && !interfaceRequiresAuth;
         sb.Append("            .WithName(\"")
             .Append(interfaceName)
             .Append('_')
             .Append(method.Name)
-            .AppendLine("\");");
+            .Append('"');
+
+        if (methodRequiresAuth)
+        {
+            sb.AppendLine(")");
+            sb.AppendLine("            .RequireAuthorization();");
+        }
+        else
+        {
+            sb.AppendLine(");");
+        }
+
         sb.AppendLine();
     }
 
@@ -128,6 +156,13 @@ internal static class ServerEndpointGenerator
             var paramList = method.Parameters
                 .Select(p => $"request.{p.Name.ToPascalCase()}");
             sb.Append(string.Join(", ", paramList));
+
+            if (method.HasCancellationToken)
+                sb.Append(", cancellationToken");
+        }
+        else if (method.HasCancellationToken)
+        {
+            sb.Append("cancellationToken");
         }
 
         sb.AppendLine(");");

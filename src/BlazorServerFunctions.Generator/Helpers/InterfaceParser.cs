@@ -93,6 +93,8 @@ internal static class InterfaceParser
         };
 
         (methodInfo.AsyncType, methodInfo.ReturnType) = ParseReturnType(methodSymbol);
+        methodInfo.HasCancellationToken = methodSymbol.Parameters.Any(p =>
+            string.Equals(p.Type.ToDisplayString(), "System.Threading.CancellationToken", StringComparison.Ordinal));
         methodInfo.Parameters = ParseParameters(methodSymbol);
 
         var serverFunctionAttribute = GetServerFunctionAttribute(context, methodSymbol, methodInfo);
@@ -170,6 +172,7 @@ internal static class InterfaceParser
     private static List<ParameterInfo> ParseParameters(IMethodSymbol methodSymbol)
     {
         return methodSymbol.Parameters
+            .Where(p => !string.Equals(p.Type.ToDisplayString(), "System.Threading.CancellationToken", StringComparison.Ordinal))
             .Select(parameter => new ParameterInfo
             {
                 Name = parameter.Name,

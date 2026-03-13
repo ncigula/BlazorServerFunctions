@@ -836,4 +836,67 @@ public class ClientGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    [Fact]
+    public Task Generate_CancellationToken_ExcludedFromQueryString_ForwardedToHttpClient()
+    {
+        var source = """
+                     using System.Threading;
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
+                     public interface IUserService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<User> GetUserAsync(int id, CancellationToken cancellationToken);
+
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<User> CreateUserAsync(string name, CancellationToken cancellationToken);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_MultipleInterfaces_DifferentNamespaces_UsesCommonNamespacePrefix()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services.Users
+                     {
+                         [ServerFunctionCollection(RoutePrefix = "/users")]
+                         public interface IUserService
+                         {
+                             [ServerFunction(HttpMethod = "GET")]
+                             Task<User> GetUserAsync(int id);
+                         }
+                     }
+
+                     namespace MyApp.Services.Products
+                     {
+                         [ServerFunctionCollection(RoutePrefix = "/products")]
+                         public interface IProductService
+                         {
+                             [ServerFunction(HttpMethod = "GET")]
+                             Task<Product> GetProductAsync(int id);
+                         }
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

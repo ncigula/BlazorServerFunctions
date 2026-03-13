@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using BlazorServerFunctions.Generator.Models;
 
 namespace BlazorServerFunctions.Generator.Generators;
@@ -17,8 +17,8 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine();
         sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
         sb.AppendLine();
-        
-        var ns = interfaces.First().Namespace;
+
+        var ns = GetCommonNamespace(interfaces);
 
         sb.Append("namespace ").Append(ns).AppendLine(";");
         sb.AppendLine();
@@ -31,7 +31,7 @@ internal static class ClientRegistrationGenerator
         foreach (var interfaceName in interfaces.Select(i => i.Name))
         {
             var clientClassName = interfaceName.TrimStart('I') + "Client";
-            
+
             sb.Append("        services.AddHttpClient<")
                 .Append(interfaceName)
                 .Append(", ")
@@ -45,5 +45,31 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine("}");
 
         return sb.ToString();
+    }
+
+    private static string GetCommonNamespace(IReadOnlyCollection<InterfaceInfo> interfaces)
+    {
+        if (interfaces.Count == 1)
+            return interfaces.First().Namespace;
+
+        var parts = interfaces
+            .Select(i => i.Namespace.Split('.'))
+            .ToList();
+
+        var commonParts = new List<string>();
+        var shortest = parts.Min(p => p.Length);
+
+        for (var i = 0; i < shortest; i++)
+        {
+            var segment = parts[0][i];
+            if (parts.All(p => string.Equals(p[i], segment, StringComparison.Ordinal)))
+                commonParts.Add(segment);
+            else
+                break;
+        }
+
+        return commonParts.Count > 0
+            ? string.Join(".", commonParts)
+            : "BlazorServerFunctions.Generated";
     }
 }

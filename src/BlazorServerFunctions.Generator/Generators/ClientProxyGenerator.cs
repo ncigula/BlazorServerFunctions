@@ -15,7 +15,8 @@ internal static class ClientProxyGenerator
         sb.AppendLine("#nullable enable");
         sb.AppendLine();
 
-        AddUsingDirectives(sb: sb);
+        var hasCancellationToken = interfaceInfo.Methods.Any(m => m.HasCancellationToken);
+        AddUsingDirectives(sb: sb, hasCancellationToken: hasCancellationToken);
 
         sb.Append("namespace ").Append(interfaceInfo.Namespace).Append(';').AppendLine();
         sb.AppendLine();
@@ -47,10 +48,12 @@ internal static class ClientProxyGenerator
         sb.AppendLine("    }");
     }
 
-    private static void AddUsingDirectives(StringBuilder sb)
+    private static void AddUsingDirectives(StringBuilder sb, bool hasCancellationToken)
     {
         sb.AppendLine("using System.Net.Http;");
         sb.AppendLine("using System.Net.Http.Json;");
+        if (hasCancellationToken)
+            sb.AppendLine("using System.Threading;");
         sb.AppendLine("using System.Threading.Tasks;");
         sb.AppendLine();
     }
@@ -140,9 +143,20 @@ internal static class ClientProxyGenerator
             }
 
             return declaration;
-        });
+        }).ToList();
 
-        sb.Append(string.Join(", ", paramDeclarations));
+        if (method.HasCancellationToken)
+        {
+            if (paramDeclarations.Count > 0)
+                sb.Append(string.Join(", ", paramDeclarations)).Append(", CancellationToken cancellationToken = default");
+            else
+                sb.Append("CancellationToken cancellationToken = default");
+        }
+        else
+        {
+            sb.Append(string.Join(", ", paramDeclarations));
+        }
+
         sb.AppendLine(")");
     }
 
@@ -153,21 +167,21 @@ internal static class ClientProxyGenerator
         switch (method.HttpMethod)
         {
             case HttpMethod.Post:
-                GeneratePostRequest(sb, routeName, method.Parameters.Count > 0, method.AsyncType);
+                GeneratePostRequest(sb, routeName, method.Parameters.Count > 0, method.AsyncType, method.HasCancellationToken);
                 break;
 
             case HttpMethod.Get:
             case HttpMethod.Delete:
-                GenerateQueryStringRequest(sb, routeName, method.HttpMethod, method.Parameters, method.AsyncType);
+                GenerateQueryStringRequest(sb, routeName, method.HttpMethod, method.Parameters, method.AsyncType, method.HasCancellationToken);
                 break;
 
             default:
-                GenerateOtherRequest(sb, routeName, method.HttpMethod, method.Parameters.Count > 0, method.AsyncType);
+                GenerateOtherRequest(sb, routeName, method.HttpMethod, method.Parameters.Count > 0, method.AsyncType, method.HasCancellationToken);
                 break;
         }
     }
 
-    private static void GeneratePostRequest(StringBuilder sb, string routeName, bool hasParameters, AsyncType asyncType)
+    private static void GeneratePostRequest(StringBuilder sb, string routeName, bool hasParameters, AsyncType asyncType, bool hasCancellationToken)
     {
         var awaitKeyword = GetAwaitKeyword(asyncType);
         var resultSuffix = GetResultSuffix(asyncType);
@@ -176,13 +190,29 @@ internal static class ClientProxyGenerator
         {
             sb.AppendLine($"        var response = {awaitKeyword}_httpClient.PostAsJsonAsync(");
             sb.Append("            $\"{BaseRoute}/").Append(routeName).AppendLine("\",");
-            sb.AppendLine($"            request){resultSuffix};");
+            if (hasCancellationToken)
+            {
+                sb.AppendLine("            request,");
+                sb.AppendLine($"            cancellationToken){resultSuffix};");
+            }
+            else
+            {
+                sb.AppendLine($"            request){resultSuffix};");
+            }
         }
         else
         {
             sb.AppendLine($"        var response = {awaitKeyword}_httpClient.PostAsync(");
             sb.Append("            $\"{BaseRoute}/").Append(routeName).AppendLine("\",");
-            sb.AppendLine($"            null){resultSuffix};");
+            if (hasCancellationToken)
+            {
+                sb.AppendLine("            null,");
+                sb.AppendLine($"            cancellationToken){resultSuffix};");
+            }
+            else
+            {
+                sb.AppendLine($"            null){resultSuffix};");
+            }
         }
     }
 
@@ -191,7 +221,8 @@ internal static class ClientProxyGenerator
         string routeName,
         HttpMethod httpMethod,
         List<ParameterInfo> parameters,
-        AsyncType asyncType)
+        AsyncType asyncType,
+        bool hasCancellationToken)
     {
         var verb = httpMethod.ToString();
         var awaitKeyword = GetAwaitKeyword(asyncType);
@@ -211,12 +242,28 @@ internal static class ClientProxyGenerator
             }
 
             sb.AppendLine($"        var response = {awaitKeyword}_httpClient.{verb}Async(");
-            sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}?{{queryString}}\"){resultSuffix};");
+            if (hasCancellationToken)
+            {
+                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}?{{queryString}}\",");
+                sb.AppendLine($"            cancellationToken){resultSuffix};");
+            }
+            else
+            {
+                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}?{{queryString}}\"){resultSuffix};");
+            }
         }
         else
         {
             sb.AppendLine($"        var response = {awaitKeyword}_httpClient.{verb}Async(");
-            sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}\"){resultSuffix};");
+            if (hasCancellationToken)
+            {
+                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}\",");
+                sb.AppendLine($"            cancellationToken){resultSuffix};");
+            }
+            else
+            {
+                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}\"){resultSuffix};");
+            }
         }
     }
 
@@ -225,7 +272,8 @@ internal static class ClientProxyGenerator
         string routeName,
         HttpMethod httpMethod,
         bool hasParameters,
-        AsyncType asyncType)
+        AsyncType asyncType,
+        bool hasCancellationToken)
     {
         var awaitKeyword = GetAwaitKeyword(asyncType);
         var resultSuffix = GetResultSuffix(asyncType);
@@ -245,7 +293,11 @@ internal static class ClientProxyGenerator
         }
 
         sb.AppendLine("        };");
-        sb.AppendLine($"        var response = {awaitKeyword}_httpClient.SendAsync(requestMessage){resultSuffix};");
+
+        if (hasCancellationToken)
+            sb.AppendLine($"        var response = {awaitKeyword}_httpClient.SendAsync(requestMessage, cancellationToken){resultSuffix};");
+        else
+            sb.AppendLine($"        var response = {awaitKeyword}_httpClient.SendAsync(requestMessage){resultSuffix};");
     }
 
     private static string FormatDefaultValue(string type, object? defaultValue)

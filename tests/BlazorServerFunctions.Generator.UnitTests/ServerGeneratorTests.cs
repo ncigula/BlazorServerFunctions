@@ -680,4 +680,121 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    [Fact]
+    public Task Generate_InterfaceLevelAuthorization_AppliesRequireAuthorizationToGroup()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/admin", RequireAuthorization = true)]
+                     public interface IAdminService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetSecretAsync();
+
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task DoActionAsync(string command);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_MethodLevelAuthorization_AppliesRequireAuthorizationToEndpoint()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
+                     public interface IUserService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<User> GetUserAsync(int id);
+
+                         [ServerFunction(HttpMethod = "DELETE", RequireAuthorization = true)]
+                         Task DeleteUserAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_CancellationToken_ExcludedFromDto_PassedToService()
+    {
+        var source = """
+                     using System.Threading;
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
+                     public interface IUserService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<User> GetUserAsync(int id, CancellationToken cancellationToken);
+
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<User> CreateUserAsync(string name, CancellationToken cancellationToken);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_MultipleInterfaces_DifferentNamespaces_UsesCommonNamespacePrefix()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services.Users
+                     {
+                         [ServerFunctionCollection(RoutePrefix = "/users")]
+                         public interface IUserService
+                         {
+                             [ServerFunction(HttpMethod = "GET")]
+                             Task<User> GetUserAsync(int id);
+                         }
+                     }
+
+                     namespace MyApp.Services.Orders
+                     {
+                         [ServerFunctionCollection(RoutePrefix = "/orders")]
+                         public interface IOrderService
+                         {
+                             [ServerFunction(HttpMethod = "POST")]
+                             Task<Order> CreateOrderAsync(int userId);
+                         }
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

@@ -19,6 +19,18 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine();
         
         var ns = interfaces.First().Namespace;
+        var externalNamespaces = interfaces
+            .Select(i => i.Namespace)
+            .Where(n => !string.Equals(n, ns, StringComparison.Ordinal) && !string.IsNullOrEmpty(n))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(n => n, StringComparer.Ordinal)
+            .ToList();
+
+        foreach (var externalNs in externalNamespaces)
+            sb.Append("using ").Append(externalNs).AppendLine(";");
+
+        if (externalNamespaces.Count > 0)
+            sb.AppendLine();
 
         sb.Append("namespace ").Append(ns).AppendLine(";");
         sb.AppendLine();

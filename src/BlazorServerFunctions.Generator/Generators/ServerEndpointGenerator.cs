@@ -7,18 +7,29 @@ namespace BlazorServerFunctions.Generator.Generators;
 
 internal static class ServerEndpointGenerator
 {
-    public static string Generate(InterfaceInfo interfaceInfo)
+    public static string Generate(InterfaceInfo interfaceInfo, string? targetNamespace)
     {
         var sb = new StringBuilder();
+        var effectiveNamespace = !string.IsNullOrEmpty(targetNamespace) ? targetNamespace : interfaceInfo.Namespace;
+
+        // Add interface namespace as a using when it differs from the target namespace
+        var interfaceUsingNs = !string.IsNullOrEmpty(interfaceInfo.Namespace) &&
+                               !string.Equals(interfaceInfo.Namespace, effectiveNamespace, StringComparison.Ordinal)
+            ? interfaceInfo.Namespace
+            : null;
 
         var hasAuthorization = interfaceInfo.RequireAuthorization || interfaceInfo.Methods.Any(m => m.RequireAuthorization);
         var hasCancellationToken = interfaceInfo.Methods.Any(m => m.HasCancellationToken);
 
         GenerateFileHeader(sb);
-        GenerateUsingDirectives(sb, hasAuthorization, hasCancellationToken);
+        GenerateUsingDirectives(sb, hasAuthorization, hasCancellationToken, interfaceUsingNs);
 
-        sb.Append("namespace ").Append(interfaceInfo.Namespace).AppendLine(";");
-        sb.AppendLine();
+        if (!string.IsNullOrEmpty(effectiveNamespace))
+        {
+            sb.Append("namespace ").Append(effectiveNamespace).AppendLine(";");
+            sb.AppendLine();
+        }
+
         sb.Append("internal static class ").Append(interfaceInfo.Name).AppendLine("ServerExtensions");
         sb.AppendLine("{");
 
@@ -37,7 +48,7 @@ internal static class ServerEndpointGenerator
         sb.AppendLine();
     }
 
-    private static void GenerateUsingDirectives(StringBuilder sb, bool hasAuthorization, bool hasCancellationToken)
+    private static void GenerateUsingDirectives(StringBuilder sb, bool hasAuthorization, bool hasCancellationToken, string? additionalNamespace)
     {
         if (hasAuthorization)
             sb.AppendLine("using Microsoft.AspNetCore.Authorization;");
@@ -48,6 +59,8 @@ internal static class ServerEndpointGenerator
         sb.AppendLine("using System.Text.Json;");
         if (hasCancellationToken)
             sb.AppendLine("using System.Threading;");
+        if (!string.IsNullOrEmpty(additionalNamespace))
+            sb.Append("using ").Append(additionalNamespace).AppendLine(";");
         sb.AppendLine();
     }
 

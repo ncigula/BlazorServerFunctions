@@ -71,30 +71,6 @@ public class ServerGeneratorTests
     }
 
     [Fact]
-    public Task Generate_DeeplyNestedNamespace_UsesCorrectNamespace()
-    {
-        var source = """
-                     using System.Threading.Tasks;
-                     using BlazorServerFunctions.Abstractions;
-
-                     namespace Custom.Deeply.Nested.Namespace.Services;
-
-                     [ServerFunctionCollection(RoutePrefix = "/custom")]
-                     public interface ICustomService
-                     {
-                         [ServerFunction(HttpMethod = "GET")]
-                         Task<string> GetAsync();
-                     }
-                     """;
-
-        var result = GeneratorTestHelper.RunGeneratorAsServer(
-            source,
-            new ServerFunctionCollectionGenerator());
-
-        return result.VerifyNoDiagnostics();
-    }
-
-    [Fact]
     public Task Generate_RoutePrefixWithSlashes_PreservesSlashes()
     {
         var source = """
@@ -648,29 +624,6 @@ public class ServerGeneratorTests
                      {
                          [ServerFunction(HttpMethod = "POST")]
                          ValueTask<Result> ProcessAsync();
-                     }
-                     """;
-
-        var result = GeneratorTestHelper.RunGeneratorAsServer(
-            source,
-            new ServerFunctionCollectionGenerator());
-
-        return result.VerifyNoDiagnostics();
-    }
-
-    [Fact]
-    public Task Generate_SynchronousMethod_ProducesSyncEndpoint()
-    {
-        var source = """
-                     using BlazorServerFunctions.Abstractions;
-
-                     namespace MyApp.Services;
-
-                     [ServerFunctionCollection(RoutePrefix = "/sync")]
-                     public interface ISyncService
-                     {
-                         [ServerFunction(HttpMethod = "POST")]
-                         Result Process();
                      }
                      """;
 

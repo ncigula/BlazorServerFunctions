@@ -50,6 +50,7 @@ internal static class ClientProxyGenerator
 
     private static void AddUsingDirectives(StringBuilder sb, bool hasCancellationToken)
     {
+        sb.AppendLine("using System;");
         sb.AppendLine("using System.Net.Http;");
         sb.AppendLine("using System.Net.Http.Json;");
         if (hasCancellationToken)

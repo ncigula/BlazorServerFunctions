@@ -45,6 +45,58 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
                 Execute(spc, compilation, localInterfaces, referencedSymbols, projectInfo);
             });
+
+        // BSF001: detect [ServerFunction] methods on interfaces missing [ServerFunctionCollection]
+        RegisterBsf001Pipeline(context);
+    }
+
+    private static void RegisterBsf001Pipeline(IncrementalGeneratorInitializationContext context)
+    {
+        var orphaned = context.SyntaxProvider
+            .CreateSyntaxProvider(
+                predicate: static (node, _) => IsInterfaceWithServerFunctionMethods(node),
+                transform: static (ctx, _) => GetInterfaceSymbolIfMissingCollectionAttr(ctx))
+            .Where(static m => m is not null)
+            .Collect();
+
+        context.RegisterSourceOutput(orphaned, static (spc, symbols) =>
+        {
+            var reported = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var symbol in symbols)
+            {
+                if (symbol is null) continue;
+                var key = symbol.ToDisplayString();
+                if (!reported.Add(key)) continue;
+                spc.ReportDiagnostic(Diagnostic.Create(
+                    DiagnosticDescriptors.MissingServerFunctionCollectionAttribute,
+                    symbol.Locations.FirstOrDefault(),
+                    symbol.Name));
+            }
+        });
+    }
+
+    private static bool IsInterfaceWithServerFunctionMethods(SyntaxNode node)
+    {
+        if (node is not InterfaceDeclarationSyntax interfaceDecl)
+            return false;
+
+        return interfaceDecl.Members.OfType<MethodDeclarationSyntax>().Any(
+            m => m.AttributeLists.Any(al => al.Attributes.Any(
+                a => a.Name.ToString().Contains("ServerFunction", StringComparison.Ordinal)
+                     && !a.Name.ToString().Contains("ServerFunctionCollection", StringComparison.Ordinal))));
+    }
+
+    private static INamedTypeSymbol? GetInterfaceSymbolIfMissingCollectionAttr(GeneratorSyntaxContext ctx)
+    {
+        var interfaceDecl = (InterfaceDeclarationSyntax)ctx.Node;
+        if (ctx.SemanticModel.GetDeclaredSymbol(interfaceDecl) is not INamedTypeSymbol symbol)
+            return null;
+
+        var hasCollectionAttr = symbol.GetAttributes().Any(a =>
+            string.Equals(a.AttributeClass?.Name, "ServerFunctionCollectionAttribute",
+                StringComparison.OrdinalIgnoreCase));
+
+        return hasCollectionAttr ? null : symbol;
     }
 
     /// <summary>
@@ -154,20 +206,32 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             allInterfaces.AddRange(referencedInterfaceInfos);
 
             if (allInterfaces.Count > 0)
-                GenerateEndpoints(context, allInterfaces);
+                GenerateEndpoints(context, allInterfaces, compilation.AssemblyName);
         }
 
         // ── Generate Client Proxies ───────────────────────────────────────────
         if (projectInfo.GenerateClients)
         {
-            var allInterfaces = new List<InterfaceInfo>(
+            // Proxy files only for LOCAL interfaces.
+            // Referenced interfaces already have proxies generated in their source project.
+            // Regenerating them here causes CS0436 conflicts when the reference assembly is added.
+            foreach (var interfaceInfo in localInterfaceInfos)
+            {
+                var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
+                context.AddSource($"{interfaceInfo.Name.TrimStart('I')}Client.g.cs", clientCode);
+            }
+
+            // Registration includes ALL interfaces (local + referenced)
+            var allForRegistration = new List<InterfaceInfo>(
                 localInterfaceInfos.Count + referencedInterfaceInfos.Count);
+            allForRegistration.AddRange(localInterfaceInfos);
+            allForRegistration.AddRange(referencedInterfaceInfos);
 
-            allInterfaces.AddRange(localInterfaceInfos);
-            allInterfaces.AddRange(referencedInterfaceInfos);
-
-            if (allInterfaces.Count > 0)
-                GenerateClients(context, allInterfaces);
+            if (allForRegistration.Count > 0)
+            {
+                var registrationCode = ClientRegistrationGenerator.Generate(allForRegistration, compilation.AssemblyName);
+                context.AddSource("ServerFunctionClientsRegistration.g.cs", registrationCode);
+            }
         }
     }
 
@@ -203,7 +267,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
                 sourceProductionContextWrapper,
                 interfaceSymbol);
 
-            if (!sourceProductionContextWrapper.HasErrors)
+            if (!sourceProductionContextWrapper.HasErrors && interfaceInfo.Methods.Count > 0)
                 result.Add(interfaceInfo);
         }
 
@@ -224,15 +288,28 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         foreach (var symbol in symbols)
         {
             context.CancellationToken.ThrowIfCancellationRequested();
-            
-            var sourceProductionContextWrapper = new SourceProductionContextWrapper(context);
-            
-            var interfaceInfo = InterfaceParser.ParseInterface(
-                sourceProductionContextWrapper,
-                symbol);
 
-            if (!sourceProductionContextWrapper.HasErrors)
-                result.Add(interfaceInfo);
+            try
+            {
+                var sourceProductionContextWrapper = new SourceProductionContextWrapper(context);
+
+                var interfaceInfo = InterfaceParser.ParseInterface(
+                    sourceProductionContextWrapper,
+                    symbol);
+
+                if (!sourceProductionContextWrapper.HasErrors && interfaceInfo.Methods.Count > 0)
+                    result.Add(interfaceInfo);
+            }
+            catch (Exception)
+            {
+                // BSF016: Failed to parse a referenced interface — report and skip
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        DiagnosticDescriptors.ReferencedInterfaceParseFailure,
+                        Location.None,
+                        symbol.Name,
+                        symbol.ContainingAssembly.Name));
+            }
         }
 
         return result;
@@ -240,29 +317,17 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
     private static void GenerateEndpoints(
         SourceProductionContext context,
-        List<InterfaceInfo> allInterfaces)
+        List<InterfaceInfo> allInterfaces,
+        string? targetNamespace)
     {
         foreach (var interfaceInfo in allInterfaces)
         {
-            var serverCode = ServerEndpointGenerator.Generate(interfaceInfo);
+            var serverCode = ServerEndpointGenerator.Generate(interfaceInfo, targetNamespace);
             context.AddSource($"{interfaceInfo.Name}ServerExtensions.g.cs", serverCode);
         }
 
-        var registrationCode = ServerRegistrationGenerator.Generate(allInterfaces);
+        var registrationCode = ServerRegistrationGenerator.Generate(allInterfaces, targetNamespace);
         context.AddSource("ServerFunctionEndpointsRegistration.g.cs", registrationCode);
     }
 
-    private static void GenerateClients(
-        SourceProductionContext context,
-        List<InterfaceInfo> allInterfaces)
-    {
-        foreach (var interfaceInfo in allInterfaces)
-        {
-            var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
-            context.AddSource($"{interfaceInfo.Name}Client.g.cs", clientCode);
-        }
-
-        var clientRegistrationCode = ClientRegistrationGenerator.Generate(allInterfaces);
-        context.AddSource("ServerFunctionClientsRegistration.g.cs", clientRegistrationCode);
-    }
 }

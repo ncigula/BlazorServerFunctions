@@ -30,7 +30,7 @@ public class MultiProjectScenario
                 Definition = project,
                 Compilation = compilation,
                 GeneratorResults = generatorResults,
-                AssemblyReference = EmitToReference(compilation)
+                AssemblyReference = EmitToReference(compilation, generatorResults)
             };
         }
     }
@@ -55,20 +55,30 @@ public class MultiProjectScenario
                 break;
         }
 
-        // Add referenced project assemblies
-        foreach (var refName in project.References)
-        {
-            if (_compiledProjects.TryGetValue(refName, out var refProject))
-            {
-                references.Add(refProject.AssemblyReference);
-            }
-        }
+        // Add referenced project assemblies (and their transitive dependencies)
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        AddReferencesRecursive(project.References, references, seen);
 
         return CSharpCompilation.Create(
             project.Name,
             new[] { syntaxTree },
             references,
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+    }
+
+    private void AddReferencesRecursive(
+        IEnumerable<string> refNames,
+        List<MetadataReference> references,
+        HashSet<string> seen)
+    {
+        foreach (var refName in refNames)
+        {
+            if (!seen.Add(refName)) continue;
+            if (!_compiledProjects.TryGetValue(refName, out var refProject)) continue;
+
+            references.Add(refProject.AssemblyReference);
+            AddReferencesRecursive(refProject.Definition.References, references, seen);
+        }
     }
 
     private static GeneratorDriverRunResult RunGenerator(CSharpCompilation compilation)
@@ -79,10 +89,14 @@ public class MultiProjectScenario
         return driver.GetRunResult();
     }
 
-    private static PortableExecutableReference EmitToReference(CSharpCompilation compilation)
+    private static PortableExecutableReference EmitToReference(
+        CSharpCompilation compilation,
+        GeneratorDriverRunResult generatorResults)
     {
+        // Include generated trees so consuming projects can reference generated types
+        var compilationWithGenerated = compilation.AddSyntaxTrees(generatorResults.GeneratedTrees);
         using var stream = new MemoryStream();
-        var emitResult = compilation.Emit(stream);
+        var emitResult = compilationWithGenerated.Emit(stream);
         
         if (!emitResult.Success)
         {

@@ -3,8 +3,9 @@
 #nullable enable
 
 using Microsoft.Extensions.DependencyInjection;
+using MyApp.Services;
 
-namespace MyApp.Services;
+namespace Tests;
 
 public static class ServerFunctionClientsRegistration
 {

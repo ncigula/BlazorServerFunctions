@@ -3,8 +3,9 @@
 #nullable enable
 
 using Microsoft.Extensions.DependencyInjection;
+using BlazorServerFunctions.Sample.Shared;
 
-namespace BlazorServerFunctions.Sample.Shared;
+namespace Tests;
 
 public static class ServerFunctionClientsRegistration
 {

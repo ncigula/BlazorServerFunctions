@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using BlazorServerFunctions.Abstractions;
 using Microsoft.CodeAnalysis;
 
@@ -6,31 +6,37 @@ namespace BlazorServerFunctions.Generator.IntegrationTests.Helpers;
 
 public static class CompilationHelper
 {
+    /// <summary>
+    /// Returns metadata references needed for all project types.
+    /// IMPORTANT: Must NOT include project-type-marker assemblies:
+    ///   - Microsoft.AspNetCore.Routing (contains IEndpointRouteBuilder → detected as Server)
+    ///   - Microsoft.AspNetCore.Components.WebAssembly (contains WebAssemblyHostBuilder → detected as Client)
+    /// Those must only appear in GetServerReferences() / GetClientReferences().
+    /// </summary>
     public static IEnumerable<MetadataReference> GetBasicReferences()
     {
+        // .NET core framework
         yield return MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
         yield return MetadataReference.CreateFromFile(typeof(Console).Assembly.Location);
-        yield return MetadataReference.CreateFromFile(typeof(Attribute).Assembly.Location);
-        yield return MetadataReference.CreateFromFile(typeof(ServerFunctionCollectionAttribute).Assembly.Location);
-        
         yield return MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location);
         yield return MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location);
+        yield return MetadataReference.CreateFromFile(Assembly.Load("System.Collections.Specialized").Location);
+        yield return MetadataReference.CreateFromFile(Assembly.Load("System.Threading.Tasks").Location);
+        yield return MetadataReference.CreateFromFile(Assembly.Load("System.Linq").Location);
 
-        // var references = AppDomain.CurrentDomain
-        //     .GetAssemblies()
-        //     .Where(a => !a.IsDynamic && !string.IsNullOrWhiteSpace(a.Location))
-        //     .Select(a => MetadataReference.CreateFromFile(a.Location));
-        //
-        // foreach (reference portableExecutableReference in references)
-        // {
-        //     yield return reference;
-        // }
-        //
-        // yield return MetadataReference.CreateFromFile(
-        //     Assembly.Load("System.Threading.Tasks").Location
-        // );
-        //
-        // yield return MetadataReference.CreateFromFile(typeof(ServerFunctionCollectionAttribute).Assembly.Location);
+        // Abstractions
+        yield return MetadataReference.CreateFromFile(typeof(ServerFunctionCollectionAttribute).Assembly.Location);
+
+        // Generated client proxy and registration code dependencies
+        yield return MetadataReference.CreateFromFile(typeof(System.Uri).Assembly.Location);
+        yield return MetadataReference.CreateFromFile(typeof(System.Net.Http.HttpClient).Assembly.Location);
+        yield return MetadataReference.CreateFromFile(typeof(System.Net.Http.Json.HttpClientJsonExtensions).Assembly.Location);
+        yield return MetadataReference.CreateFromFile(Assembly.Load("System.Net.Primitives").Location);
+        yield return MetadataReference.CreateFromFile(Assembly.Load("System.Net.Http").Location);
+        yield return MetadataReference.CreateFromFile(Assembly.Load("System.Text.Json").Location);
+        yield return MetadataReference.CreateFromFile(Assembly.Load("System.Web.HttpUtility").Location);
+        yield return MetadataReference.CreateFromFile(Assembly.Load("Microsoft.Extensions.DependencyInjection.Abstractions").Location);
+        yield return MetadataReference.CreateFromFile(Assembly.Load("Microsoft.Extensions.Http").Location);
     }
 
     public static IEnumerable<MetadataReference> GetServerReferences()
@@ -46,6 +52,12 @@ public static class CompilationHelper
 
         yield return MetadataReference.CreateFromFile(
             typeof(Microsoft.AspNetCore.Mvc.FromBodyAttribute).Assembly.Location);
+
+        yield return MetadataReference.CreateFromFile(
+            Assembly.Load("Microsoft.AspNetCore.Routing.Abstractions").Location);
+
+        yield return MetadataReference.CreateFromFile(
+            Assembly.Load("Microsoft.AspNetCore.Http.Abstractions").Location);
     }
 
     public static IEnumerable<MetadataReference> GetClientReferences()

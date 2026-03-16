@@ -1,4 +1,8 @@
+using BlazorServerFunctions.Sample;
 using BlazorServerFunctions.Sample.Components;
+using BlazorServerFunctions.Sample.Components.Admin;
+using BlazorServerFunctions.Sample.Components.Crud;
+using BlazorServerFunctions.Sample.Components.Echo;
 using BlazorServerFunctions.Sample.Components.Weather;
 using BlazorServerFunctions.Sample.Shared;
 
@@ -9,7 +13,13 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
+builder.Services.AddAuthentication();
+builder.Services.AddAuthorization();
+
 builder.Services.AddScoped<IWeatherService, WeatherService>();
+builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IEchoService, EchoService>();
+builder.Services.AddScoped<ICrudService, CrudService>();
 
 var app = builder.Build();
 
@@ -28,6 +38,9 @@ else
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.UseAntiforgery();
 
 app.MapStaticAssets();
@@ -35,5 +48,7 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(BlazorServerFunctions.Sample.Client._Imports).Assembly);
+
+app.MapServerFunctionEndpoints();
 
 await app.RunAsync().ConfigureAwait(true);

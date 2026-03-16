@@ -5,6 +5,6 @@ namespace BlazorServerFunctions.Sample.Shared;
 [ServerFunctionCollection]
 public interface IWeatherService
 {
-    [ServerFunction( HttpMethod = "GET")]
-    Task<WeatherForecastDto[]> GetWeatherForecastsAsync();
+    [ServerFunction(HttpMethod = "GET")]
+    Task<WeatherForecastDto[]> GetWeatherForecastsAsync(CancellationToken cancellationToken = default);
 }

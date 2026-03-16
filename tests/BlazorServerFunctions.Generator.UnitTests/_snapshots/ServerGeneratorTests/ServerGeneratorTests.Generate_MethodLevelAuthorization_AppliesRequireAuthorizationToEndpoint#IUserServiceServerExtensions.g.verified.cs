@@ -8,8 +8,9 @@ using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using MyApp.Services;
 
-namespace MyApp.Services;
+namespace Tests;
 
 internal static class IUserServiceServerExtensions
 {

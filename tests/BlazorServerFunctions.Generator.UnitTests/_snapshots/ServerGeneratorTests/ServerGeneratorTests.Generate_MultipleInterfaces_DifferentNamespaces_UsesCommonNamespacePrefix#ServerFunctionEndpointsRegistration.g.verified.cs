@@ -4,8 +4,10 @@
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
+using MyApp.Services.Orders;
+using MyApp.Services.Users;
 
-namespace MyApp.Services;
+namespace Tests;
 
 public static class ServerFunctionEndpointsRegistration
 {

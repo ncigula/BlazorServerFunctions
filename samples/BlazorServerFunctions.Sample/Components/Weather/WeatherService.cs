@@ -4,10 +4,10 @@ namespace BlazorServerFunctions.Sample.Components.Weather;
 
 internal sealed class WeatherService : IWeatherService
 {
-    public async Task<WeatherForecastDto[]> GetWeatherForecastsAsync()
+    public async Task<WeatherForecastDto[]> GetWeatherForecastsAsync(CancellationToken cancellationToken = default)
     {
         // Simulate asynchronous loading to demonstrate streaming rendering
-        await Task.Delay(500).ConfigureAwait(false);
+        await Task.Delay(500, cancellationToken).ConfigureAwait(false);
 
         var startDate = DateOnly.FromDateTime(DateTime.UtcNow);
         var summaries = new[] { "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching" };

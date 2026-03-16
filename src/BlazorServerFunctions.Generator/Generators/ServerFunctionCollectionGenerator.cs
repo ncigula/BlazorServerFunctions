@@ -212,14 +212,26 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         // ── Generate Client Proxies ───────────────────────────────────────────
         if (projectInfo.GenerateClients)
         {
-            var allInterfaces = new List<InterfaceInfo>(
+            // Proxy files only for LOCAL interfaces.
+            // Referenced interfaces already have proxies generated in their source project.
+            // Regenerating them here causes CS0436 conflicts when the reference assembly is added.
+            foreach (var interfaceInfo in localInterfaceInfos)
+            {
+                var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
+                context.AddSource($"{interfaceInfo.Name.TrimStart('I')}Client.g.cs", clientCode);
+            }
+
+            // Registration includes ALL interfaces (local + referenced)
+            var allForRegistration = new List<InterfaceInfo>(
                 localInterfaceInfos.Count + referencedInterfaceInfos.Count);
+            allForRegistration.AddRange(localInterfaceInfos);
+            allForRegistration.AddRange(referencedInterfaceInfos);
 
-            allInterfaces.AddRange(localInterfaceInfos);
-            allInterfaces.AddRange(referencedInterfaceInfos);
-
-            if (allInterfaces.Count > 0)
-                GenerateClients(context, allInterfaces);
+            if (allForRegistration.Count > 0)
+            {
+                var registrationCode = ClientRegistrationGenerator.Generate(allForRegistration);
+                context.AddSource("ServerFunctionClientsRegistration.g.cs", registrationCode);
+            }
         }
     }
 
@@ -317,17 +329,4 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         context.AddSource("ServerFunctionEndpointsRegistration.g.cs", registrationCode);
     }
 
-    private static void GenerateClients(
-        SourceProductionContext context,
-        List<InterfaceInfo> allInterfaces)
-    {
-        foreach (var interfaceInfo in allInterfaces)
-        {
-            var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
-            context.AddSource($"{interfaceInfo.Name.TrimStart('I')}Client.g.cs", clientCode);
-        }
-
-        var clientRegistrationCode = ClientRegistrationGenerator.Generate(allInterfaces);
-        context.AddSource("ServerFunctionClientsRegistration.g.cs", clientRegistrationCode);
-    }
 }

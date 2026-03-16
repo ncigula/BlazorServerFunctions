@@ -30,7 +30,7 @@ public class MultiProjectScenario
                 Definition = project,
                 Compilation = compilation,
                 GeneratorResults = generatorResults,
-                AssemblyReference = EmitToReference(compilation)
+                AssemblyReference = EmitToReference(compilation, generatorResults)
             };
         }
     }
@@ -89,10 +89,14 @@ public class MultiProjectScenario
         return driver.GetRunResult();
     }
 
-    private static PortableExecutableReference EmitToReference(CSharpCompilation compilation)
+    private static PortableExecutableReference EmitToReference(
+        CSharpCompilation compilation,
+        GeneratorDriverRunResult generatorResults)
     {
+        // Include generated trees so consuming projects can reference generated types
+        var compilationWithGenerated = compilation.AddSyntaxTrees(generatorResults.GeneratedTrees);
         using var stream = new MemoryStream();
-        var emitResult = compilation.Emit(stream);
+        var emitResult = compilationWithGenerated.Emit(stream);
         
         if (!emitResult.Success)
         {

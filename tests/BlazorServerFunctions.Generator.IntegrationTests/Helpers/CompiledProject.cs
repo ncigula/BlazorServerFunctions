@@ -24,8 +24,14 @@ public class CompiledProject
     {
         var tree = GeneratorResults.GeneratedTrees
             .FirstOrDefault(t => t.FilePath.Contains(fileName));
-        
+
         return tree?.ToString() ?? throw new InvalidOperationException($"File {fileName} not found");
+    }
+
+    public void AssertFileContains(string fileName, string expectedText)
+    {
+        var content = GetGeneratedFileContent(fileName);
+        Assert.Contains(expectedText, content, StringComparison.Ordinal);
     }
 
     public void AssertHasServerFiles(params string[] interfaceNames)

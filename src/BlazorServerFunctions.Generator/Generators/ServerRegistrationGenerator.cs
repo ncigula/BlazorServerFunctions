@@ -1,16 +1,16 @@
-﻿using System.Text;
+using System.Text;
 using BlazorServerFunctions.Generator.Models;
 
 namespace BlazorServerFunctions.Generator.Generators;
 
 internal static class ServerRegistrationGenerator
 {
-    public static string Generate(IReadOnlyCollection<InterfaceInfo> interfaces)
+    public static string Generate(IReadOnlyCollection<InterfaceInfo> interfaces, string? targetNamespace)
     {
         if (interfaces.Count == 0)
             return string.Empty;
 
-        var ns = interfaces.First().Namespace;
+        var ns = !string.IsNullOrEmpty(targetNamespace) ? targetNamespace : interfaces.First().Namespace;
         var externalNamespaces = interfaces
             .Select(i => i.Namespace)
             .Where(n => !string.Equals(n, ns, StringComparison.Ordinal) && !string.IsNullOrEmpty(n))
@@ -30,8 +30,12 @@ internal static class ServerRegistrationGenerator
             sb.Append("using ").Append(externalNs).AppendLine(";");
 
         sb.AppendLine();
-        sb.Append("namespace ").Append(ns).AppendLine(";");
-        sb.AppendLine();
+        if (!string.IsNullOrEmpty(ns))
+        {
+            sb.Append("namespace ").Append(ns).AppendLine(";");
+            sb.AppendLine();
+        }
+
         sb.AppendLine("public static class ServerFunctionEndpointsRegistration");
         sb.AppendLine("{");
         sb.AppendLine("    public static IEndpointRouteBuilder MapServerFunctionEndpoints(");

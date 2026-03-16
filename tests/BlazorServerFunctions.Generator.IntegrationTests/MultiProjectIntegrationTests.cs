@@ -406,12 +406,11 @@ public class MultiProjectIntegrationTests
     }
 
     [Fact]
-    public void ServerExtensions_AreInServerProject_WithInterfaceNamespace()
+    public void ServerExtensions_AreInServerProject_WithServerProjectNamespace()
     {
         // Server extension files are generated in the SERVER project (not in the shared project),
-        // but placed in the interface's own namespace so that the types they reference are visible.
-        // NOTE: This documents current behavior. A future design (partial method / fixed namespace)
-        // may change where the registration namespace lives — update this test when that lands.
+        // and use the server project's assembly name as their namespace.
+        // The interface namespace is added as a using directive so referenced types are visible.
         var scenario = new ProjectBuilder()
             .AddSharedProject(
                 "MyApp.Shared",
@@ -440,8 +439,10 @@ public class MultiProjectIntegrationTests
         Assert.False(shared.HasGeneratedFile("IUserServiceServerExtensions.g.cs"),
             "Server extension file must NOT be in the shared project");
 
-        // Current behavior: server extension uses the interface's namespace
-        scenario.Server.AssertFileContains("IUserServiceServerExtensions.g.cs", "namespace MyApp.Shared;");
+        // Server extensions use the server project's assembly name as namespace
+        scenario.Server.AssertFileContains("IUserServiceServerExtensions.g.cs", "namespace MyApp.Server;");
+        // Interface namespace is added as a using so types are visible
+        scenario.Server.AssertFileContains("IUserServiceServerExtensions.g.cs", "using MyApp.Shared;");
     }
 
     // ── Registration content tests ────────────────────────────────────────────

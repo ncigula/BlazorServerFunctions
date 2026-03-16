@@ -206,7 +206,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             allInterfaces.AddRange(referencedInterfaceInfos);
 
             if (allInterfaces.Count > 0)
-                GenerateEndpoints(context, allInterfaces);
+                GenerateEndpoints(context, allInterfaces, compilation.AssemblyName);
         }
 
         // ── Generate Client Proxies ───────────────────────────────────────────
@@ -229,7 +229,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
             if (allForRegistration.Count > 0)
             {
-                var registrationCode = ClientRegistrationGenerator.Generate(allForRegistration);
+                var registrationCode = ClientRegistrationGenerator.Generate(allForRegistration, compilation.AssemblyName);
                 context.AddSource("ServerFunctionClientsRegistration.g.cs", registrationCode);
             }
         }
@@ -317,15 +317,16 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
     private static void GenerateEndpoints(
         SourceProductionContext context,
-        List<InterfaceInfo> allInterfaces)
+        List<InterfaceInfo> allInterfaces,
+        string? targetNamespace)
     {
         foreach (var interfaceInfo in allInterfaces)
         {
-            var serverCode = ServerEndpointGenerator.Generate(interfaceInfo);
+            var serverCode = ServerEndpointGenerator.Generate(interfaceInfo, targetNamespace);
             context.AddSource($"{interfaceInfo.Name}ServerExtensions.g.cs", serverCode);
         }
 
-        var registrationCode = ServerRegistrationGenerator.Generate(allInterfaces);
+        var registrationCode = ServerRegistrationGenerator.Generate(allInterfaces, targetNamespace);
         context.AddSource("ServerFunctionEndpointsRegistration.g.cs", registrationCode);
     }
 

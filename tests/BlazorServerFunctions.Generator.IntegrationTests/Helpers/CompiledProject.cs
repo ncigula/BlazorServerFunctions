@@ -48,15 +48,24 @@ public class CompiledProject
 
     public void AssertHasClientFiles(params string[] interfaceNames)
     {
+        AssertHasClientProxyFiles(interfaceNames);
+        Assert.True(HasGeneratedFile("ServerFunctionClientsRegistration.g.cs"),
+            $"Expected ServerFunctionClientsRegistration.g.cs in {Definition.Name}");
+    }
+
+    /// <summary>
+    /// Asserts that client proxy files exist without checking for the registration file.
+    /// Use this for Library/Shared projects, which export proxy classes but do not generate
+    /// registration — consuming Client/Server projects generate registration instead.
+    /// </summary>
+    public void AssertHasClientProxyFiles(params string[] interfaceNames)
+    {
         foreach (var name in interfaceNames)
         {
             var clientName = name.TrimStart('I') + "Client.g.cs";
             Assert.True(HasGeneratedFile(clientName),
                 $"Expected {clientName} in {Definition.Name}");
         }
-        
-        Assert.True(HasGeneratedFile("ServerFunctionClientsRegistration.g.cs"),
-            $"Expected ServerFunctionClientsRegistration.g.cs in {Definition.Name}");
     }
 
     public void AssertHasNoGeneratedFiles()

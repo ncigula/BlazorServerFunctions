@@ -172,7 +172,8 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         return new ProjectInfo
         {
             GenerateEndpoints = isServer,
-            GenerateClients = isClient || isLibrary
+            GenerateClients = isClient || isLibrary,
+            IsLibrary = isLibrary
         };
     }
 
@@ -221,16 +222,24 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
                 context.AddSource($"{interfaceInfo.Name.TrimStart('I')}Client.g.cs", clientCode);
             }
 
-            // Registration includes ALL interfaces (local + referenced)
-            var allForRegistration = new List<InterfaceInfo>(
-                localInterfaceInfos.Count + referencedInterfaceInfos.Count);
-            allForRegistration.AddRange(localInterfaceInfos);
-            allForRegistration.AddRange(referencedInterfaceInfos);
+            // Registration is generated for Client/Server projects and for Library projects
+            // that consume interfaces from referenced assemblies.
+            // Source libraries (Library mode with only local interfaces) skip registration —
+            // the consuming Client/Server project generates it when referencing this library.
+            bool isSourceLibrary = projectInfo.IsLibrary && referencedInterfaceInfos.Count == 0;
 
-            if (allForRegistration.Count > 0)
+            if (!isSourceLibrary)
             {
-                var registrationCode = ClientRegistrationGenerator.Generate(allForRegistration, compilation.AssemblyName);
-                context.AddSource("ServerFunctionClientsRegistration.g.cs", registrationCode);
+                var allForRegistration = new List<InterfaceInfo>(
+                    localInterfaceInfos.Count + referencedInterfaceInfos.Count);
+                allForRegistration.AddRange(localInterfaceInfos);
+                allForRegistration.AddRange(referencedInterfaceInfos);
+
+                if (allForRegistration.Count > 0)
+                {
+                    var registrationCode = ClientRegistrationGenerator.Generate(allForRegistration, compilation.AssemblyName);
+                    context.AddSource("ServerFunctionClientsRegistration.g.cs", registrationCode);
+                }
             }
         }
     }

@@ -27,7 +27,7 @@ public class DiagnosticIntegrationTests
 
         var project = scenario.GetProject("MyApp.Shared");
         project.AssertNoDiagnostics();
-        project.AssertHasClientFiles("IUserService");
+        project.AssertHasClientProxyFiles("IUserService");
     }
 
     // ── BSF001: Missing [ServerFunctionCollection] ────────────────────────────
@@ -519,6 +519,6 @@ public class DiagnosticIntegrationTests
         var project = scenario.GetProject("MyApp.Shared");
         project.AssertHasDiagnostic("BSF102");
         // Warning doesn't block generation — files should still be created
-        project.AssertHasClientFiles("IUserService");
+        project.AssertHasClientProxyFiles("IUserService");
     }
 }

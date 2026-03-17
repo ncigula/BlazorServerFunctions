@@ -91,7 +91,7 @@ public class MultiProjectIntegrationTests
 
         var shared = scenario.GetProject("MyApp.Shared");
         shared.AssertNoDiagnostics();
-        shared.AssertHasClientFiles("IUserService");
+        shared.AssertHasClientProxyFiles("IUserService");
         shared.AssertCompilesSuccessfully();
 
         scenario.Client.AssertNoDiagnostics();
@@ -149,7 +149,7 @@ public class MultiProjectIntegrationTests
 
         var shared = scenario.GetProject("MyApp.Shared");
         shared.AssertNoDiagnostics();
-        shared.AssertHasClientFiles("IUserService");
+        shared.AssertHasClientProxyFiles("IUserService");
         shared.AssertCompilesSuccessfully();
 
         scenario.Client.AssertNoDiagnostics();
@@ -208,7 +208,7 @@ public class MultiProjectIntegrationTests
 
         var shared = scenario.GetProject("MyApp.Shared");
         shared.AssertNoDiagnostics();
-        shared.AssertHasClientFiles("IUserService");
+        shared.AssertHasClientProxyFiles("IUserService");
         shared.AssertCompilesSuccessfully();
 
         scenario.Client.AssertNoDiagnostics();
@@ -295,8 +295,8 @@ public class MultiProjectIntegrationTests
 
         Assert.True(shared.HasGeneratedFile("SharedServiceClient.g.cs"),
             "Client proxy should be in Shared project where interface is defined");
-        Assert.True(shared.HasGeneratedFile("ServerFunctionClientsRegistration.g.cs"),
-            "Client registration should be in Shared project where interface is defined");
+        Assert.False(shared.HasGeneratedFile("ServerFunctionClientsRegistration.g.cs"),
+            "Client registration should NOT be in a source library — consuming Client/Server projects generate it");
 
         Assert.True(scenario.Server.HasGeneratedFile("ISharedServiceServerExtensions.g.cs"),
             "Server endpoints should be in Server project");

@@ -22,6 +22,7 @@ public static class CompilationHelper
         yield return MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location);
         yield return MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location);
         yield return MetadataReference.CreateFromFile(Assembly.Load("System.Collections.Specialized").Location);
+        yield return MetadataReference.CreateFromFile(Assembly.Load("System.ComponentModel").Location);
         yield return MetadataReference.CreateFromFile(Assembly.Load("System.Threading.Tasks").Location);
         yield return MetadataReference.CreateFromFile(Assembly.Load("System.Linq").Location);
 

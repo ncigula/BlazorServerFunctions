@@ -1,3 +1,6 @@
+using System.Net;
+using System.Text.Json;
+
 namespace BlazorServerFunctions.EndToEndTests;
 
 /// <summary>
@@ -66,5 +69,39 @@ public sealed class CrudServiceClientTests(E2EFixture fixture) : IClassFixture<E
         var input = new ComplexDto { Name = "No Description", Description = null };
         var result = await Client.CreateAsync(input);
         Assert.Null(result.Description);
+    }
+    
+    [Fact]
+    public async Task GetAsync_NonExistentId_ThrowsWithProblemDetailsBody()
+    {
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(
+            () => Client.GetAsync(99));
+
+        Assert.Equal(HttpStatusCode.InternalServerError, ex.StatusCode);
+        AssertIsProblemDetailsWithDetail(ex.Message, "Item 99 not found.");
+    }
+
+    [Fact]
+    public async Task PatchAsync_NonExistentId_ThrowsWithProblemDetailsBody()
+    {
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(
+            () => Client.PatchAsync(99, "Name", "x"));
+
+        Assert.Equal(HttpStatusCode.InternalServerError, ex.StatusCode);
+        AssertIsProblemDetailsWithDetail(ex.Message, "Item 99 not found.");
+    }
+
+    private static void AssertIsProblemDetailsWithDetail(string body, string expectedDetail)
+    {
+        using var doc = JsonDocument.Parse(body);
+        var root = doc.RootElement;
+
+        Assert.True(root.TryGetProperty("status", out var status),
+            "Problem Details body missing 'status' field");
+        Assert.Equal(500, status.GetInt32());
+
+        Assert.True(root.TryGetProperty("detail", out var detail),
+            "Problem Details body missing 'detail' field");
+        Assert.Contains(expectedDetail, detail.GetString(), StringComparison.Ordinal);
     }
 }

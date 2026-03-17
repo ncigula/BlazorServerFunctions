@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using BlazorServerFunctions.Sample;
 using BlazorServerFunctions.Sample.Components;
 using BlazorServerFunctions.Sample.Components.Admin;
@@ -5,6 +6,7 @@ using BlazorServerFunctions.Sample.Components.Crud;
 using BlazorServerFunctions.Sample.Components.Echo;
 using BlazorServerFunctions.Sample.Components.Weather;
 using BlazorServerFunctions.Sample.Shared;
+using Microsoft.AspNetCore.Authentication;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,7 +15,9 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
-builder.Services.AddAuthentication();
+// Cookie auth for the Admin demo page.
+builder.Services.AddAuthentication("Cookies")
+    .AddCookie(options => options.LoginPath = "/demos/admin/wasm");
 builder.Services.AddAuthorization();
 
 builder.Services.AddScoped<IWeatherService, WeatherService>();
@@ -50,6 +54,21 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(typeof(BlazorServerFunctions.Sample.Client._Imports).Assembly);
 
 app.MapServerFunctionEndpoints();
+
+// Demo login/logout for the Admin page (issues a simple cookie — not for production use).
+app.MapPost("/demos/admin/login", async (HttpContext ctx) =>
+{
+    var claims = new List<Claim> { new(ClaimTypes.Name, "demo-user") };
+    var identity = new ClaimsIdentity(claims, "Cookies");
+    await ctx.SignInAsync(new ClaimsPrincipal(identity)).ConfigureAwait(false);
+    return Results.Redirect("/demos/admin/wasm");
+}).DisableAntiforgery();
+
+app.MapPost("/demos/admin/logout", async (HttpContext ctx) =>
+{
+    await ctx.SignOutAsync().ConfigureAwait(false);
+    return Results.Redirect("/demos/admin/wasm");
+}).DisableAntiforgery();
 
 await app.RunAsync().ConfigureAwait(true);
 

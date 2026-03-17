@@ -3,12 +3,12 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// <summary>
 /// Server path: resolves ICrudService directly from DI → CrudService.
 /// </summary>
-public sealed class CrudServiceServerTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+public sealed class CrudServiceServerTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
     [Fact]
     public async Task GetAsync_ReturnsItemWithCorrectId()
     {
-        using var scope = fixture.Factory.Services.CreateScope();
+        using var scope = factory.Services.CreateScope();
         var result = await scope.ServiceProvider.GetRequiredService<ICrudService>().GetAsync(42);
         Assert.Equal(42, result.Id);
     }
@@ -25,7 +25,7 @@ public sealed class CrudServiceServerTests(E2EFixture fixture) : IClassFixture<E
             Price = 99.99m
         };
 
-        using var scope = fixture.Factory.Services.CreateScope();
+        using var scope = factory.Services.CreateScope();
         var result = await scope.ServiceProvider.GetRequiredService<ICrudService>().CreateAsync(input);
 
         Assert.Equal(input.Name, result.Name);
@@ -37,7 +37,7 @@ public sealed class CrudServiceServerTests(E2EFixture fixture) : IClassFixture<E
     public async Task UpdateAsync_ReturnsItemWithCorrectId()
     {
         var update = new ComplexDto { Id = 5, Name = "Updated", Price = 1.0m };
-        using var scope = fixture.Factory.Services.CreateScope();
+        using var scope = factory.Services.CreateScope();
         var result = await scope.ServiceProvider.GetRequiredService<ICrudService>().UpdateAsync(5, update);
         Assert.Equal(5, result.Id);
         Assert.Equal("Updated", result.Name);
@@ -46,7 +46,7 @@ public sealed class CrudServiceServerTests(E2EFixture fixture) : IClassFixture<E
     [Fact]
     public async Task PatchAsync_ReflectsChange()
     {
-        using var scope = fixture.Factory.Services.CreateScope();
+        using var scope = factory.Services.CreateScope();
         var result = await scope.ServiceProvider.GetRequiredService<ICrudService>()
             .PatchAsync(7, "Name", "patched-value");
         Assert.Equal(7, result.Id);
@@ -56,7 +56,7 @@ public sealed class CrudServiceServerTests(E2EFixture fixture) : IClassFixture<E
     [Fact]
     public async Task DeleteAsync_CompletesWithoutError()
     {
-        using var scope = fixture.Factory.Services.CreateScope();
+        using var scope = factory.Services.CreateScope();
         var exception = await Record.ExceptionAsync(
             () => scope.ServiceProvider.GetRequiredService<ICrudService>().DeleteAsync(10));
         Assert.Null(exception);
@@ -66,7 +66,7 @@ public sealed class CrudServiceServerTests(E2EFixture fixture) : IClassFixture<E
     public async Task CreateAsync_NullDescription_RoundTripsNull()
     {
         var input = new ComplexDto { Name = "No Description", Description = null };
-        using var scope = fixture.Factory.Services.CreateScope();
+        using var scope = factory.Services.CreateScope();
         var result = await scope.ServiceProvider.GetRequiredService<ICrudService>().CreateAsync(input);
         Assert.Null(result.Description);
     }

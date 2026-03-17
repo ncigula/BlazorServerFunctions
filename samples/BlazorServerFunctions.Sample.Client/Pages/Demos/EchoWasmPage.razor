@@ -1,0 +1,49 @@
+@page "/demos/echo/wasm"
+@rendermode InteractiveWebAssembly
+
+@inject IEchoService EchoService
+
+<PageTitle>Echo — WASM</PageTitle>
+
+<div class="demo-header">
+    <span class="badge bg-success">🌐 Interactive WebAssembly</span>
+    <span class="badge bg-secondary ms-2">IEchoService → EchoServiceClient → HTTP</span>
+</div>
+
+<h2 class="mt-3">Echo Service</h2>
+<p>Calls routed through the generated <code>EchoServiceClient</code> HTTP proxy running in WebAssembly.</p>
+
+<div class="mb-3">
+    <label class="form-label">Message</label>
+    <input class="form-control" @bind="_message" placeholder="Type something..." />
+</div>
+
+<div class="d-flex gap-2 mb-3">
+    <button class="btn btn-outline-success" @onclick="CallGetAsync">GET Echo</button>
+    <button class="btn btn-outline-primary" @onclick="CallPostAsync">POST Echo</button>
+</div>
+
+@if (_getResult is not null)
+{
+    <div class="alert alert-success">
+        <strong>GET result:</strong> <code>@_getResult</code>
+    </div>
+}
+@if (_postResult is not null)
+{
+    <div class="alert alert-primary">
+        <strong>POST result:</strong> <code>@_postResult</code>
+    </div>
+}
+
+@code {
+    private string _message = "hello";
+    private string? _getResult;
+    private string? _postResult;
+
+    private async Task CallGetAsync() =>
+        _getResult = await EchoService.GetEchoAsync(_message);
+
+    private async Task CallPostAsync() =>
+        _postResult = await EchoService.PostEchoAsync(_message);
+}

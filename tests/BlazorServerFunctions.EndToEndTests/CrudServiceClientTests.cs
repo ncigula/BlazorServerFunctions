@@ -1,13 +1,13 @@
 namespace BlazorServerFunctions.EndToEndTests;
 
 /// <summary>
-/// Client path: resolves CrudServiceClient from DI → HTTP calls to the in-memory server.
+/// Client path: resolves ICrudService from DI → CrudServiceClient (HTTP proxy) → in-memory server.
 /// Verifies all HTTP verbs and complex DTO JSON round-trip through generated endpoints.
 /// </summary>
 public sealed class CrudServiceClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
 {
-    private CrudServiceClient Client =>
-        fixture.Factory.Services.GetRequiredService<CrudServiceClient>();
+    private ICrudService Client =>
+        fixture.ClientServices.GetRequiredService<ICrudService>();
 
     [Fact]
     public async Task GetAsync_ReturnsItemWithCorrectId()

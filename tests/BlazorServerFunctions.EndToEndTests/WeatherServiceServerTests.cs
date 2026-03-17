@@ -4,12 +4,12 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// Server path: resolves IWeatherService directly from DI → WeatherService.
 /// Mirrors Blazor Server components which call services in-process without HTTP.
 /// </summary>
-public sealed class WeatherServiceServerTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+public sealed class WeatherServiceServerTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
 {
     [Fact]
     public async Task GetWeatherForecastsAsync_Returns5Forecasts()
     {
-        using var scope = fixture.Factory.Services.CreateScope();
+        using var scope = factory.Services.CreateScope();
         var result = await scope.ServiceProvider.GetRequiredService<IWeatherService>()
             .GetWeatherForecastsAsync();
         Assert.Equal(5, result.Length);
@@ -18,7 +18,7 @@ public sealed class WeatherServiceServerTests(E2EFixture fixture) : IClassFixtur
     [Fact]
     public async Task GetWeatherForecastsAsync_AllForecastsHaveRequiredFields()
     {
-        using var scope = fixture.Factory.Services.CreateScope();
+        using var scope = factory.Services.CreateScope();
         var result = await scope.ServiceProvider.GetRequiredService<IWeatherService>()
             .GetWeatherForecastsAsync();
         Assert.All(result, f =>
@@ -31,7 +31,7 @@ public sealed class WeatherServiceServerTests(E2EFixture fixture) : IClassFixtur
     [Fact]
     public async Task GetWeatherForecastsAsync_TemperatureFMatchesFormula()
     {
-        using var scope = fixture.Factory.Services.CreateScope();
+        using var scope = factory.Services.CreateScope();
         var result = await scope.ServiceProvider.GetRequiredService<IWeatherService>()
             .GetWeatherForecastsAsync();
         Assert.All(result, f =>
@@ -41,7 +41,7 @@ public sealed class WeatherServiceServerTests(E2EFixture fixture) : IClassFixtur
     [Fact]
     public async Task GetWeatherForecastsAsync_WithPreCancelledToken_Throws()
     {
-        using var scope = fixture.Factory.Services.CreateScope();
+        using var scope = factory.Services.CreateScope();
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
         await Assert.ThrowsAsync<TaskCanceledException>(
@@ -52,7 +52,7 @@ public sealed class WeatherServiceServerTests(E2EFixture fixture) : IClassFixtur
     [Fact]
     public async Task GetWeatherForecastsAsync_CancelledMidFlight_Throws()
     {
-        using var scope = fixture.Factory.Services.CreateScope();
+        using var scope = factory.Services.CreateScope();
         using var cts = new CancellationTokenSource(millisecondsDelay: 100);
         await Assert.ThrowsAsync<TaskCanceledException>(
             () => scope.ServiceProvider.GetRequiredService<IWeatherService>()

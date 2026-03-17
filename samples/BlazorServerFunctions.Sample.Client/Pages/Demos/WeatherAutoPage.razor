@@ -1,0 +1,64 @@
+@page "/demos/weather/auto"
+@rendermode InteractiveAuto
+
+@inject IWeatherService WeatherService
+
+<PageTitle>Weather — Auto</PageTitle>
+
+<div class="demo-header">
+    <span class="badge bg-purple" style="background-color:#7b2fbe;">⚡ Interactive Auto</span>
+    <span class="badge bg-secondary ms-2">IWeatherService → WeatherService (server) or WeatherServiceClient (WASM)</span>
+</div>
+
+<h2 class="mt-3">Weather Forecasts</h2>
+<p>
+    Same component code — <code>&#64;inject IWeatherService WeatherService</code> — works in both render contexts:
+    server DI resolves <code>WeatherService</code> (direct call), WASM DI resolves <code>WeatherServiceClient</code> (HTTP).
+    First visit uses server-side rendering; subsequent visits use WebAssembly once the runtime is cached.
+</p>
+
+@if (_forecasts is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp (°C)</th>
+                <th>Temp (°F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var f in _forecasts)
+            {
+                <tr>
+                    <td>@f.Date.ToShortDateString()</td>
+                    <td>@f.TemperatureC</td>
+                    <td>@f.TemperatureF</td>
+                    <td>@f.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <button class="btn btn-outline-secondary" @onclick="ReloadAsync">↺ Reload</button>
+}
+
+@code {
+    private WeatherForecastDto[]? _forecasts;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _forecasts = null;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() =>
+        _forecasts = await WeatherService.GetWeatherForecastsAsync();
+}

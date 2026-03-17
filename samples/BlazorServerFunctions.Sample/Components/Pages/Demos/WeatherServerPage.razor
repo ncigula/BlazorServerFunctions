@@ -1,0 +1,60 @@
+@page "/demos/weather/server"
+@rendermode InteractiveServer
+
+@inject IWeatherService WeatherService
+
+<PageTitle>Weather — Server</PageTitle>
+
+<div class="demo-header">
+    <span class="badge bg-primary">🖥 Interactive Server</span>
+    <span class="badge bg-secondary ms-2">IWeatherService → WeatherService (direct, no HTTP)</span>
+</div>
+
+<h2 class="mt-3">Weather Forecasts</h2>
+<p>Data loaded directly from <code>WeatherService</code> via server DI — no HTTP request leaves the server.</p>
+
+@if (_forecasts is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Temp (°C)</th>
+                <th>Temp (°F)</th>
+                <th>Summary</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var f in _forecasts)
+            {
+                <tr>
+                    <td>@f.Date.ToShortDateString()</td>
+                    <td>@f.TemperatureC</td>
+                    <td>@f.TemperatureF</td>
+                    <td>@f.Summary</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <button class="btn btn-outline-primary" @onclick="ReloadAsync">↺ Reload</button>
+}
+
+@code {
+    private WeatherForecastDto[]? _forecasts;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task ReloadAsync()
+    {
+        _forecasts = null;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync() =>
+        _forecasts = await WeatherService.GetWeatherForecastsAsync();
+}

@@ -1,0 +1,43 @@
+@page "/demos/admin/server"
+@rendermode InteractiveServer
+
+@inject IAdminService AdminService
+
+<PageTitle>Admin — Server</PageTitle>
+
+<div class="demo-header">
+    <span class="badge bg-primary">🖥 Interactive Server</span>
+    <span class="badge bg-secondary ms-2">IAdminService → AdminService (direct, no HTTP)</span>
+</div>
+
+<h2 class="mt-3">Admin Service</h2>
+<p>
+    Called directly from server DI — bypasses the HTTP authorization layer entirely.
+    Server-side components are trusted and run in-process; no HTTP request is made.
+</p>
+
+<div class="alert alert-info">
+    <strong>Note:</strong> The <code>[ServerFunctionCollection(RequireAuthorization = true)]</code> attribute
+    generates an HTTP endpoint that requires auth. But <em>this page</em> calls <code>IAdminService</code>
+    directly via DI, so no auth check occurs.
+</div>
+
+@if (_result is null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <div class="alert alert-success">
+        <strong>Secret:</strong> <code>@_result</code>
+    </div>
+    <button class="btn btn-outline-primary" @onclick="LoadAsync">↺ Reload</button>
+}
+
+@code {
+    private string? _result;
+
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync() => _result = await AdminService.GetSecretAsync();
+}

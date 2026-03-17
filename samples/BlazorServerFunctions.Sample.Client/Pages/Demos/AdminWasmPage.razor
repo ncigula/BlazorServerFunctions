@@ -1,0 +1,63 @@
+@page "/demos/admin/wasm"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@inject IAdminService AdminService
+
+<PageTitle>Admin — WASM</PageTitle>
+
+<div class="demo-header">
+    <span class="badge bg-success">🌐 Interactive WebAssembly</span>
+    <span class="badge bg-secondary ms-2">IAdminService → AdminServiceClient → HTTP (RequireAuthorization)</span>
+</div>
+
+<h2 class="mt-3">Admin Service</h2>
+<p>
+    The generated endpoint for <code>IAdminService</code> is protected with
+    <code>[ServerFunctionCollection(RequireAuthorization = true)]</code>.
+    This page calls it via HTTP from WebAssembly — you must be authenticated to see the secret.
+</p>
+
+@if (_loading)
+{
+    <p><em>Loading...</em></p>
+}
+else if (_unauthorized)
+{
+    <div class="alert alert-warning d-flex align-items-center gap-3">
+        <span>🔒 <strong>Not authenticated.</strong> You need to log in to access the admin secret.</span>
+    </div>
+    <form method="post" action="/demos/admin/login">
+        <button type="submit" class="btn btn-primary">Login as demo-user</button>
+    </form>
+}
+else if (_result is not null)
+{
+    <div class="alert alert-success">
+        <strong>Secret:</strong> <code>@_result</code>
+    </div>
+    <form method="post" action="/demos/admin/logout">
+        <button type="submit" class="btn btn-outline-secondary">Logout</button>
+    </form>
+}
+
+@code {
+    private bool _loading = true;
+    private bool _unauthorized;
+    private string? _result;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _result = await AdminService.GetSecretAsync();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        {
+            _unauthorized = true;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}

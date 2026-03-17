@@ -1,13 +1,33 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace BlazorServerFunctions.EndToEndTests;
 
-public class AuthorizationE2ETests(WebApplicationFactory<Program> factory)
+/// <summary>
+/// Server path: resolves IAdminService directly from DI → AdminService.
+/// No auth check applies — server-side components already run in an authenticated context.
+/// </summary>
+public sealed class AdminServiceServerTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+{
+    [Fact]
+    public async Task GetSecretAsync_ReturnsSecret_WithoutAuthCheck()
+    {
+        using var scope = fixture.Factory.Services.CreateScope();
+        var result = await scope.ServiceProvider.GetRequiredService<IAdminService>()
+            .GetSecretAsync();
+        Assert.Equal("top-secret", result);
+    }
+}
+
+/// <summary>
+/// Client path: resolves AdminServiceClient via HTTP → generated endpoint with RequireAuthorization.
+/// Verifies that interface-level auth is enforced on the HTTP endpoint and that
+/// non-auth interfaces are unaffected by auth middleware.
+/// </summary>
+public sealed class AdminServiceClientTests(WebApplicationFactory<Program> factory)
     : IClassFixture<WebApplicationFactory<Program>>
 {
-    private readonly AdminServiceClient _unauthenticatedClient = new(
+    private AdminServiceClient UnauthenticatedClient => new(
         factory.WithWebHostBuilder(b =>
             b.ConfigureTestServices(services =>
                 services.AddAuthentication(NoOpAuthHandler.SchemeName)
@@ -15,7 +35,7 @@ public class AuthorizationE2ETests(WebApplicationFactory<Program> factory)
                         NoOpAuthHandler.SchemeName, _ => { })))
             .CreateClient());
 
-    private readonly AdminServiceClient _authenticatedClient = new(
+    private AdminServiceClient AuthenticatedClient => new(
         factory.WithWebHostBuilder(b =>
             b.ConfigureTestServices(services =>
                 services.AddAuthentication(TestAuthHandler.SchemeName)
@@ -24,17 +44,17 @@ public class AuthorizationE2ETests(WebApplicationFactory<Program> factory)
             .CreateClient());
 
     [Fact]
-    public async Task GetSecretAsync_WithoutAuthentication_Throws401()
+    public async Task GetSecretAsync_WithoutAuthentication_Returns401()
     {
         var ex = await Assert.ThrowsAsync<HttpRequestException>(
-            () => _unauthenticatedClient.GetSecretAsync());
+            () => UnauthenticatedClient.GetSecretAsync());
         Assert.Equal(System.Net.HttpStatusCode.Unauthorized, ex.StatusCode);
     }
 
     [Fact]
     public async Task GetSecretAsync_WithAuthentication_ReturnsSecret()
     {
-        var result = await _authenticatedClient.GetSecretAsync();
+        var result = await AuthenticatedClient.GetSecretAsync();
         Assert.Equal("top-secret", result);
     }
 

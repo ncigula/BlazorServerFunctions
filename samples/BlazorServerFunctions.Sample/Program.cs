@@ -52,3 +52,8 @@ app.MapRazorComponents<App>()
 app.MapServerFunctionEndpoints();
 
 await app.RunAsync().ConfigureAwait(true);
+
+public partial class Program
+{
+    protected Program() { }
+}

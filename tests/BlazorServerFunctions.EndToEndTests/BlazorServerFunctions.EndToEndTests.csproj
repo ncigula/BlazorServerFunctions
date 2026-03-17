@@ -3,6 +3,8 @@
         <OutputType>Exe</OutputType>
         <NoWarn>$(NoWarn);CA1707</NoWarn>
         <NoWarn>$(NoWarn);NU1608</NoWarn>
+        <!-- Multiple related test classes intentionally co-located per file -->
+        <NoWarn>$(NoWarn);MA0048</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

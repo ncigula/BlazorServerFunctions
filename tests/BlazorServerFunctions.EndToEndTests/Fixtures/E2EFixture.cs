@@ -38,27 +38,35 @@ public sealed class E2EFixture : IDisposable
         // Touch the server so that Server.BaseAddress and CreateHandler() are ready.
         _ = Factory.CreateClient();
 
-        // Build a standalone client-side DI container.
-        // This does NOT modify the test server's service registrations.
+        _clientServices = BuildClientServices(Factory);
+    }
+
+    /// <summary>
+    /// Builds a standalone client-side DI container wired to the given factory's
+    /// in-memory server.  Reused by <see cref="AdminServiceFixture"/> so that
+    /// all client registrations stay in one place.
+    /// </summary>
+    internal static ServiceProvider BuildClientServices(WebApplicationFactory<Program> factory)
+    {
         var services = new ServiceCollection();
 
         services.AddHttpClient<IWeatherService, WeatherServiceClient>()
-            .ConfigurePrimaryHttpMessageHandler(() => Factory.Server.CreateHandler())
-            .ConfigureHttpClient((_, c) => c.BaseAddress = Factory.Server.BaseAddress);
+            .ConfigurePrimaryHttpMessageHandler(() => factory.Server.CreateHandler())
+            .ConfigureHttpClient((_, c) => c.BaseAddress = factory.Server.BaseAddress);
 
         services.AddHttpClient<IAdminService, AdminServiceClient>()
-            .ConfigurePrimaryHttpMessageHandler(() => Factory.Server.CreateHandler())
-            .ConfigureHttpClient((_, c) => c.BaseAddress = Factory.Server.BaseAddress);
+            .ConfigurePrimaryHttpMessageHandler(() => factory.Server.CreateHandler())
+            .ConfigureHttpClient((_, c) => c.BaseAddress = factory.Server.BaseAddress);
 
         services.AddHttpClient<IEchoService, EchoServiceClient>()
-            .ConfigurePrimaryHttpMessageHandler(() => Factory.Server.CreateHandler())
-            .ConfigureHttpClient((_, c) => c.BaseAddress = Factory.Server.BaseAddress);
+            .ConfigurePrimaryHttpMessageHandler(() => factory.Server.CreateHandler())
+            .ConfigureHttpClient((_, c) => c.BaseAddress = factory.Server.BaseAddress);
 
         services.AddHttpClient<ICrudService, CrudServiceClient>()
-            .ConfigurePrimaryHttpMessageHandler(() => Factory.Server.CreateHandler())
-            .ConfigureHttpClient((_, c) => c.BaseAddress = Factory.Server.BaseAddress);
+            .ConfigurePrimaryHttpMessageHandler(() => factory.Server.CreateHandler())
+            .ConfigureHttpClient((_, c) => c.BaseAddress = factory.Server.BaseAddress);
 
-        _clientServices = services.BuildServiceProvider();
+        return services.BuildServiceProvider();
     }
 
     public void Dispose()

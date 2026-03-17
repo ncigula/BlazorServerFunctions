@@ -1,40 +1,31 @@
-// CA1859: Intentionally using interface types to mirror how components inject IAdminService / IWeatherService
-#pragma warning disable CA1859
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.TestHost;
+using System.Net;
 
 namespace BlazorServerFunctions.EndToEndTests;
 
 /// <summary>
-/// Client path: IAdminService (→ AdminServiceClient HTTP proxy) → generated endpoint with RequireAuthorization.
-/// Verifies that interface-level auth is enforced on the HTTP endpoint and that
-/// non-auth interfaces are unaffected by auth middleware.
+/// Client path: resolves IAdminService from DI → AdminServiceClient (HTTP proxy) →
+/// generated endpoint with RequireAuthorization.
+/// <para>
+/// Uses <see cref="AdminServiceFixture"/> which spins up two in-memory servers — one
+/// unauthenticated and one authenticated — and exposes a client-side
+/// <see cref="IServiceProvider"/> for each, mirroring how a real WASM component
+/// injects <c>IAdminService</c> via the generated <c>AddServerFunctionClients</c>.
+/// </para>
 /// </summary>
-public sealed class AdminServiceClientTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+public sealed class AdminServiceClientTests(AdminServiceFixture fixture) : IClassFixture<AdminServiceFixture>
 {
-    private IAdminService UnauthenticatedClient => new AdminServiceClient(
-        factory.WithWebHostBuilder(b =>
-            b.ConfigureTestServices(services =>
-                services.AddAuthentication(NoOpAuthHandler.SchemeName)
-                    .AddScheme<AuthenticationSchemeOptions, NoOpAuthHandler>(
-                        NoOpAuthHandler.SchemeName, _ => { })))
-            .CreateClient());
+    private IAdminService UnauthenticatedClient =>
+        fixture.UnauthClientServices.GetRequiredService<IAdminService>();
 
-    private IAdminService AuthenticatedClient => new AdminServiceClient(
-        factory.WithWebHostBuilder(b =>
-            b.ConfigureTestServices(services =>
-                services.AddAuthentication(TestAuthHandler.SchemeName)
-                    .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
-                        TestAuthHandler.SchemeName, _ => { })))
-            .CreateClient());
+    private IAdminService AuthenticatedClient =>
+        fixture.AuthClientServices.GetRequiredService<IAdminService>();
 
     [Fact]
     public async Task GetSecretAsync_WithoutAuthentication_Returns401()
     {
         var ex = await Assert.ThrowsAsync<HttpRequestException>(
             () => UnauthenticatedClient.GetSecretAsync());
-        Assert.Equal(System.Net.HttpStatusCode.Unauthorized, ex.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, ex.StatusCode);
     }
 
     [Fact]
@@ -47,13 +38,8 @@ public sealed class AdminServiceClientTests(WebApplicationFactory<Program> facto
     [Fact]
     public async Task WeatherEndpoint_WithoutAuthentication_StillAccessible()
     {
-        IWeatherService weatherClient = new WeatherServiceClient(
-            factory.WithWebHostBuilder(b =>
-                b.ConfigureTestServices(services =>
-                    services.AddAuthentication(NoOpAuthHandler.SchemeName)
-                        .AddScheme<AuthenticationSchemeOptions, NoOpAuthHandler>(
-                            NoOpAuthHandler.SchemeName, _ => { })))
-                .CreateClient());
+        // Verifies that auth on IAdminService does not bleed onto unprotected interfaces.
+        var weatherClient = fixture.UnauthClientServices.GetRequiredService<IWeatherService>();
         var result = await weatherClient.GetWeatherForecastsAsync();
         Assert.NotEmpty(result);
     }

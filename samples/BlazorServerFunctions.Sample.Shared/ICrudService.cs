@@ -6,6 +6,9 @@ namespace BlazorServerFunctions.Sample.Shared;
 public interface ICrudService
 {
     [ServerFunction(HttpMethod = "GET")]
+    Task<ComplexDto[]> GetAllAsync();
+
+    [ServerFunction(HttpMethod = "GET")]
     Task<ComplexDto> GetAsync(int id);
 
     [ServerFunction(HttpMethod = "POST")]

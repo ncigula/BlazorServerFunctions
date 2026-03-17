@@ -17,13 +17,25 @@ builder.Services.AddRazorComponents()
 
 // Cookie auth for the Admin demo page.
 builder.Services.AddAuthentication("Cookies")
-    .AddCookie(options => options.LoginPath = "/demos/admin/wasm");
+    .AddCookie(options =>
+    {
+        options.LoginPath = "/demos/admin/wasm";
+        // API clients (HttpClient from WASM) don't follow redirects gracefully —
+        // return 401 directly so the generated client throws HttpRequestException
+        // instead of following the redirect to the login page and returning HTML.
+        options.Events.OnRedirectToLogin = ctx =>
+        {
+            ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        };
+    });
 builder.Services.AddAuthorization();
+builder.Services.AddProblemDetails();
 
 builder.Services.AddScoped<IWeatherService, WeatherService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IEchoService, EchoService>();
-builder.Services.AddScoped<ICrudService, CrudService>();
+builder.Services.AddSingleton<ICrudService, CrudService>();
 
 var app = builder.Build();
 

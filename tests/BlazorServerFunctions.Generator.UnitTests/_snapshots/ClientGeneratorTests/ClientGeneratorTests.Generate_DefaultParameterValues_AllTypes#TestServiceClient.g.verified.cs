@@ -3,6 +3,7 @@
 #nullable enable
 
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
@@ -30,7 +31,11 @@ public class TestServiceClient : ITestService
         var response = await _httpClient.GetAsync(
             $"{BaseRoute}/TestMethodAsync?{queryString}");
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException(errorBody, null, response.StatusCode);
+        }
 
         return await response.Content.ReadFromJsonAsync<string>()
             ?? throw new InvalidOperationException("Response deserialization returned null");

@@ -12,8 +12,8 @@ public sealed class CrudServiceClientTests(E2EFixture fixture) : IClassFixture<E
     [Fact]
     public async Task GetAsync_ReturnsItemWithCorrectId()
     {
-        var result = await Client.GetAsync(42);
-        Assert.Equal(42, result.Id);
+        var result = await Client.GetAsync(1);
+        Assert.Equal(1, result.Id);
     }
 
     [Fact]
@@ -48,8 +48,8 @@ public sealed class CrudServiceClientTests(E2EFixture fixture) : IClassFixture<E
     [Fact]
     public async Task PatchAsync_PartialUpdate_ReflectsChange()
     {
-        var result = await Client.PatchAsync(7, "Name", "patched-value");
-        Assert.Equal(7, result.Id);
+        var result = await Client.PatchAsync(2, "Name", "patched-value");
+        Assert.Equal(2, result.Id);
         Assert.Equal("patched-value", result.Name);
     }
 

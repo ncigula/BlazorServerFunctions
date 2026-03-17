@@ -9,8 +9,8 @@ public sealed class CrudServiceServerTests(WebApplicationFactory<Program> factor
     public async Task GetAsync_ReturnsItemWithCorrectId()
     {
         using var scope = factory.Services.CreateScope();
-        var result = await scope.ServiceProvider.GetRequiredService<ICrudService>().GetAsync(42);
-        Assert.Equal(42, result.Id);
+        var result = await scope.ServiceProvider.GetRequiredService<ICrudService>().GetAsync(1);
+        Assert.Equal(1, result.Id);
     }
 
     [Fact]
@@ -48,8 +48,8 @@ public sealed class CrudServiceServerTests(WebApplicationFactory<Program> factor
     {
         using var scope = factory.Services.CreateScope();
         var result = await scope.ServiceProvider.GetRequiredService<ICrudService>()
-            .PatchAsync(7, "Name", "patched-value");
-        Assert.Equal(7, result.Id);
+            .PatchAsync(2, "Name", "patched-value");
+        Assert.Equal(2, result.Id);
         Assert.Equal("patched-value", result.Name);
     }
 

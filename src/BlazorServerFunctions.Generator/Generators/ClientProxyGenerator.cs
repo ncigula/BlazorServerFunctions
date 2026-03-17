@@ -51,6 +51,7 @@ internal static class ClientProxyGenerator
     private static void AddUsingDirectives(StringBuilder sb, bool hasCancellationToken)
     {
         sb.AppendLine("using System;");
+        sb.AppendLine("using System.Net;");
         sb.AppendLine("using System.Net.Http;");
         sb.AppendLine("using System.Net.Http.Json;");
         if (hasCancellationToken)
@@ -82,7 +83,16 @@ internal static class ClientProxyGenerator
             method: methodInfo);
 
         sb.AppendLine();
-        sb.AppendLine("        response.EnsureSuccessStatusCode();");
+        sb.AppendLine("        if (!response.IsSuccessStatusCode)");
+        sb.AppendLine("        {");
+        sb.Append("            var errorBody = ")
+            .Append(GetAwaitKeyword(methodInfo.AsyncType))
+            .Append("response.Content.ReadAsStringAsync(");
+        if (methodInfo.HasCancellationToken)
+            sb.Append("cancellationToken");
+        sb.Append(')').Append(GetResultSuffix(methodInfo.AsyncType)).AppendLine(";");
+        sb.AppendLine("            throw new HttpRequestException(errorBody, null, response.StatusCode);");
+        sb.AppendLine("        }");
         sb.AppendLine();
 
         if (!string.Equals(methodInfo.ReturnType, "void", StringComparison.OrdinalIgnoreCase))

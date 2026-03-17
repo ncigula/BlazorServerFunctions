@@ -11,123 +11,142 @@
 </div>
 
 <h2 class="mt-3">CRUD Service</h2>
-<p>All verbs (GET / POST / PUT / PATCH / DELETE) called directly from server DI — no HTTP leaves the server.</p>
+<p>Operations call <code>CrudService</code> directly via server DI. The collection is shared in-memory (singleton) so changes persist across requests and are immediately visible on the WASM page too.</p>
 
-<div class="row g-3">
+@* ── Item list ── *@
+<div class="d-flex align-items-center gap-2 mb-2">
+    <h5 class="mb-0">Items</h5>
+    <button class="btn btn-sm btn-outline-secondary" @onclick="LoadAsync">↺ Refresh</button>
+</div>
 
-    @* GET *@
-    <div class="col-12 col-md-6">
-        <div class="card h-100">
-            <div class="card-header"><span class="badge bg-primary">GET</span> by ID</div>
-            <div class="card-body">
-                <div class="input-group mb-2">
-                    <input class="form-control" type="number" @bind="_getId" />
-                    <button class="btn btn-outline-primary" @onclick="CallGetAsync">Fetch</button>
-                </div>
-                @if (_getResult is not null)
-                {
-                    <div class="alert alert-primary py-1 mb-0"><small>@_getResult.Id | @_getResult.Name | @_getResult.Price.ToString("C")</small></div>
-                }
-            </div>
+@if (_items is null)
+{
+    <p><em>Loading…</em></p>
+}
+else if (_items.Length == 0)
+{
+    <p class="text-muted">No items yet.</p>
+}
+else
+{
+    <table class="table table-sm table-hover align-middle">
+        <thead>
+            <tr><th>ID</th><th>Name</th><th>Description</th><th>Price</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var item in _items)
+            {
+                <tr>
+                    <td><code>@item.Id</code></td>
+                    <td>@item.Name</td>
+                    <td class="text-muted small">@item.Description</td>
+                    <td>@item.Price.ToString("C")</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-warning me-1" @onclick="() => StartEdit(item)">Edit</button>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(item.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (_statusMessage is not null)
+{
+    <div class="alert alert-success py-1 mb-3">@_statusMessage</div>
+}
+
+@* ── Create / Edit form ── *@
+<div class="card mb-3" style="max-width:420px">
+    <div class="card-header">
+        @if (_editId is null) { <span class="badge bg-success">POST</span><span class="ms-2">Create new item</span> }
+        else { <span class="badge bg-warning text-dark">PUT</span><span class="ms-2">Editing item #@_editId</span> }
+    </div>
+    <div class="card-body">
+        <input class="form-control mb-2" @bind="_formName" placeholder="Name" />
+        <input class="form-control mb-2" @bind="_formDescription" placeholder="Description (optional)" />
+        <input class="form-control mb-2" type="number" step="0.01" @bind="_formPrice" placeholder="Price" />
+        <div class="d-flex gap-2">
+            @if (_editId is null)
+            {
+                <button class="btn btn-success" @onclick="CreateAsync">Create</button>
+            }
+            else
+            {
+                <button class="btn btn-warning" @onclick="UpdateAsync">Save</button>
+                <button class="btn btn-outline-secondary" @onclick="CancelEdit">Cancel</button>
+            }
         </div>
     </div>
-
-    @* POST *@
-    <div class="col-12 col-md-6">
-        <div class="card h-100">
-            <div class="card-header"><span class="badge bg-success">POST</span> Create</div>
-            <div class="card-body">
-                <input class="form-control mb-2" @bind="_createInput.Name" placeholder="Name" />
-                <input class="form-control mb-2" type="number" step="0.01" @bind="_createInput.Price" placeholder="Price" />
-                <button class="btn btn-outline-success" @onclick="CallCreateAsync">Create</button>
-                @if (_createResult is not null)
-                {
-                    <div class="alert alert-success py-1 mt-2 mb-0"><small>@_createResult.Id | @_createResult.Name | @_createResult.Price.ToString("C")</small></div>
-                }
-            </div>
-        </div>
-    </div>
-
-    @* PUT *@
-    <div class="col-12 col-md-6">
-        <div class="card h-100">
-            <div class="card-header"><span class="badge bg-warning text-dark">PUT</span> Update</div>
-            <div class="card-body">
-                <input class="form-control mb-2" type="number" @bind="_updateId" placeholder="ID" />
-                <input class="form-control mb-2" @bind="_updateInput.Name" placeholder="Name" />
-                <input class="form-control mb-2" type="number" step="0.01" @bind="_updateInput.Price" placeholder="Price" />
-                <button class="btn btn-outline-warning" @onclick="CallUpdateAsync">Update</button>
-                @if (_updateResult is not null)
-                {
-                    <div class="alert alert-warning py-1 mt-2 mb-0"><small>@_updateResult.Id | @_updateResult.Name | @_updateResult.Price.ToString("C")</small></div>
-                }
-            </div>
-        </div>
-    </div>
-
-    @* PATCH *@
-    <div class="col-12 col-md-6">
-        <div class="card h-100">
-            <div class="card-header"><span class="badge bg-secondary">PATCH</span> Partial Update</div>
-            <div class="card-body">
-                <input class="form-control mb-2" type="number" @bind="_patchId" placeholder="ID" />
-                <input class="form-control mb-2" @bind="_patchField" placeholder="Field (e.g. Name)" />
-                <input class="form-control mb-2" @bind="_patchValue" placeholder="Value" />
-                <button class="btn btn-outline-secondary" @onclick="CallPatchAsync">Patch</button>
-                @if (_patchResult is not null)
-                {
-                    <div class="alert alert-secondary py-1 mt-2 mb-0"><small>@_patchResult.Id | @_patchResult.Name</small></div>
-                }
-            </div>
-        </div>
-    </div>
-
-    @* DELETE *@
-    <div class="col-12 col-md-6">
-        <div class="card h-100">
-            <div class="card-header"><span class="badge bg-danger">DELETE</span></div>
-            <div class="card-body">
-                <div class="input-group mb-2">
-                    <input class="form-control" type="number" @bind="_deleteId" />
-                    <button class="btn btn-outline-danger" @onclick="CallDeleteAsync">Delete</button>
-                </div>
-                @if (_deleteMessage is not null)
-                {
-                    <div class="alert alert-success mb-0 py-1">@_deleteMessage</div>
-                }
-            </div>
-        </div>
-    </div>
-
 </div>
 
 @code {
-    private int _getId = 1;
-    private ComplexDto? _getResult;
+    private ComplexDto[]? _items;
+    private string? _statusMessage;
 
-    private readonly ComplexDto _createInput = new() { Name = "New Item", Price = 9.99m };
-    private ComplexDto? _createResult;
+    private string _formName = "";
+    private string _formDescription = "";
+    private decimal _formPrice;
+    private int? _editId;
 
-    private int _updateId = 1;
-    private readonly ComplexDto _updateInput = new() { Name = "Updated Item", Price = 19.99m };
-    private ComplexDto? _updateResult;
+    protected override async Task OnInitializedAsync() => await LoadAsync();
 
-    private int _patchId = 1;
-    private string _patchField = "Name";
-    private string _patchValue = "Patched Value";
-    private ComplexDto? _patchResult;
-
-    private int _deleteId = 1;
-    private string? _deleteMessage;
-
-    private async Task CallGetAsync() => _getResult = await CrudService.GetAsync(_getId);
-    private async Task CallCreateAsync() => _createResult = await CrudService.CreateAsync(_createInput);
-    private async Task CallUpdateAsync() => _updateResult = await CrudService.UpdateAsync(_updateId, _updateInput);
-    private async Task CallPatchAsync() => _patchResult = await CrudService.PatchAsync(_patchId, _patchField, _patchValue);
-
-    private async Task CallDeleteAsync()
+    private async Task LoadAsync()
     {
-        await CrudService.DeleteAsync(_deleteId);
-        _deleteMessage = $"Deleted item {_deleteId} ✓";
+        _items = await CrudService.GetAllAsync();
+        _statusMessage = null;
+    }
+
+    private async Task CreateAsync()
+    {
+        var created = await CrudService.CreateAsync(new ComplexDto
+        {
+            Name = _formName,
+            Description = _formDescription,
+            Price = _formPrice,
+        });
+        _statusMessage = $"Created item #{created.Id} ✓";
+        _formName = "";
+        _formDescription = "";
+        _formPrice = 0;
+        await LoadAsync();
+    }
+
+    private void StartEdit(ComplexDto item)
+    {
+        _editId = item.Id;
+        _formName = item.Name;
+        _formDescription = item.Description ?? "";
+        _formPrice = item.Price;
+        _statusMessage = null;
+    }
+
+    private async Task UpdateAsync()
+    {
+        if (_editId is null) return;
+        await CrudService.UpdateAsync(_editId.Value, new ComplexDto
+        {
+            Name = _formName,
+            Description = _formDescription,
+            Price = _formPrice,
+        });
+        _statusMessage = $"Updated item #{_editId} ✓";
+        CancelEdit();
+        await LoadAsync();
+    }
+
+    private void CancelEdit()
+    {
+        _editId = null;
+        _formName = "";
+        _formDescription = "";
+        _formPrice = 0;
+    }
+
+    private async Task DeleteAsync(int id)
+    {
+        await CrudService.DeleteAsync(id);
+        _statusMessage = $"Deleted item #{id} ✓";
+        await LoadAsync();
     }
 }

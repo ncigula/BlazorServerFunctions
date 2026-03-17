@@ -3,6 +3,7 @@
 #nullable enable
 
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading.Tasks;
@@ -24,7 +25,11 @@ public class DataServiceClient : IDataService
         var response = await _httpClient.GetAsync(
             $"{BaseRoute}/GetMappingAsync");
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync();
+            throw new HttpRequestException(errorBody, null, response.StatusCode);
+        }
 
         return await response.Content.ReadFromJsonAsync<System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>>>()
             ?? throw new InvalidOperationException("Response deserialization returned null");

@@ -3,6 +3,7 @@
 #nullable enable
 
 using System;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Threading;
@@ -28,7 +29,11 @@ public class UserServiceClient : IUserService
             $"{BaseRoute}/GetUserAsync?{queryString}",
             cancellationToken);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException(errorBody, null, response.StatusCode);
+        }
 
         return await response.Content.ReadFromJsonAsync<User>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
@@ -46,7 +51,11 @@ public class UserServiceClient : IUserService
             request,
             cancellationToken);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
+            throw new HttpRequestException(errorBody, null, response.StatusCode);
+        }
 
         return await response.Content.ReadFromJsonAsync<User>()
             ?? throw new InvalidOperationException("Response deserialization returned null");

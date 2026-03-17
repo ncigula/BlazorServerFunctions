@@ -1,12 +1,12 @@
-﻿using System.Text.RegularExpressions;
+using System;
+using System.Text.RegularExpressions;
 
 namespace BlazorServerFunctions.Generator.Helpers;
 
-public static partial class RegexExpressions
+public static class RegexExpressions
 {
-    [GeneratedRegex(
+    public static readonly Regex IsAsyncTypeRegex = new Regex(
         @"^\s*(?:System\.Threading\.Tasks\.)?(Task|ValueTask)(\s*<.*>)?\s*$",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.Singleline,
-        matchTimeoutMilliseconds: 1000)]
-    public static partial Regex IsAsyncType();
+        TimeSpan.FromMilliseconds(1000));
 }

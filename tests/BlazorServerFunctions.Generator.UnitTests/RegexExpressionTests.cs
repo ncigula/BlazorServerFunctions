@@ -13,6 +13,6 @@ public class RegexExpressionTests
     [InlineData("void", false)]
     public void AsyncReturnTypeRegex_Correctly_Parses(string methodReturnType, bool isAsync)
     {
-        Assert.Equal(RegexExpressions.IsAsyncType().IsMatch(methodReturnType), isAsync);
+        Assert.Equal(RegexExpressions.IsAsyncTypeRegex.IsMatch(methodReturnType), isAsync);
     }
 }

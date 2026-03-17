@@ -239,7 +239,7 @@ internal static class ClientProxyGenerator
                     .Append(parameter.Name.ToPascalCase())
                     .Append("\"] = ")
                     .Append(parameter.Name)
-                    .AppendLine($"{(parameter.Type.EndsWith('?') ? "?" : string.Empty)}.ToString(System.Globalization.CultureInfo.InvariantCulture);");
+                    .AppendLine($"{(parameter.Type.EndsWith("?", StringComparison.Ordinal) ? "?" : string.Empty)}.ToString(System.Globalization.CultureInfo.InvariantCulture);");
             }
 
             sb.AppendLine($"        var response = {awaitKeyword}_httpClient.{verb}Async(");

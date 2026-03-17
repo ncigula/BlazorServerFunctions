@@ -17,6 +17,7 @@ public static class CompilationHelper
     {
         // .NET core framework
         yield return MetadataReference.CreateFromFile(typeof(object).Assembly.Location);
+        yield return MetadataReference.CreateFromFile(Assembly.Load("netstandard").Location);
         yield return MetadataReference.CreateFromFile(typeof(Console).Assembly.Location);
         yield return MetadataReference.CreateFromFile(Assembly.Load("System.Runtime").Location);
         yield return MetadataReference.CreateFromFile(Assembly.Load("System.Collections").Location);

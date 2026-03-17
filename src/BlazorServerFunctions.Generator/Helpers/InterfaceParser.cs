@@ -279,7 +279,7 @@ internal static class InterfaceParser
         IMethodSymbol methodSymbol)
     {
         var returnType = methodSymbol.ReturnType.ToDisplayString();
-        bool isAsync = RegexExpressions.IsAsyncType().IsMatch(returnType);
+        bool isAsync = RegexExpressions.IsAsyncTypeRegex.IsMatch(returnType);
 
         // BSF007: Method must return Task or ValueTask
         if (!isAsync)

@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 
 namespace BlazorServerFunctions.EndToEndTests;
@@ -25,12 +26,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// </summary>
 public sealed class AdminServiceFixture : IDisposable
 {
-    // WithWebHostBuilder returns a new derived factory; track both the base and derived
-    // so that both are deterministically disposed (satisfies CA2000).
-    private readonly WebApplicationFactory<Program> _unauthBase;
-    private readonly WebApplicationFactory<Program> _unauthFactory;
-    private readonly WebApplicationFactory<Program> _authBase;
-    private readonly WebApplicationFactory<Program> _authFactory;
+    private readonly UnauthenticatedServerFactory _unauthFactory;
+    private readonly AuthenticatedServerFactory _authFactory;
     private readonly ServiceProvider _unauthClientServices;
     private readonly ServiceProvider _authClientServices;
 
@@ -42,19 +39,11 @@ public sealed class AdminServiceFixture : IDisposable
 
     public AdminServiceFixture()
     {
-        _unauthBase = new WebApplicationFactory<Program>();
-        _unauthFactory = _unauthBase.WithWebHostBuilder(b => b.ConfigureTestServices(services =>
-            services.AddAuthentication(NoOpAuthHandler.SchemeName)
-                .AddScheme<AuthenticationSchemeOptions, NoOpAuthHandler>(
-                    NoOpAuthHandler.SchemeName, _ => { })));
+        _unauthFactory = new UnauthenticatedServerFactory();
         _ = _unauthFactory.CreateClient();
         _unauthClientServices = E2EFixture.BuildClientServices(_unauthFactory);
 
-        _authBase = new WebApplicationFactory<Program>();
-        _authFactory = _authBase.WithWebHostBuilder(b => b.ConfigureTestServices(services =>
-            services.AddAuthentication(TestAuthHandler.SchemeName)
-                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
-                    TestAuthHandler.SchemeName, _ => { })));
+        _authFactory = new AuthenticatedServerFactory();
         _ = _authFactory.CreateClient();
         _authClientServices = E2EFixture.BuildClientServices(_authFactory);
     }
@@ -65,7 +54,23 @@ public sealed class AdminServiceFixture : IDisposable
         _authClientServices.Dispose();
         _unauthFactory.Dispose();
         _authFactory.Dispose();
-        _unauthBase.Dispose();
-        _authBase.Dispose();
+    }
+
+    private sealed class UnauthenticatedServerFactory : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+            builder.ConfigureTestServices(services =>
+                services.AddAuthentication(NoOpAuthHandler.SchemeName)
+                    .AddScheme<AuthenticationSchemeOptions, NoOpAuthHandler>(
+                        NoOpAuthHandler.SchemeName, _ => { }));
+    }
+
+    private sealed class AuthenticatedServerFactory : WebApplicationFactory<Program>
+    {
+        protected override void ConfigureWebHost(IWebHostBuilder builder) =>
+            builder.ConfigureTestServices(services =>
+                services.AddAuthentication(TestAuthHandler.SchemeName)
+                    .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>(
+                        TestAuthHandler.SchemeName, _ => { }));
     }
 }

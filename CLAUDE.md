@@ -50,7 +50,7 @@ The generator detects project type by inspecting compilation references:
 
 - `src/BlazorServerFunctions.Generator/` — The source generator (models in `Models/`, generators in `Generators/`, parsing/helpers in `Helpers/`)
 - `src/BlazorServerFunctions.Abstractions/` — Public attributes (`ServerFunctionCollectionAttribute`, `ServerFunctionAttribute`)
-- `tests/` — Unit tests (snapshot-based with Verify), integration tests (multi-project compilation), E2E tests (Aspire-based)
+- `tests/` — Unit tests (snapshot-based with Verify), integration tests (multi-project compilation), E2E tests (WebApplicationFactory + in-memory TestServer)
 - `samples/` — Example Blazor app with Aspire orchestration
 
 ## Code Quality Rules

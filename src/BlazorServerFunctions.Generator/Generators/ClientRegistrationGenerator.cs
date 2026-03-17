@@ -40,23 +40,26 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine("{");
         sb.AppendLine("    public static IServiceCollection AddServerFunctionClients(");
         sb.AppendLine("        this IServiceCollection services,");
-        sb.AppendLine("        Uri? baseAddress = null)");
+        sb.AppendLine("        Uri? baseAddress = null,");
+        sb.AppendLine("        Action<IHttpClientBuilder>? configureClient = null)");
         sb.AppendLine("    {");
 
         foreach (var interfaceName in interfaces.Select(i => i.Name))
         {
             var clientClassName = interfaceName.TrimStart('I') + "Client";
 
-            sb.Append("        services.AddHttpClient<")
+            sb.Append("        Register(services.AddHttpClient<")
                 .Append(interfaceName)
                 .Append(", ")
                 .Append(clientClassName)
                 .AppendLine(">()")
-                .AppendLine("            .ConfigureHttpClient(c => { if (baseAddress != null) c.BaseAddress = baseAddress; });");
+                .AppendLine("            .ConfigureHttpClient(c => { if (baseAddress != null) c.BaseAddress = baseAddress; }));");
         }
 
         sb.AppendLine();
         sb.AppendLine("        return services;");
+        sb.AppendLine();
+        sb.AppendLine("        void Register(IHttpClientBuilder builder) => configureClient?.Invoke(builder);");
         sb.AppendLine("    }");
         sb.AppendLine("}");
 

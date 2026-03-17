@@ -13,13 +13,16 @@ public static class ServerFunctionClientsRegistration
 {
     public static IServiceCollection AddServerFunctionClients(
         this IServiceCollection services,
-        Uri? baseAddress = null)
+        Uri? baseAddress = null,
+        Action<IHttpClientBuilder>? configureClient = null)
     {
-        services.AddHttpClient<IUserService, UserServiceClient>()
-            .ConfigureHttpClient(c => { if (baseAddress != null) c.BaseAddress = baseAddress; });
-        services.AddHttpClient<IProductService, ProductServiceClient>()
-            .ConfigureHttpClient(c => { if (baseAddress != null) c.BaseAddress = baseAddress; });
+        Register(services.AddHttpClient<IUserService, UserServiceClient>()
+            .ConfigureHttpClient(c => { if (baseAddress != null) c.BaseAddress = baseAddress; }));
+        Register(services.AddHttpClient<IProductService, ProductServiceClient>()
+            .ConfigureHttpClient(c => { if (baseAddress != null) c.BaseAddress = baseAddress; }));
 
         return services;
+
+        void Register(IHttpClientBuilder builder) => configureClient?.Invoke(builder);
     }
 }

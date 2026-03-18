@@ -2,7 +2,7 @@ using BlazorServerFunctions.Abstractions;
 
 namespace BlazorServerFunctions.Sample.Shared;
 
-[ServerFunctionCollection]
+[ServerFunctionCollection(Configuration = typeof(SampleApiConfig))]
 public interface IEchoService
 {
     [ServerFunction(HttpMethod = "GET")]

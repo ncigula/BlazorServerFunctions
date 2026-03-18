@@ -83,16 +83,63 @@ The generator produces a `WeatherServiceClient` that implements `IWeatherService
 
 ---
 
+## Configuration
+
+For advanced scenarios, subclass `ServerFunctionConfiguration` to share settings across multiple interfaces.
+
+```csharp
+// Define once — can be shared across interfaces via inheritance
+public class MyApiConfig : ServerFunctionConfiguration
+{
+    public MyApiConfig()
+    {
+        BaseRoute = "api/v1";
+        RouteNaming = RouteNaming.KebabCase;
+    }
+}
+
+// Apply to an interface
+[ServerFunctionCollection(Configuration = typeof(MyApiConfig))]
+public interface IUserService
+{
+    [ServerFunction(HttpMethod = "GET")]
+    Task<User[]> GetUsersAsync();  // → GET /api/v1/userservice/get-users-async
+}
+```
+
+### Available settings
+
+| Setting | Type | Default | Description |
+|---|---|---|---|
+| `BaseRoute` | `string` | `"api/functions"` | Route prefix for all endpoints in the collection |
+| `RouteNaming` | `RouteNaming` | `PascalCase` | Route segment casing: `PascalCase`, `CamelCase`, `KebabCase`, `SnakeCase` |
+| `DefaultHttpMethod` | `string?` | `null` | Default HTTP method when `[ServerFunction]` doesn't specify one (suppresses BSF013) |
+| `GenerateProblemDetails` | `bool` | `true` | Emit Problem Details error responses from server endpoints |
+| `EnableResilience` | `bool` | `false` | Apply standard resilience pipeline to generated HTTP clients |
+| `Nullable` | `bool` | `true` | Emit `#nullable enable` at the top of generated files |
+| `CustomHttpClientType` | `Type?` | `null` | Use a custom `HttpClient` subclass in generated proxy constructors |
+| `ApiType` | `ApiType` | `REST` | Transport protocol (`REST` or `GRPC`) |
+
+**Configuration priority (highest wins):**
+```
+[ServerFunction(...)] attribute property   ← highest
+[ServerFunctionCollection(Configuration = typeof(...))]
+Generator defaults                         ← lowest
+```
+
+---
+
 ## Attribute Reference
 
 ### `[ServerFunctionCollection]`
 
-Applied to an interface. Controls route prefix and authorization for all methods in the collection.
+Applied to an interface. Controls route prefix, authorization, and optional configuration for all methods in the collection.
 
 | Property | Type | Default | Description |
 |---|---|---|---|
 | `RoutePrefix` | `string?` | `null` | Route prefix prepended to all method routes (e.g. `"api/users"`) |
 | `RequireAuthorization` | `bool` | `false` | Calls `.RequireAuthorization()` on the generated route group |
+| `Configuration` | `Type?` | `null` | A `ServerFunctionConfiguration` subclass that controls code generation settings |
 
 ### `[ServerFunction]`
 

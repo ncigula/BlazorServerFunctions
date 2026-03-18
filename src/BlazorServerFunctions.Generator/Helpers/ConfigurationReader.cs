@@ -18,8 +18,16 @@ internal static class ConfigurationReader
     /// Walks the full inheritance chain base-first, accumulating constructor assignments.
     /// Falls back to <see cref="ConfigurationInfo.Default"/> for any class without source
     /// (e.g. from a referenced assembly with no PDB).
+    /// <para>
+    /// When <paramref name="interfaceSymbol"/> and <paramref name="compilation"/> are provided
+    /// and source-based reading yields defaults, a cross-compilation manifest class
+    /// (<c>__BsfConfig_{InterfaceName}</c>) is checked as a fallback.
+    /// </para>
     /// </summary>
-    public static ConfigurationInfo ReadConfiguration(INamedTypeSymbol configType)
+    public static ConfigurationInfo ReadConfiguration(
+        INamedTypeSymbol configType,
+        INamedTypeSymbol? interfaceSymbol = null,
+        Compilation? compilation = null)
     {
         // Build inheritance chain: most-derived → base. We want base → derived for application order.
         var chain = new List<INamedTypeSymbol>();
@@ -41,6 +49,73 @@ internal static class ConfigurationReader
         foreach (var type in chain)
         {
             config = ApplyConstructorAssignments(config, type);
+        }
+
+        // Cross-compilation fallback: when source reading yielded defaults (e.g. config class is in a
+        // referenced compiled assembly), look for a __BsfConfig_{Interface} manifest class emitted by
+        // the library project's generator run.
+        if (config == ConfigurationInfo.Default
+            && compilation is not null
+            && interfaceSymbol is not null)
+        {
+            var fromManifest = TryReadFromManifest(interfaceSymbol, compilation);
+            if (fromManifest is not null)
+                return fromManifest;
+        }
+
+        return config;
+    }
+
+    /// <summary>
+    /// Attempts to read <see cref="ConfigurationInfo"/> from a <c>__BsfConfig_{InterfaceName}</c>
+    /// manifest class emitted by a library project's generator. Returns <c>null</c> if not found.
+    /// </summary>
+    /// <remarks>
+    /// Uses namespace-symbol navigation rather than <c>GetTypeByMetadataName</c> so that
+    /// the <c>internal</c> manifest class is found even when accessed from a different
+    /// assembly (where <c>GetTypeByMetadataName</c> would refuse due to accessibility).
+    /// </remarks>
+    public static ConfigurationInfo? TryReadFromManifest(
+        INamedTypeSymbol interfaceSymbol,
+        Compilation compilation)
+    {
+        // Navigate the interface's own namespace to find the manifest — this works for internal
+        // types from referenced assemblies, unlike GetTypeByMetadataName which enforces accessibility.
+        var className = $"__BsfConfig_{interfaceSymbol.Name}";
+        var manifestType = interfaceSymbol.ContainingNamespace
+            .GetTypeMembers(className)
+            .FirstOrDefault();
+
+        if (manifestType is null)
+            return null;
+
+        var config = ConfigurationInfo.Default;
+
+        foreach (var member in manifestType.GetMembers())
+        {
+            if (member is not IFieldSymbol { IsConst: true } field || field.ConstantValue is null)
+                continue;
+
+            config = field.Name switch
+            {
+                "__BaseRoute" when field.ConstantValue is string br && !string.IsNullOrEmpty(br)
+                    => config with { BaseRoute = br },
+                "__RouteNaming" when field.ConstantValue is int rn
+                    => config with { RouteNaming = (RouteNaming)rn },
+                "__DefaultHttpMethod" when field.ConstantValue is string dm
+                    => config with { DefaultHttpMethod = string.IsNullOrEmpty(dm) ? null : dm },
+                "__GenerateProblemDetails" when field.ConstantValue is bool gpd
+                    => config with { GenerateProblemDetails = gpd },
+                "__EnableResilience" when field.ConstantValue is bool er
+                    => config with { EnableResilience = er },
+                "__Nullable" when field.ConstantValue is bool nb
+                    => config with { Nullable = nb },
+                "__CustomHttpClientType" when field.ConstantValue is string ct
+                    => config with { CustomHttpClientType = string.IsNullOrEmpty(ct) ? null : ct },
+                "__ApiType" when field.ConstantValue is int at
+                    => config with { ApiType = (ApiType)at },
+                _ => config
+            };
         }
 
         return config;

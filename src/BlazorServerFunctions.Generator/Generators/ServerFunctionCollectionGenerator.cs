@@ -191,11 +191,15 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         var localInterfaceInfos = ParseLocalInterfaces(context, compilation, interfaces);
 
         // Parse referenced interfaces (from referenced assemblies)
-        // NOW we have context to emit diagnostics!
-        var referencedInterfaceInfos = ParseReferencedInterfaces(context, referencedSymbols);
+        // Pass compilation so referenced interfaces can use the cross-compilation config manifest fallback.
+        var referencedInterfaceInfos = ParseReferencedInterfaces(context, compilation, referencedSymbols);
 
         if (localInterfaceInfos.Count == 0 && referencedInterfaceInfos.Count == 0)
             return;
+
+        // ── Emit config manifests (library projects only) ────────────────────
+        if (projectInfo.IsLibrary)
+            EmitConfigManifests(context, localInterfaceInfos);
 
         // ── Generate Server Endpoints ────────────────────────────────────────
         if (projectInfo.GenerateEndpoints)
@@ -212,34 +216,42 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
         // ── Generate Client Proxies ───────────────────────────────────────────
         if (projectInfo.GenerateClients)
+            GenerateClients(context, compilation, projectInfo, localInterfaceInfos, referencedInterfaceInfos);
+    }
+
+    private static void GenerateClients(
+        SourceProductionContext context,
+        Compilation compilation,
+        ProjectInfo projectInfo,
+        List<InterfaceInfo> localInterfaceInfos,
+        List<InterfaceInfo> referencedInterfaceInfos)
+    {
+        // Proxy files only for LOCAL interfaces.
+        // Referenced interfaces already have proxies generated in their source project.
+        // Regenerating them here causes CS0436 conflicts when the reference assembly is added.
+        foreach (var interfaceInfo in localInterfaceInfos)
         {
-            // Proxy files only for LOCAL interfaces.
-            // Referenced interfaces already have proxies generated in their source project.
-            // Regenerating them here causes CS0436 conflicts when the reference assembly is added.
-            foreach (var interfaceInfo in localInterfaceInfos)
+            var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
+            context.AddSource($"{interfaceInfo.Name.TrimStart('I')}Client.g.cs", clientCode);
+        }
+
+        // Registration is generated for Client/Server projects and for Library projects
+        // that consume interfaces from referenced assemblies.
+        // Source libraries (Library mode with only local interfaces) skip registration —
+        // the consuming Client/Server project generates it when referencing this library.
+        bool isSourceLibrary = projectInfo.IsLibrary && referencedInterfaceInfos.Count == 0;
+
+        if (!isSourceLibrary)
+        {
+            var allForRegistration = new List<InterfaceInfo>(
+                localInterfaceInfos.Count + referencedInterfaceInfos.Count);
+            allForRegistration.AddRange(localInterfaceInfos);
+            allForRegistration.AddRange(referencedInterfaceInfos);
+
+            if (allForRegistration.Count > 0)
             {
-                var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
-                context.AddSource($"{interfaceInfo.Name.TrimStart('I')}Client.g.cs", clientCode);
-            }
-
-            // Registration is generated for Client/Server projects and for Library projects
-            // that consume interfaces from referenced assemblies.
-            // Source libraries (Library mode with only local interfaces) skip registration —
-            // the consuming Client/Server project generates it when referencing this library.
-            bool isSourceLibrary = projectInfo.IsLibrary && referencedInterfaceInfos.Count == 0;
-
-            if (!isSourceLibrary)
-            {
-                var allForRegistration = new List<InterfaceInfo>(
-                    localInterfaceInfos.Count + referencedInterfaceInfos.Count);
-                allForRegistration.AddRange(localInterfaceInfos);
-                allForRegistration.AddRange(referencedInterfaceInfos);
-
-                if (allForRegistration.Count > 0)
-                {
-                    var registrationCode = ClientRegistrationGenerator.Generate(allForRegistration, compilation.AssemblyName);
-                    context.AddSource("ServerFunctionClientsRegistration.g.cs", registrationCode);
-                }
+                var registrationCode = ClientRegistrationGenerator.Generate(allForRegistration, compilation.AssemblyName);
+                context.AddSource("ServerFunctionClientsRegistration.g.cs", registrationCode);
             }
         }
     }
@@ -274,7 +286,8 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             // Parse with context - emits diagnostics
             var interfaceInfo = InterfaceParser.ParseInterface(
                 sourceProductionContextWrapper,
-                interfaceSymbol);
+                interfaceSymbol,
+                compilation);
 
             if (!sourceProductionContextWrapper.HasErrors && interfaceInfo.Methods.Count > 0)
                 result.Add(interfaceInfo);
@@ -290,6 +303,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
     /// </summary>
     private static List<InterfaceInfo> ParseReferencedInterfaces(
         SourceProductionContext context,
+        Compilation compilation,
         ImmutableArray<INamedTypeSymbol> symbols)
     {
         var result = new List<InterfaceInfo>(symbols.Length);
@@ -304,7 +318,8 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
                 var interfaceInfo = InterfaceParser.ParseInterface(
                     sourceProductionContextWrapper,
-                    symbol);
+                    symbol,
+                    compilation);
 
                 if (!sourceProductionContextWrapper.HasErrors && interfaceInfo.Methods.Count > 0)
                     result.Add(interfaceInfo);
@@ -322,6 +337,23 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Emits <c>__BsfConfig_{InterfaceName}.g.cs</c> manifest files for library projects.
+    /// These encode resolved configuration as const fields so server/client generators can
+    /// recover the values from compiled metadata (cross-compilation fallback).
+    /// </summary>
+    private static void EmitConfigManifests(
+        SourceProductionContext context,
+        List<InterfaceInfo> localInterfaceInfos)
+    {
+        foreach (var interfaceInfo in localInterfaceInfos)
+        {
+            var manifestCode = ConfigManifestGenerator.Generate(interfaceInfo);
+            if (manifestCode is not null)
+                context.AddSource($"__BsfConfig_{interfaceInfo.Name}.g.cs", manifestCode);
+        }
     }
 
     private static void GenerateEndpoints(

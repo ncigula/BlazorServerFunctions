@@ -186,7 +186,8 @@ Reverse: user provides `.proto` → generator produces typed C# interface + clie
 - [x] Interface-level + method-level `RequireAuthorization`
 - [x] `configureClient` hook (auth, resilience, logging delegating handlers)
 - [x] Problem Details error body in `HttpRequestException.Message`
-- [x] Full test suite: 72 unit + 31 integration + 34 E2E
+- [x] Configuration system (`ServerFunctionConfiguration`, `RouteNaming`, `ApiType`, `BaseRoute`, `CustomHttpClientType`, `Nullable`, `DefaultHttpMethod`)
+- [x] Full test suite: 85 unit + 31 integration + 39 E2E
 - [x] Sample app with Server/WASM/Auto demo pages for all 4 services
 - [ ] Everything above
 
@@ -197,7 +198,7 @@ Reverse: user provides `.proto` → generator produces typed C# interface + clie
 Make sure to update the documentation from section §1 whenever you add a new feature and mark it as done below with a checkbox.
 
 - [x] **§1** — README + versioning (quick wins, needed before public release)
-- [ ] **§2.A–2.G** — Configuration class system (foundation for all future features)
+- [x] **§2.A–2.G** — Configuration class system (foundation for all future features)
 - [ ] **§3.1** — Route/path parameters (biggest HTTP gap)
 - [ ] **§4.1 + §4.2** — Named policies + roles (rounds out auth)
 - [ ] **§5.1–5.3** — Tracing + logging + validation (production readiness)

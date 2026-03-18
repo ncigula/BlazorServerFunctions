@@ -8,7 +8,8 @@ internal static class InterfaceParser
 {
     internal static InterfaceInfo ParseInterface(
         SourceProductionContextWrapper context,
-        INamedTypeSymbol interfaceSymbol)
+        INamedTypeSymbol interfaceSymbol,
+        Compilation? compilation = null)
     {
         context.CancellationToken.ThrowIfCancellationRequested();
 
@@ -22,7 +23,7 @@ internal static class InterfaceParser
         if (!ValidateInterfaceDeclaration(context, interfaceSymbol))
             return new InterfaceInfo { Name = interfaceSymbol.Name };
 
-        var (routePrefix, requireAuth, configuration) = ParseCollectionAttributeArgs(serverFunctionCollectionAttribute, interfaceSymbol);
+        var (routePrefix, requireAuth, configuration) = ParseCollectionAttributeArgs(serverFunctionCollectionAttribute, interfaceSymbol, compilation);
 
         var namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
             ? "Generated"
@@ -78,7 +79,8 @@ internal static class InterfaceParser
 
     private static (string RoutePrefix, bool RequireAuth, ConfigurationInfo Configuration) ParseCollectionAttributeArgs(
         AttributeData? attribute,
-        INamedTypeSymbol interfaceSymbol)
+        INamedTypeSymbol interfaceSymbol,
+        Compilation? compilation = null)
     {
         string? routePrefix = null;
         bool requireAuth = false;
@@ -96,7 +98,7 @@ internal static class InterfaceParser
                     break;
                 case "Configuration":
                     if (namedArg.Value.Value is INamedTypeSymbol configSymbol)
-                        configuration = ConfigurationReader.ReadConfiguration(configSymbol);
+                        configuration = ConfigurationReader.ReadConfiguration(configSymbol, interfaceSymbol, compilation);
                     break;
             }
         }

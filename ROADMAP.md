@@ -194,7 +194,9 @@ Reverse: user provides `.proto` → generator produces typed C# interface + clie
 
 ## Suggested session order
 
-- [ ] **§1** — README + versioning (quick wins, needed before public release)
+Make sure to update the documentation from section §1 whenever you add a new feature and mark it as done below with a checkbox.
+
+- [x] **§1** — README + versioning (quick wins, needed before public release)
 - [ ] **§2.A–2.G** — Configuration class system (foundation for all future features)
 - [ ] **§3.1** — Route/path parameters (biggest HTTP gap)
 - [ ] **§4.1 + §4.2** — Named policies + roles (rounds out auth)

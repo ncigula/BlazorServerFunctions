@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- Background: Blazor purple rounded rectangle -->
+  <rect width="100" height="100" rx="20" ry="20" fill="#512BD4"/>
+
+  <!-- Subtle inner glow / depth -->
+  <rect x="4" y="4" width="92" height="92" rx="17" ry="17" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2"/>
+
+  <!-- Code brackets: < -->
+  <path d="M 30 33 L 16 50 L 30 67"
+        stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Code brackets: > -->
+  <path d="M 70 33 L 84 50 L 70 67"
+        stroke="white" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <!-- Forward slash -->
+  <line x1="58" y1="28" x2="42" y2="72"
+        stroke="white" stroke-width="7" stroke-linecap="round"/>
+
+  <!-- Lightning bolt accent (bottom-right, gold) -->
+  <path d="M 79 54 L 68 70 L 74.5 70 L 63 86 L 82 67 L 75 67 Z"
+        fill="#FFD700" opacity="0.92"/>
+</svg>

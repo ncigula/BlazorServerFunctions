@@ -1,4 +1,5 @@
 ﻿using System.Runtime.CompilerServices;
+using DiffEngine;
 
 namespace BlazorServerFunctions.Generator.UnitTests;
 
@@ -15,6 +16,8 @@ public static class ModuleInitializer
                 typeName: type.Name,
                 methodName: method.Name);
         });
+
+        DiffRunner.Disabled = true;
 
         VerifySourceGenerators.Initialize();
     }

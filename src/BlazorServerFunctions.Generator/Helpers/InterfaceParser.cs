@@ -22,7 +22,7 @@ internal static class InterfaceParser
         if (!ValidateInterfaceDeclaration(context, interfaceSymbol))
             return new InterfaceInfo { Name = interfaceSymbol.Name };
 
-        var (routePrefix, requireAuth) = ParseCollectionAttributeArgs(serverFunctionCollectionAttribute, interfaceSymbol);
+        var (routePrefix, requireAuth, configuration) = ParseCollectionAttributeArgs(serverFunctionCollectionAttribute, interfaceSymbol);
 
         var namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
             ? "Generated"
@@ -34,6 +34,7 @@ internal static class InterfaceParser
             Namespace = namespaceName,
             RoutePrefix = routePrefix,
             RequireAuthorization = requireAuth,
+            Configuration = configuration,
         };
 
         interfaceInfo.Methods.AddRange(ParseMethods(context, interfaceInfo, interfaceSymbol));
@@ -75,12 +76,13 @@ internal static class InterfaceParser
         return true;
     }
 
-    private static (string RoutePrefix, bool RequireAuth) ParseCollectionAttributeArgs(
+    private static (string RoutePrefix, bool RequireAuth, ConfigurationInfo Configuration) ParseCollectionAttributeArgs(
         AttributeData? attribute,
         INamedTypeSymbol interfaceSymbol)
     {
         string? routePrefix = null;
         bool requireAuth = false;
+        var configuration = ConfigurationInfo.Default;
 
         foreach (var namedArg in attribute?.NamedArguments ?? [])
         {
@@ -92,6 +94,10 @@ internal static class InterfaceParser
                 case "RequireAuthorization":
                     requireAuth = namedArg.Value.Value is true;
                     break;
+                case "Configuration":
+                    if (namedArg.Value.Value is INamedTypeSymbol configSymbol)
+                        configuration = ConfigurationReader.ReadConfiguration(configSymbol);
+                    break;
             }
         }
 
@@ -100,7 +106,7 @@ internal static class InterfaceParser
         routePrefix = routePrefix?.TrimStart('/');
         routePrefix ??= interfaceSymbol.Name.TrimStart('I').ToLowerInvariant();
 
-        return (routePrefix, requireAuth);
+        return (routePrefix, requireAuth, configuration);
     }
 
     private static IEnumerable<MethodInfo> ParseMethods(
@@ -159,8 +165,8 @@ internal static class InterfaceParser
             string.Equals(p.Type.ToDisplayString(), "System.Threading.CancellationToken", StringComparison.Ordinal));
         methodInfo.Parameters = ParseParameters(methodSymbol);
 
-        var serverFunctionAttribute = GetServerFunctionAttribute(context, methodSymbol, methodInfo);
-        ParseServerFunctionAttributes(context, methodSymbol, methodInfo, serverFunctionAttribute);
+        var serverFunctionAttribute = GetServerFunctionAttribute(context, methodSymbol, methodInfo, interfaceInfo);
+        ParseServerFunctionAttributes(context, methodSymbol, methodInfo, serverFunctionAttribute, interfaceInfo);
 
         return methodInfo;
     }
@@ -190,8 +196,11 @@ internal static class InterfaceParser
         SourceProductionContextWrapper context,
         IMethodSymbol methodSymbol,
         MethodInfo methodInfo,
-        AttributeData? serverFunctionAttribute)
+        AttributeData? serverFunctionAttribute,
+        InterfaceInfo interfaceInfo)
     {
+        bool hasExplicitHttpMethod = false;
+
         foreach (var attribute in serverFunctionAttribute?.NamedArguments ?? [])
         {
             switch (attribute.Key)
@@ -202,6 +211,7 @@ internal static class InterfaceParser
                     break;
 
                 case "HttpMethod":
+                    hasExplicitHttpMethod = true;
                     if (attribute.Value.Kind is not TypedConstantKind.Error && attribute.Value.Value != null)
                     {
                         var httpMethodStr = attribute.Value.Value.ToString()!;
@@ -221,6 +231,14 @@ internal static class InterfaceParser
                     methodInfo.RequireAuthorization = attribute.Value.Value is true;
                     break;
             }
+        }
+
+        // Apply DefaultHttpMethod from config when no explicit method was provided on this [ServerFunction]
+        if (!hasExplicitHttpMethod
+            && interfaceInfo.Configuration.DefaultHttpMethod is not null
+            && Enum.TryParse<HttpMethod>(interfaceInfo.Configuration.DefaultHttpMethod, ignoreCase: true, out var defaultMethod))
+        {
+            methodInfo.HttpMethod = defaultMethod;
         }
     }
 
@@ -242,7 +260,8 @@ internal static class InterfaceParser
     private static AttributeData? GetServerFunctionAttribute(
         SourceProductionContextWrapper context,
         IMethodSymbol methodSymbol,
-        MethodInfo methodInfo)
+        MethodInfo methodInfo,
+        InterfaceInfo interfaceInfo)
     {
         var serverFunctionAttribute = methodSymbol.GetAttributes()
             .FirstOrDefault(a => string.Equals(a.AttributeClass?.Name, "ServerFunctionAttribute", StringComparison.OrdinalIgnoreCase));
@@ -251,9 +270,17 @@ internal static class InterfaceParser
             context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.MissingServerFunctionAttribute,
                 methodSymbol.Locations.First(), methodInfo.Name, methodSymbol.Name));
 
-        if (serverFunctionAttribute is not null && !serverFunctionAttribute.NamedArguments.Any(kvp => string.Equals(kvp.Key, "HttpMethod", StringComparison.Ordinal)))
+        // BSF013: HttpMethod is required unless a DefaultHttpMethod is set on the config
+        bool hasExplicitHttpMethod = serverFunctionAttribute is not null
+            && serverFunctionAttribute.NamedArguments.Any(kvp => string.Equals(kvp.Key, "HttpMethod", StringComparison.Ordinal));
+
+        if (serverFunctionAttribute is not null
+            && !hasExplicitHttpMethod
+            && interfaceInfo.Configuration.DefaultHttpMethod is null)
+        {
             context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.HttpMethodRequired,
                 methodSymbol.Locations.First(), methodInfo.Name));
+        }
 
         return serverFunctionAttribute;
     }

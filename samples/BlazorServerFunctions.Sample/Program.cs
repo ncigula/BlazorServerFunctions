@@ -4,6 +4,7 @@ using BlazorServerFunctions.Sample.Components;
 using BlazorServerFunctions.Sample.Components.Admin;
 using BlazorServerFunctions.Sample.Components.Crud;
 using BlazorServerFunctions.Sample.Components.Echo;
+using BlazorServerFunctions.Sample.Components.RouteParams;
 using BlazorServerFunctions.Sample.Components.Weather;
 using BlazorServerFunctions.Sample.Shared;
 using Microsoft.AspNetCore.Authentication;
@@ -36,6 +37,7 @@ builder.Services.AddScoped<IWeatherService, WeatherService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IEchoService, EchoService>();
 builder.Services.AddSingleton<ICrudService, CrudService>();
+builder.Services.AddScoped<IRouteParamService, RouteParamService>();
 
 var app = builder.Build();
 

@@ -66,6 +66,10 @@ public sealed class E2EFixture : IDisposable
             .ConfigurePrimaryHttpMessageHandler(() => factory.Server.CreateHandler())
             .ConfigureHttpClient((_, c) => c.BaseAddress = factory.Server.BaseAddress);
 
+        services.AddHttpClient<IRouteParamService, RouteParamServiceClient>()
+            .ConfigurePrimaryHttpMessageHandler(() => factory.Server.CreateHandler())
+            .ConfigureHttpClient((_, c) => c.BaseAddress = factory.Server.BaseAddress);
+
         return services.BuildServiceProvider();
     }
 

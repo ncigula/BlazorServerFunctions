@@ -8,6 +8,156 @@ namespace BlazorServerFunctions.Generator.UnitTests;
 public class ServerGeneratorTests
 {
     [Fact]
+    public Task Generate_RouteParam_Delete_NoDto_DirectLambdaParam()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/items")]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "DELETE", Route = "{id}")]
+                         Task DeleteAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RouteParam_Get_MixedWithQueryString()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
+                     public interface IUserPostService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Route = "users/{id}/posts")]
+                         Task<string> GetUserPostsAsync(int id, int page);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RouteParam_Put_MixedWithBody()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/items")]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "PUT", Route = "{id}")]
+                         Task<string> UpdateAsync(int id, string value);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RouteParam_WithConstraint_PreservedOnServer()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
+                     public interface IUserService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Route = "users/{id:int}")]
+                         Task<string> GetUserAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RouteParam_KebabCaseConfig_DoesNotCorruptExplicitRoute()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class KebabConfig : ServerFunctionConfiguration
+                     {
+                         public KebabConfig() { RouteNaming = RouteNaming.KebabCase; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/users", Configuration = typeof(KebabConfig))]
+                     public interface IUserService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Route = "users/{id}")]
+                         Task<string> GetUserAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public void BSF017_RouteParamHasNoMatchingMethodParam_EmitsError()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/items")]
+                     public interface ITestService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Route = "items/{missing}")]
+                         System.Threading.Tasks.Task<string> GetAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        result.AssertDiagnostic("BSF017");
+    }
+
+
+    [Fact]
     public Task Generate_BasicInterface_ProducesCorrectCode()
     {
         var source = """

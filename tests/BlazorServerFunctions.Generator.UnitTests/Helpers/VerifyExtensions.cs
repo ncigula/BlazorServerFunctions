@@ -8,4 +8,9 @@ internal static class VerifyExtensions
         Assert.True(result.GeneratedTrees.Any(), "No sources were generated.");
         return Verify(result);
     }
+
+    internal static void AssertDiagnostic(this GeneratorDriverRunResult result, string diagnosticId)
+    {
+        Assert.Contains(result.Diagnostics, d => string.Equals(d.Id, diagnosticId, StringComparison.Ordinal));
+    }
 }

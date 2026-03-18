@@ -206,6 +206,17 @@ internal static class DiagnosticDescriptors
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
 
+    /// <summary>
+    /// BSF017: Route parameter has no matching method parameter
+    /// </summary>
+    public static readonly DiagnosticDescriptor RouteParameterNotFound = new(
+        id: "BSF017",
+        title: "Route parameter not found",
+        messageFormat: "Route parameter '{{{1}}}' in method '{0}' does not match any method parameter",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
     // ========================================
     // WARNINGS: BSF101+
     // ========================================
@@ -228,6 +239,17 @@ internal static class DiagnosticDescriptors
         id: "BSF102",
         title: "Method has many parameters",
         messageFormat: "Method '{0}' has {1} parameters. Consider using a request object.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF018: Route parameter has complex type that may not be route-bindable
+    /// </summary>
+    public static readonly DiagnosticDescriptor RouteParameterComplexType = new(
+        id: "BSF018",
+        title: "Route parameter has complex type",
+        messageFormat: "Route parameter '{1}' in method '{0}' has type '{2}' which may not be route-bindable; route parameters should be primitive types",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);

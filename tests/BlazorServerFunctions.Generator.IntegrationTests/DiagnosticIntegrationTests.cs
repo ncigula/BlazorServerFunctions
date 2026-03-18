@@ -390,8 +390,8 @@ public class DiagnosticIntegrationTests
                     [ServerFunction(HttpMethod = "GET")]
                     Task<string> GetUser(int id);
 
-                    [ServerFunction(HttpMethod = "POST", Route = "GetUser")]
-                    Task<string> CreateUser(string name);
+                    [ServerFunction(HttpMethod = "GET", Route = "GetUser")]
+                    Task<string> FindUser(string name);
                 }
                 """)
             .Build();

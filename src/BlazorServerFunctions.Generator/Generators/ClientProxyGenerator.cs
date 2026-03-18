@@ -1,4 +1,4 @@
-﻿using System.Text;
+using System.Text;
 using BlazorServerFunctions.Generator.Helpers;
 using BlazorServerFunctions.Generator.Models;
 using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
@@ -71,6 +71,13 @@ internal static class ClientProxyGenerator
     private static string GetResultSuffix(AsyncType asyncType) =>
         asyncType is AsyncType.None ? ".GetAwaiter().GetResult()" : string.Empty;
 
+    /// <summary>
+    /// Strips route constraints from route parameter tokens so they are valid C# interpolation expressions.
+    /// For example: {id:int} → {id}, {slug:minlength(3)} → {slug}, {id?} → {id}.
+    /// </summary>
+    private static string RouteTemplateToInterpolation(string routeTemplate) =>
+        RegexExpressions.RouteParameterRegex.Replace(routeTemplate, static m => "{" + m.Groups["name"].Value + "}");
+
     private static void GenerateClientMethod(StringBuilder sb, MethodInfo methodInfo, RouteNaming routeNaming)
     {
         GenerateMethodSignature(
@@ -79,13 +86,16 @@ internal static class ClientProxyGenerator
 
         sb.AppendLine("    {");
 
-        var hasParameters = methodInfo.Parameters.Count > 0;
-        if (hasParameters && methodInfo.HttpMethod is HttpMethod.Post or HttpMethod.Put or HttpMethod.Patch)
-            BuildRequestObject(sb: sb, parameters: methodInfo.Parameters);
+        var nonRouteParams = methodInfo.Parameters.Where(static p => !p.IsRouteParameter).ToList();
+        var hasNonRouteParams = nonRouteParams.Count > 0;
+
+        if (hasNonRouteParams && methodInfo.HttpMethod is HttpMethod.Post or HttpMethod.Put or HttpMethod.Patch)
+            BuildRequestObject(sb: sb, parameters: nonRouteParams);
 
         GenerateHttpRequest(
             sb: sb,
             method: methodInfo,
+            nonRouteParams: nonRouteParams,
             routeNaming: routeNaming);
 
         sb.AppendLine();
@@ -177,28 +187,34 @@ internal static class ClientProxyGenerator
         sb.AppendLine(")");
     }
 
-    private static void GenerateHttpRequest(StringBuilder sb, MethodInfo method, RouteNaming routeNaming)
+    private static void GenerateHttpRequest(StringBuilder sb, MethodInfo method, List<ParameterInfo> nonRouteParams, RouteNaming routeNaming)
     {
-        var routeName = (method.CustomRoute ?? method.Name).ApplyRouteNaming(routeNaming);
+        // When the user specified an explicit Route, use it verbatim (stripping constraints for C# interpolation).
+        // ApplyRouteNaming is only applied to auto-derived method names.
+        var urlSegment = method.CustomRoute != null
+            ? RouteTemplateToInterpolation(method.CustomRoute)
+            : method.Name.ApplyRouteNaming(routeNaming);
+
+        var hasNonRouteParams = nonRouteParams.Count > 0;
 
         switch (method.HttpMethod)
         {
             case HttpMethod.Post:
-                GeneratePostRequest(sb, routeName, method.Parameters.Count > 0, method.AsyncType, method.HasCancellationToken);
+                GeneratePostRequest(sb, urlSegment, hasNonRouteParams, method.AsyncType, method.HasCancellationToken);
                 break;
 
             case HttpMethod.Get:
             case HttpMethod.Delete:
-                GenerateQueryStringRequest(sb, routeName, method.HttpMethod, method.Parameters, method.AsyncType, method.HasCancellationToken);
+                GenerateQueryStringRequest(sb, urlSegment, method.HttpMethod, nonRouteParams, method.AsyncType, method.HasCancellationToken);
                 break;
 
             default:
-                GenerateOtherRequest(sb, routeName, method.HttpMethod, method.Parameters.Count > 0, method.AsyncType, method.HasCancellationToken);
+                GenerateOtherRequest(sb, urlSegment, method.HttpMethod, hasNonRouteParams, method.AsyncType, method.HasCancellationToken);
                 break;
         }
     }
 
-    private static void GeneratePostRequest(StringBuilder sb, string routeName, bool hasParameters, AsyncType asyncType, bool hasCancellationToken)
+    private static void GeneratePostRequest(StringBuilder sb, string urlSegment, bool hasParameters, AsyncType asyncType, bool hasCancellationToken)
     {
         var awaitKeyword = GetAwaitKeyword(asyncType);
         var resultSuffix = GetResultSuffix(asyncType);
@@ -206,7 +222,7 @@ internal static class ClientProxyGenerator
         if (hasParameters)
         {
             sb.AppendLine($"        var response = {awaitKeyword}_httpClient.PostAsJsonAsync(");
-            sb.Append("            $\"{BaseRoute}/").Append(routeName).AppendLine("\",");
+            sb.Append("            $\"{BaseRoute}/").Append(urlSegment).AppendLine("\",");
             if (hasCancellationToken)
             {
                 sb.AppendLine("            request,");
@@ -220,7 +236,7 @@ internal static class ClientProxyGenerator
         else
         {
             sb.AppendLine($"        var response = {awaitKeyword}_httpClient.PostAsync(");
-            sb.Append("            $\"{BaseRoute}/").Append(routeName).AppendLine("\",");
+            sb.Append("            $\"{BaseRoute}/").Append(urlSegment).AppendLine("\",");
             if (hasCancellationToken)
             {
                 sb.AppendLine("            null,");
@@ -235,7 +251,7 @@ internal static class ClientProxyGenerator
 
     private static void GenerateQueryStringRequest(
         StringBuilder sb,
-        string routeName,
+        string urlSegment,
         HttpMethod httpMethod,
         List<ParameterInfo> parameters,
         AsyncType asyncType,
@@ -261,12 +277,12 @@ internal static class ClientProxyGenerator
             sb.AppendLine($"        var response = {awaitKeyword}_httpClient.{verb}Async(");
             if (hasCancellationToken)
             {
-                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}?{{queryString}}\",");
+                sb.AppendLine($"            $\"{{BaseRoute}}/{urlSegment}?{{queryString}}\",");
                 sb.AppendLine($"            cancellationToken){resultSuffix};");
             }
             else
             {
-                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}?{{queryString}}\"){resultSuffix};");
+                sb.AppendLine($"            $\"{{BaseRoute}}/{urlSegment}?{{queryString}}\"){resultSuffix};");
             }
         }
         else
@@ -274,19 +290,19 @@ internal static class ClientProxyGenerator
             sb.AppendLine($"        var response = {awaitKeyword}_httpClient.{verb}Async(");
             if (hasCancellationToken)
             {
-                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}\",");
+                sb.AppendLine($"            $\"{{BaseRoute}}/{urlSegment}\",");
                 sb.AppendLine($"            cancellationToken){resultSuffix};");
             }
             else
             {
-                sb.AppendLine($"            $\"{{BaseRoute}}/{routeName}\"){resultSuffix};");
+                sb.AppendLine($"            $\"{{BaseRoute}}/{urlSegment}\"){resultSuffix};");
             }
         }
     }
 
     private static void GenerateOtherRequest(
         StringBuilder sb,
-        string routeName,
+        string urlSegment,
         HttpMethod httpMethod,
         bool hasParameters,
         AsyncType asyncType,
@@ -301,12 +317,12 @@ internal static class ClientProxyGenerator
 
         if (hasParameters)
         {
-            sb.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{routeName}\", UriKind.Relative),");
+            sb.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{urlSegment}\", UriKind.Relative),");
             sb.AppendLine("            Content = JsonContent.Create(request)");
         }
         else
         {
-            sb.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{routeName}\", UriKind.Relative)");
+            sb.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{urlSegment}\", UriKind.Relative)");
         }
 
         sb.AppendLine("        };");

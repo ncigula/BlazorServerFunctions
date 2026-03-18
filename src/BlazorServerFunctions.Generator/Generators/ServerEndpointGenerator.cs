@@ -95,35 +95,20 @@ internal static class ServerEndpointGenerator
 
     private static void GenerateEndpoint(StringBuilder sb, string interfaceName, MethodInfo method, bool interfaceRequiresAuth, RouteNaming routeNaming)
     {
-        var routeName = (method.CustomRoute ?? method.Name).ApplyRouteNaming(routeNaming);
-        var hasParameters = method.Parameters.Count > 0;
+        // When the user specified an explicit Route, use it verbatim (no naming transformation).
+        // ApplyRouteNaming is only applied to auto-derived method names.
+        var routeSegment = method.CustomRoute ?? method.Name.ApplyRouteNaming(routeNaming);
+
+        var routeParams = method.Parameters.Where(static p => p.IsRouteParameter).ToList();
+        var nonRouteParams = method.Parameters.Where(static p => !p.IsRouteParameter).ToList();
         var httpMethod = method.HttpMethod.ToString().ToPascalCase();
 
-        sb.Append("        group.Map").Append(httpMethod).Append("(\"/").Append(routeName).AppendLine("\",");
+        sb.Append("        group.Map").Append(httpMethod).Append("(\"/").Append(routeSegment).AppendLine("\",");
 
         var asyncKeyword = method.AsyncType is not AsyncType.None ? "async " : string.Empty;
+        sb.Append($"            {asyncKeyword}(");
 
-        if (hasParameters)
-        {
-            var bindingAttribute = method.HttpMethod is HttpMethod.Get or HttpMethod.Delete
-                ? "[AsParameters]"
-                : "[FromBody]";
-
-            sb.Append($"            {asyncKeyword}(").Append(bindingAttribute).Append(' ')
-                .Append(method.Name)
-                .Append("Request request, ")
-                .Append(interfaceName)
-                .Append(" service");
-        }
-        else
-        {
-            sb.Append($"            {asyncKeyword}(")
-                .Append(interfaceName)
-                .Append(" service");
-        }
-
-        if (method.HasCancellationToken)
-            sb.Append(", CancellationToken cancellationToken");
+        GenerateLambdaParameters(sb, interfaceName, method, routeParams, nonRouteParams);
 
         sb.AppendLine(") =>");
         sb.AppendLine("            {");
@@ -154,6 +139,37 @@ internal static class ServerEndpointGenerator
         sb.AppendLine();
     }
 
+    private static void GenerateLambdaParameters(
+        StringBuilder sb,
+        string interfaceName,
+        MethodInfo method,
+        List<ParameterInfo> routeParams,
+        List<ParameterInfo> nonRouteParams)
+    {
+        // Route-bound params appear first as typed lambda arguments
+        foreach (var rp in routeParams)
+        {
+            sb.Append(rp.Type).Append(' ').Append(rp.Name).Append(", ");
+        }
+
+        // Non-route params are bundled into a DTO (if any exist)
+        if (nonRouteParams.Count > 0)
+        {
+            var bindingAttribute = method.HttpMethod is HttpMethod.Get or HttpMethod.Delete
+                ? "[AsParameters]"
+                : "[FromBody]";
+
+            sb.Append(bindingAttribute).Append(' ')
+                .Append(method.Name)
+                .Append("Request request, ");
+        }
+
+        sb.Append(interfaceName).Append(" service");
+
+        if (method.HasCancellationToken)
+            sb.Append(", CancellationToken cancellationToken");
+    }
+
     private static void GenerateServiceCall(StringBuilder sb, MethodInfo method)
     {
         sb.Append("                ");
@@ -171,7 +187,9 @@ internal static class ServerEndpointGenerator
         if (method.Parameters.Count > 0)
         {
             var paramList = method.Parameters
-                .Select(p => $"request.{p.Name.ToPascalCase()}");
+                .Select(p => p.IsRouteParameter
+                    ? p.Name
+                    : $"request.{p.Name.ToPascalCase()}");
             sb.Append(string.Join(", ", paramList));
 
             if (method.HasCancellationToken)
@@ -201,21 +219,22 @@ internal static class ServerEndpointGenerator
     {
         foreach (var method in interfaceInfo.Methods)
         {
-            if (method.Parameters.Count > 0)
+            var nonRouteParams = method.Parameters.Where(static p => !p.IsRouteParameter).ToList();
+            if (nonRouteParams.Count > 0)
             {
-                GenerateRequestDto(sb, method);
+                GenerateRequestDto(sb, method, nonRouteParams);
             }
         }
     }
 
-    private static void GenerateRequestDto(StringBuilder sb, MethodInfo method)
+    private static void GenerateRequestDto(StringBuilder sb, MethodInfo method, List<ParameterInfo> nonRouteParams)
     {
         sb.AppendLine();
         sb.Append("    private record ")
             .Append(method.Name)
             .Append("Request(");
 
-        var properties = method.Parameters
+        var properties = nonRouteParams
             .Select(p => $"{p.Type} {p.Name.ToPascalCase()}");
 
         sb.Append(string.Join(", ", properties));

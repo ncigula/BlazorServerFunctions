@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using BlazorServerFunctions.Generator.Models;
 using Microsoft.CodeAnalysis;
 using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
@@ -125,13 +127,15 @@ internal static class InterfaceParser
 
             var methodInfo = ParseMethod(context, interfaceInfo, methodSymbol);
 
-            // BSF014: Duplicate route check
+            // BSF014: Duplicate route check — keyed on (httpMethod, route) so that
+            // different verbs on the same path (GET /items/{id} vs DELETE /items/{id}) are valid.
             var route = methodInfo.CustomRoute ?? methodInfo.Name;
-            if (seenRoutes.TryGetValue(route, out var existingMethodName))
+            var routeKey = $"{methodInfo.HttpMethod}:{route}";
+            if (seenRoutes.TryGetValue(routeKey, out var existingMethodName))
                 context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.DuplicateRoute,
                     methodSymbol.Locations.First(), methodInfo.Name, route, existingMethodName));
             else
-                seenRoutes[route] = methodInfo.Name;
+                seenRoutes[routeKey] = methodInfo.Name;
 
             yield return methodInfo;
         }
@@ -210,6 +214,7 @@ internal static class InterfaceParser
                 case "Route":
                     methodInfo.CustomRoute = attribute.Value.Value?.ToString();
                     ValidateRouteFormat(context, methodSymbol, methodInfo);
+                    ValidateAndMarkRouteParameters(context, methodSymbol, methodInfo);
                     break;
 
                 case "HttpMethod":
@@ -302,6 +307,76 @@ internal static class InterfaceParser
             })
             .ToList();
     }
+
+    /// <summary>
+    /// Validates route parameters in CustomRoute against method parameters.
+    /// Reports BSF017 for unmatched route params and BSF018 for complex-typed route params.
+    /// Marks matched parameters with IsRouteParameter = true.
+    /// </summary>
+    private static void ValidateAndMarkRouteParameters(
+        SourceProductionContextWrapper context,
+        IMethodSymbol methodSymbol,
+        MethodInfo methodInfo)
+    {
+        if (methodInfo.CustomRoute is null)
+            return;
+
+        var matches = RegexExpressions.RouteParameterRegex.Matches(methodInfo.CustomRoute);
+        foreach (Match match in matches)
+        {
+            var paramName = match.Groups["name"].Value;
+            var idx = methodInfo.Parameters.FindIndex(
+                p => string.Equals(p.Name, paramName, StringComparison.OrdinalIgnoreCase));
+
+            if (idx < 0)
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    DiagnosticDescriptors.RouteParameterNotFound,
+                    methodSymbol.Locations.First(),
+                    methodInfo.Name,
+                    paramName));
+                continue;
+            }
+
+            var paramInfo = methodInfo.Parameters[idx];
+
+            if (IsComplexRouteType(paramInfo.Type))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(
+                    DiagnosticDescriptors.RouteParameterComplexType,
+                    methodSymbol.Locations.First(),
+                    methodInfo.Name,
+                    paramName,
+                    paramInfo.Type));
+            }
+
+            methodInfo.Parameters[idx] = paramInfo with { IsRouteParameter = true };
+        }
+    }
+
+    private static bool IsComplexRouteType(string typeName)
+    {
+        var bare = typeName.EndsWith("?", StringComparison.Ordinal)
+            ? typeName.AsSpan(0, typeName.Length - 1).ToString()
+            : typeName;
+
+        // Fully qualified names (contain '.') are assumed bindable
+        if (bare.IndexOf('.') >= 0)
+            return false;
+
+        // Generic or array types are complex
+        if (bare.IndexOf('<') >= 0 || bare.IndexOf('[') >= 0)
+            return true;
+
+        return !s_primitiveRouteTypes.Contains(bare);
+    }
+
+    private static readonly HashSet<string> s_primitiveRouteTypes = new(StringComparer.Ordinal)
+    {
+        "int", "long", "short", "byte", "uint", "ulong", "ushort", "sbyte",
+        "float", "double", "decimal", "bool", "char", "string",
+        "Guid", "DateTime", "DateTimeOffset", "DateOnly", "TimeOnly", "TimeSpan",
+    };
 
     private static (AsyncType AsyncType, string ReturnType) ParseReturnType(
         SourceProductionContextWrapper context,

@@ -8,6 +8,79 @@ namespace BlazorServerFunctions.Generator.UnitTests;
 public class ClientGeneratorTests
 {
     [Fact]
+    public Task Generate_RouteParam_Get_InterpolatesIntoUrl_ExcludesFromQueryString()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
+                     public interface IUserService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Route = "users/{id}")]
+                         Task<string> GetUserAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RouteParam_Post_ExcludesFromBody()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
+                     public interface IUserService
+                     {
+                         [ServerFunction(HttpMethod = "POST", Route = "users/{id}/reset")]
+                         Task<string> ResetUserAsync(int id, string reason);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RouteParam_ConstraintStrippedForUrl()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
+                     public interface IUserService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Route = "users/{id:int}")]
+                         Task<string> GetUserAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+
+    [Fact]
     public Task Generate_BasicInterface_ProducesCorrectCode()
     {
         var source = """

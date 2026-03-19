@@ -105,15 +105,15 @@ No JSON files, no MSBuild properties — everything lives in C# with full IDE su
 
 ## 3. HTTP transport — feature gaps
 
-| # | Item | Size | Notes |
-|---|---|---|---|
-| 3.1 | **Route/path parameters** | 🟡 | `[ServerFunction(Route = "users/{id}")]` → bind `{id}` from route on server, interpolate in URL on client |
-| 3.2 | **`IAsyncEnumerable<T>` streaming** | 🔴 | Server: chunked JSON via `Results.Stream`; Client: `GetFromJsonAsAsyncEnumerable<T>()` |
-| 3.3 | **File upload** | 🟡 | `Stream` / `IFormFile` params → multipart on client, `[FromForm]` on server |
-| 3.4 | **OpenAPI metadata** | ✅ | `.WithTags()` always; `.Produces<T>()`/`.ProducesProblem(500)` for non-streaming; `.WithOpenApi()` auto-detected when `Microsoft.AspNetCore.OpenApi` is referenced |
-| 3.5 | **Response/output caching** | 🟢 | `[ServerFunction(CacheSeconds = 30)]` → `.CacheOutput(...)` |
-| 3.6 | **Rate limiting** | 🟢 | `[ServerFunction(RateLimitPolicy = "fixed")]` → `.RequireRateLimiting(...)` |
-| 3.7 | **API versioning** | 🟡 | `[ServerFunctionCollection(Version = "v2")]` → route prefix `/api/v2/...` |
+| # | Item | Size | Notes                                                                                                                                                                                 |
+|---|---|---|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 3.1 | **Route/path parameters** | 🟡 | `[ServerFunction(Route = "users/{id}")]` → bind `{id}` from route on server, interpolate in URL on client                                                                             |
+| 3.2 | **`IAsyncEnumerable<T>` streaming** | 🔴 | Server: chunked JSON via `Results.Stream`; Client: `GetFromJsonAsAsyncEnumerable<T>()`                                                                                                |
+| 3.3 | **File upload** | 🟡 | `Stream` / `IFormFile` params → multipart on client, `[FromForm]` on server                                                                                                           |
+| 3.4 | **OpenAPI metadata** | ✅ | `.WithTags()` always; `.Produces<T>()`/`.ProducesProblem(500)` for non-streaming; `.WithOpenApi()` auto-detected when `Microsoft.AspNetCore.OpenApi` is referenced                    |
+| 3.5 | **Response/output caching** | 🟢 | `[ServerFunction(CacheSeconds = 30)]` → `.CacheOutput(...)`; Add to the configuration but have the attribute override it`                                                              |
+| 3.6 | **Rate limiting** | 🟢 | `[ServerFunction(RateLimitPolicy = "fixed")]` → `.RequireRateLimiting(...)`; Add to the configuration but have the attribute override it`                                                                                                          |
+| 3.7 | **API versioning** | 🟡 | `[ServerFunctionCollection(Version = "v2")]` → route prefix `/api/v2/...`                                                                                                             |
 | 3.8 | **Result\<T\> converter** | 🟡 | Opt-in per-interface/method converter that unwraps service return types (e.g. `Result<T>`) into `IResult` — success path → `Results.Ok(value)`, failure path → `Results.Problem(...)` |
 
 ---
@@ -124,7 +124,7 @@ No JSON files, no MSBuild properties — everything lives in C# with full IDE su
 |---|---|---|---|
 | 4.1 | **Named authorization policies** | 🟢 | `[ServerFunction(Policy = "AdminOnly")]` → `.RequireAuthorization("AdminOnly")` |
 | 4.2 | **Role-based auth** | 🟢 | `[ServerFunction(Roles = "Admin,Manager")]` |
-| 4.3 | **CORS per interface** | 🟡 | `[ServerFunctionCollection(CorsPolicy = "AllowedOrigins")]` → `.RequireCors(...)` on the route group |
+| 4.3 | **CORS per interface** | 🟡 | `[ServerFunctionCollection(CorsPolicy = "AllowedOrigins")]` → `.RequireCors(...)` on the route group; Add to the configuration but have the attribute override it |
 | 4.4 | **Anti-forgery** | 🟢 | `[ServerFunction(RequireAntiForgery = true)]` → `.ValidateAntiforgery()` |
 | 4.5 | **Endpoint filters** | 🟡 | `[ServerFunction(Filter = typeof(MyFilter))]` → `.AddEndpointFilter<MyFilter>()` on the generated minimal API endpoint; supports multiple filters via array |
 
@@ -139,7 +139,7 @@ No JSON files, no MSBuild properties — everything lives in C# with full IDE su
 ---
 
 ## 5. Production readiness
-
+~~~~
 | # | Item | Size | Notes |
 |---|---|---|---|
 | 5.1 | **Distributed tracing** | 🟡 | Auto-emit `Activity` start/stop in generated **server endpoints only** (WASM runs client-side, no server Activity needed); integrates with OpenTelemetry |

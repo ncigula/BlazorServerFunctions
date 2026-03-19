@@ -210,6 +210,7 @@ internal static class InterfaceParser
         int methodCacheSeconds = -1; // -1 = not set on attribute → inherit from config
         string? rawMethodRateLimitPolicy = null; // null = not set on attribute → inherit from config
         string? rawMethodPolicy = null; // null = not set on attribute → inherit from config
+        string? rawMethodRoles = null; // null = not set on attribute → no roles requirement
 
         foreach (var attribute in serverFunctionAttribute?.NamedArguments ?? [])
         {
@@ -222,20 +223,7 @@ internal static class InterfaceParser
                     break;
 
                 case "HttpMethod":
-                    hasExplicitHttpMethod = true;
-                    if (attribute.Value.Kind is not TypedConstantKind.Error && attribute.Value.Value != null)
-                    {
-                        var httpMethodStr = attribute.Value.Value.ToString()!;
-                        if (Enum.TryParse<HttpMethod>(httpMethodStr, ignoreCase: true, out var parsedMethod))
-                        {
-                            methodInfo.HttpMethod = parsedMethod;
-                            break;
-                        }
-                    }
-
-                    context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.InvalidHttpMethod,
-                        methodSymbol.Locations.First(), methodInfo.Name,
-                        attribute.Value.Value?.ToString() ?? "null"));
+                    hasExplicitHttpMethod = ParseHttpMethodAttribute(context, methodSymbol, methodInfo, attribute.Value);
                     break;
 
                 case "RequireAuthorization":
@@ -253,10 +241,43 @@ internal static class InterfaceParser
                 case "Policy":
                     rawMethodPolicy = attribute.Value.Value?.ToString();
                     break;
+
+                case "Roles":
+                    rawMethodRoles = attribute.Value.Value?.ToString();
+                    break;
             }
         }
 
-        ResolveFromConfig(methodInfo, interfaceInfo, hasExplicitHttpMethod, methodCacheSeconds, rawMethodRateLimitPolicy, rawMethodPolicy);
+        if (rawMethodRoles is not null && rawMethodRoles.Length == 0)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.EmptyRoles,
+                methodSymbol.Locations.First(), methodInfo.Name));
+            rawMethodRoles = null;
+        }
+
+        ResolveFromConfig(methodInfo, interfaceInfo, hasExplicitHttpMethod, methodCacheSeconds, rawMethodRateLimitPolicy, rawMethodPolicy, rawMethodRoles);
+    }
+
+    private static bool ParseHttpMethodAttribute(
+        SourceProductionContextWrapper context,
+        IMethodSymbol methodSymbol,
+        MethodInfo methodInfo,
+        TypedConstant value)
+    {
+        if (value.Kind is not TypedConstantKind.Error && value.Value != null)
+        {
+            var httpMethodStr = value.Value.ToString()!;
+            if (Enum.TryParse<HttpMethod>(httpMethodStr, ignoreCase: true, out var parsedMethod))
+            {
+                methodInfo.HttpMethod = parsedMethod;
+                return true;
+            }
+        }
+
+        context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.InvalidHttpMethod,
+            methodSymbol.Locations.First(), methodInfo.Name,
+            value.Value?.ToString() ?? "null"));
+        return true; // Still "explicit" even if invalid — prevents DefaultHttpMethod override
     }
 
     private static void ResolveFromConfig(
@@ -265,7 +286,8 @@ internal static class InterfaceParser
         bool hasExplicitHttpMethod,
         int methodCacheSeconds,
         string? rawMethodRateLimitPolicy,
-        string? rawMethodPolicy)
+        string? rawMethodPolicy,
+        string? rawMethodRoles)
     {
         // Apply DefaultHttpMethod from config when no explicit method was provided on this [ServerFunction]
         if (!hasExplicitHttpMethod
@@ -295,6 +317,10 @@ internal static class InterfaceParser
             "" => null,
             _ => rawMethodPolicy
         };
+
+        // Resolve Roles: no config default — null = not set → no roles requirement; non-null = use it
+        // (empty string case already validated and nulled out before this call)
+        methodInfo.Roles = rawMethodRoles;
     }
 
     /// <summary>

@@ -18,7 +18,7 @@ internal static class ServerEndpointGenerator
             ? interfaceInfo.Namespace
             : null;
 
-        var hasAuthorization = interfaceInfo.RequireAuthorization || interfaceInfo.Methods.Any(m => m.RequireAuthorization || m.Policy != null);
+        var hasAuthorization = interfaceInfo.RequireAuthorization || interfaceInfo.Methods.Any(m => m.RequireAuthorization || m.Policy != null || m.Roles != null);
         var hasCancellationToken = interfaceInfo.Methods.Any(m => m.HasCancellationToken);
         var hasCaching = interfaceInfo.Methods.Any(m => m.CacheSeconds > 0);
         var hasRateLimiting = interfaceInfo.Methods.Any(m => m.RateLimitPolicy != null);
@@ -178,6 +178,9 @@ internal static class ServerEndpointGenerator
             chain.Add($".RequireAuthorization(\"{EscapeStringLiteral(method.Policy)}\")");
         else if (method.RequireAuthorization && !interfaceRequiresAuth)
             chain.Add(".RequireAuthorization()");
+
+        if (method.Roles != null)
+            chain.Add($".RequireAuthorization(new AuthorizeAttribute {{ Roles = \"{EscapeStringLiteral(method.Roles)}\" }})");
 
         for (int i = 0; i < chain.Count; i++)
         {

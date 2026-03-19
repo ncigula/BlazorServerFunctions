@@ -275,4 +275,15 @@ internal static class DiagnosticDescriptors
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF021: Roles is set to an empty string — has no effect
+    /// </summary>
+    public static readonly DiagnosticDescriptor EmptyRoles = new(
+        id: "BSF021",
+        title: "Empty Roles value",
+        messageFormat: "Method '{0}' has Roles set to an empty string, which has no effect. Remove the Roles property or provide role names.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

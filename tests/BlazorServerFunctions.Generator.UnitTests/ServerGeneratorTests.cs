@@ -1635,4 +1635,180 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ── §4.2 Role-based auth ─────────────────────────────────────────────────
+
+    [Fact]
+    public Task Generate_Roles_SingleRole_EmitsRequireAuthorizationWithRole()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/admin")]
+                     public interface IAdminService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Roles = "Admin")]
+                         Task<string> GetStatsAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Roles_MultipleRoles_EmitsRequireAuthorizationWithCommaSeparated()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/admin")]
+                     public interface IAdminService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Roles = "Admin,Manager")]
+                         Task<string> GetStatsAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public void Generate_Roles_EmptyString_EmitsBSF021()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/admin")]
+                     public interface IAdminService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Roles = "")]
+                         Task<string> GetStatsAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        result.AssertDiagnostic("BSF021");
+    }
+
+    [Fact]
+    public Task Generate_Roles_WithPolicy_BothEmittedInChain()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/admin")]
+                     public interface IAdminService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Policy = "AdminOnly", Roles = "Admin")]
+                         Task<string> GetStatsAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Roles_WithRequireAuthorizationBool_BothApply()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/admin", RequireAuthorization = true)]
+                     public interface IAdminService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Roles = "Admin")]
+                         Task<string> GetStatsAsync();
+
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetStatusAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Roles_MixedMethods_OnlyRoledMethodsGetRequireAuthorization()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/items")]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetAllAsync();
+
+                         [ServerFunction(HttpMethod = "DELETE", Roles = "Admin")]
+                         Task DeleteAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Roles_AndRateLimitPolicy_CorrectChainOrder()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/admin")]
+                     public interface IAdminService
+                     {
+                         [ServerFunction(HttpMethod = "GET", RateLimitPolicy = "fixed", Roles = "Admin")]
+                         Task<string> GetStatsAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

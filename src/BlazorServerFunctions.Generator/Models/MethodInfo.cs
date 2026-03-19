@@ -22,4 +22,7 @@ internal sealed record MethodInfo
 
     /// <summary>Resolved named authorization policy, or <c>null</c> if none applies.</summary>
     public string? Policy { get; set; }
+
+    /// <summary>Comma-separated role names, or <c>null</c> if none applies.</summary>
+    public string? Roles { get; set; }
 }

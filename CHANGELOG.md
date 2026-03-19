@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **§4.1 Named authorization policies** — `[ServerFunction(Policy = "AdminOnly")]` emits `.RequireAuthorization("AdminOnly")` on the endpoint; `ServerFunctionConfiguration.Policy` sets a collection-level default; per-method value overrides config (`""` = explicitly disable); can be combined with the boolean `RequireAuthorization` — named policy is applied in addition to any group-level `.RequireAuthorization()` on the route group
+- **§4.2 Role-based auth** — `[ServerFunction(Roles = "Admin,Manager")]` emits `.RequireAuthorization(new AuthorizeAttribute { Roles = "Admin,Manager" })` on the endpoint; can be combined with `Policy` and the boolean `RequireAuthorization` (all are ANDed by ASP.NET Core); BSF021 error when `Roles` is set to an empty string
 
 ---
 

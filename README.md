@@ -156,6 +156,7 @@ Applied to a method. Controls the HTTP method, route, authorization, caching, an
 | `CacheSeconds` | `int` | `-1` (inherit) | Seconds to cache via `.CacheOutput(...)`; `-1` = inherit from config, `0` = disable. Only valid on GET endpoints. Requires `AddOutputCache()` + `UseOutputCache()` in the server pipeline |
 | `RateLimitPolicy` | `string?` | `null` (inherit) | Named rate-limiting policy applied via `.RequireRateLimiting("name")`; `null` = inherit from config, `""` = disable. Requires `AddRateLimiter(...)` + `UseRateLimiter()` in the server pipeline |
 | `Policy` | `string?` | `null` (inherit) | Named authorization policy applied via `.RequireAuthorization("name")`; `null` = inherit from config, `""` = disable. Does not affect the boolean `RequireAuthorization` setting |
+| `Roles` | `string?` | `null` | Comma-separated role names applied via `.RequireAuthorization(new AuthorizeAttribute { Roles = "..." })`; `null` = no restriction. Can be combined with `Policy` and `RequireAuthorization`. Empty string is an error (BSF021). |
 
 ---
 
@@ -353,6 +354,25 @@ public class AdminConfig : ServerFunctionConfiguration
 The generator emits `.RequireAuthorization("AdminOnly")` in the fluent endpoint chain. Per-method `Policy = ""` (empty string) explicitly opts a single method out of the collection-level default.
 
 This can be combined with the boolean `RequireAuthorization` — a route group can have `.RequireAuthorization()` (from `[ServerFunctionCollection(RequireAuthorization = true)]`) while individual methods apply a more specific named policy on top.
+
+### Role-based auth
+
+Apply role restrictions directly on a method:
+
+```csharp
+[ServerFunction(HttpMethod = "DELETE", Roles = "Admin,Manager")]
+Task DeleteUserAsync(Guid id);
+```
+
+The generator emits `.RequireAuthorization(new AuthorizeAttribute { Roles = "Admin,Manager" })`. Multiple roles are comma-separated (OR logic within the list — a user in any one of the roles passes).
+
+`Roles` can be combined with `Policy` and `RequireAuthorization` on the same method — ASP.NET Core ANDs all authorization requirements together:
+
+```csharp
+// Must satisfy "PremiumPolicy" AND be in "Admin" or "Manager" role
+[ServerFunction(HttpMethod = "GET", Policy = "PremiumPolicy", Roles = "Admin,Manager")]
+Task<AdminStats> GetStatsAsync();
+```
 
 ---
 

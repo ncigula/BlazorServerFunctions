@@ -35,4 +35,13 @@ public sealed class ServerFunctionAttribute : Attribute
     /// Does not affect the boolean <see cref="RequireAuthorization"/> setting.
     /// </summary>
     public string? Policy { get; set; }
+
+    /// <summary>
+    /// Comma-separated role names applied via
+    /// <c>.RequireAuthorization(new AuthorizeAttribute { Roles = "Admin,Manager" })</c>.
+    /// Use <c>null</c> (default) to apply no role restriction on this method.
+    /// Does not affect <see cref="RequireAuthorization"/> or <see cref="Policy"/>.
+    /// Setting this to an empty string is an error (BSF021).
+    /// </summary>
+    public string? Roles { get; set; }
 }

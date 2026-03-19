@@ -209,6 +209,7 @@ internal static class InterfaceParser
         bool hasExplicitHttpMethod = false;
         int methodCacheSeconds = -1; // -1 = not set on attribute → inherit from config
         string? rawMethodRateLimitPolicy = null; // null = not set on attribute → inherit from config
+        string? rawMethodPolicy = null; // null = not set on attribute → inherit from config
 
         foreach (var attribute in serverFunctionAttribute?.NamedArguments ?? [])
         {
@@ -248,10 +249,14 @@ internal static class InterfaceParser
                 case "RateLimitPolicy":
                     rawMethodRateLimitPolicy = attribute.Value.Value?.ToString();
                     break;
+
+                case "Policy":
+                    rawMethodPolicy = attribute.Value.Value?.ToString();
+                    break;
             }
         }
 
-        ResolveFromConfig(methodInfo, interfaceInfo, hasExplicitHttpMethod, methodCacheSeconds, rawMethodRateLimitPolicy);
+        ResolveFromConfig(methodInfo, interfaceInfo, hasExplicitHttpMethod, methodCacheSeconds, rawMethodRateLimitPolicy, rawMethodPolicy);
     }
 
     private static void ResolveFromConfig(
@@ -259,7 +264,8 @@ internal static class InterfaceParser
         InterfaceInfo interfaceInfo,
         bool hasExplicitHttpMethod,
         int methodCacheSeconds,
-        string? rawMethodRateLimitPolicy)
+        string? rawMethodRateLimitPolicy,
+        string? rawMethodPolicy)
     {
         // Apply DefaultHttpMethod from config when no explicit method was provided on this [ServerFunction]
         if (!hasExplicitHttpMethod
@@ -280,6 +286,14 @@ internal static class InterfaceParser
             null => interfaceInfo.Configuration.RateLimitPolicy,
             "" => null,
             _ => rawMethodRateLimitPolicy
+        };
+
+        // Resolve Policy: null = not set → inherit config; "" = explicit disable → null; non-empty = use it
+        methodInfo.Policy = rawMethodPolicy switch
+        {
+            null => interfaceInfo.Configuration.Policy,
+            "" => null,
+            _ => rawMethodPolicy
         };
     }
 

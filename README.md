@@ -121,6 +121,7 @@ public interface IUserService
 | `ApiType` | `ApiType` | `REST` | Transport protocol (`REST` or `GRPC`) |
 | `CacheSeconds` | `int` | `0` | Default output-cache duration (seconds) for all GET endpoints; `0` = disabled; overridable per method |
 | `RateLimitPolicy` | `string?` | `null` | Default rate-limiting policy name for all endpoints; `null` = none; overridable per method |
+| `Policy` | `string?` | `null` | Default named authorization policy for all endpoints; `null` = none; overridable per method (`""` = opt out) |
 
 **Configuration priority (highest wins):**
 ```
@@ -154,6 +155,7 @@ Applied to a method. Controls the HTTP method, route, authorization, caching, an
 | `RequireAuthorization` | `bool` | `false` | Calls `.RequireAuthorization()` on this specific endpoint |
 | `CacheSeconds` | `int` | `-1` (inherit) | Seconds to cache via `.CacheOutput(...)`; `-1` = inherit from config, `0` = disable. Only valid on GET endpoints. Requires `AddOutputCache()` + `UseOutputCache()` in the server pipeline |
 | `RateLimitPolicy` | `string?` | `null` (inherit) | Named rate-limiting policy applied via `.RequireRateLimiting("name")`; `null` = inherit from config, `""` = disable. Requires `AddRateLimiter(...)` + `UseRateLimiter()` in the server pipeline |
+| `Policy` | `string?` | `null` (inherit) | Named authorization policy applied via `.RequireAuthorization("name")`; `null` = inherit from config, `""` = disable. Does not affect the boolean `RequireAuthorization` setting |
 
 ---
 
@@ -329,6 +331,28 @@ public class RateLimitedConfig : ServerFunctionConfiguration
 ```
 
 The generator emits `.RequireRateLimiting("api")` in the fluent endpoint chain. Per-method `RateLimitPolicy = ""` (empty string) explicitly opts a single method out of the collection-level default.
+
+---
+
+## Authorization Policies
+
+Reference any named authorization policy you've already registered:
+
+```csharp
+// Apply via attribute
+[ServerFunction(HttpMethod = "GET", Policy = "AdminOnly")]
+Task<AdminStats> GetStatsAsync();
+
+// Or set a collection-level default
+public class AdminConfig : ServerFunctionConfiguration
+{
+    public AdminConfig() { Policy = "AdminOnly"; }
+}
+```
+
+The generator emits `.RequireAuthorization("AdminOnly")` in the fluent endpoint chain. Per-method `Policy = ""` (empty string) explicitly opts a single method out of the collection-level default.
+
+This can be combined with the boolean `RequireAuthorization` — a route group can have `.RequireAuthorization()` (from `[ServerFunctionCollection(RequireAuthorization = true)]`) while individual methods apply a more specific named policy on top.
 
 ---
 

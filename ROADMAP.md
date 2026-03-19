@@ -121,7 +121,7 @@ No JSON files, no MSBuild properties — everything lives in C# with full IDE su
 
 | # | Item | Size | Notes |
 |---|---|---|---|
-| 4.1 | **Named authorization policies** | 🟢 | `[ServerFunction(Policy = "AdminOnly")]` → `.RequireAuthorization("AdminOnly")` |
+| 4.1 | **Named authorization policies** | ✅ | `[ServerFunction(Policy = "AdminOnly")]` → `.RequireAuthorization("AdminOnly")`; `ServerFunctionConfiguration.Policy` for collection default; `""` = explicitly disable |
 | 4.2 | **Role-based auth** | 🟢 | `[ServerFunction(Roles = "Admin,Manager")]` |
 | 4.3 | **CORS per interface** | 🟡 | `[ServerFunctionCollection(CorsPolicy = "AllowedOrigins")]` → `.RequireCors(...)` on the route group; Add to the configuration but have the attribute override it |
 | 4.4 | **Anti-forgery** | 🟢 | `[ServerFunction(RequireAntiForgery = true)]` → `.ValidateAntiforgery()` |
@@ -213,7 +213,7 @@ Other solutions could be using design patterns like the Strategy pattern (and ot
 - [ ] 3.7 Custom converter for service return types before returning from the minimal API - for instance Result<T, Error> into IResult or ProblemDetails
 
 ### §4 — Security & auth
-- [ ] 4.1 Named authorization policies (`[ServerFunction(Policy = "AdminOnly")]`)
+- [x] 4.1 Named authorization policies (`[ServerFunction(Policy = "AdminOnly")]`)
 - [ ] 4.2 Role-based auth (`[ServerFunction(Roles = "Admin,Manager")]`)
 - [ ] 4.3 CORS per interface (`[ServerFunctionCollection(CorsPolicy = "...")]`)
 - [ ] 4.4 Anti-forgery (`[ServerFunction(RequireAntiForgery = true)]`)

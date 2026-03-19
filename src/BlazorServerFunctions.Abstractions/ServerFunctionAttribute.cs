@@ -26,4 +26,13 @@ public sealed class ServerFunctionAttribute : Attribute
     /// Requires <c>builder.Services.AddRateLimiter(...)</c> and <c>app.UseRateLimiter()</c> in the server pipeline.
     /// </summary>
     public string? RateLimitPolicy { get; set; }
+
+    /// <summary>
+    /// Name of the ASP.NET Core authorization policy to apply via
+    /// <c>.RequireAuthorization("policyName")</c>.
+    /// Use <c>null</c> (default) to inherit the value from <see cref="ServerFunctionConfiguration.Policy"/>.
+    /// Use <c>""</c> (empty string) to explicitly disable the named policy for this method even when a config default is set.
+    /// Does not affect the boolean <see cref="RequireAuthorization"/> setting.
+    /// </summary>
+    public string? Policy { get; set; }
 }

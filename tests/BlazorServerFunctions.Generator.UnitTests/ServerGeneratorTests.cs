@@ -1438,4 +1438,201 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ── §4.1 Named authorization policies ─────────────────────────────────
+
+    [Fact]
+    public Task Generate_Policy_MethodWithPolicy_EmitsRequireAuthorizationWithPolicyName()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/admin")]
+                     public interface IAdminService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Policy = "AdminOnly")]
+                         Task<string> GetStatsAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Policy_ConfigDefault_AppliedToAllMethods()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class AdminApiConfig : ServerFunctionConfiguration
+                     {
+                         public AdminApiConfig() { Policy = "Premium"; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/items", Configuration = typeof(AdminApiConfig))]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetItemAsync();
+
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetOtherItemAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Policy_MethodOverridesConfig()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class AdminApiConfig : ServerFunctionConfiguration
+                     {
+                         public AdminApiConfig() { Policy = "Premium"; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/items", Configuration = typeof(AdminApiConfig))]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Policy = "AdminOnly")]
+                         Task<string> GetItemAsync();
+
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetOtherItemAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Policy_EmptyStringDisablesConfigDefault()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class AdminApiConfig : ServerFunctionConfiguration
+                     {
+                         public AdminApiConfig() { Policy = "Premium"; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/items", Configuration = typeof(AdminApiConfig))]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Policy = "")]
+                         Task<string> GetItemAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Policy_MixedMethods_OnlyPoliciedMethodsGetRequireAuthorization()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/items")]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Policy = "AdminOnly")]
+                         Task<string> GetItemAsync();
+
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<string> CreateItemAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Policy_WithInterfaceLevelRequireAuthorization_BothApply()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/admin", RequireAuthorization = true)]
+                     public interface IAdminService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Policy = "AdminOnly")]
+                         Task<string> GetStatsAsync();
+
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetStatusAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Policy_AndRateLimitPolicy_CorrectChainOrder()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/admin")]
+                     public interface IAdminService
+                     {
+                         [ServerFunction(HttpMethod = "GET", RateLimitPolicy = "fixed", Policy = "AdminOnly")]
+                         Task<string> GetStatsAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

@@ -71,4 +71,12 @@ public class ServerFunctionConfiguration
     /// Requires <c>builder.Services.AddRateLimiter(...)</c> and <c>app.UseRateLimiter()</c>.
     /// </summary>
     public string? RateLimitPolicy { get; set; }
+
+    /// <summary>
+    /// Default named authorization policy applied to all endpoints in this collection
+    /// via <c>.RequireAuthorization("policyName")</c>.
+    /// <c>null</c> (default) means no named policy. Individual methods can override via
+    /// <see cref="ServerFunctionAttribute.Policy"/> — set to <c>""</c> to opt out.
+    /// </summary>
+    public string? Policy { get; set; }
 }

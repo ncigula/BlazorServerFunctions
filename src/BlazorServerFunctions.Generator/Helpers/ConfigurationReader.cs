@@ -118,6 +118,8 @@ internal static class ConfigurationReader
                     => config with { CacheSeconds = cs },
                 "__RateLimitPolicy" when field.ConstantValue is string rlp
                     => config with { RateLimitPolicy = string.IsNullOrEmpty(rlp) ? null : rlp },
+                "__Policy" when field.ConstantValue is string p
+                    => config with { Policy = string.IsNullOrEmpty(p) ? null : p },
                 _ => config
             };
         }
@@ -156,6 +158,7 @@ internal static class ConfigurationReader
         var apiType = current.ApiType;
         var cacheSeconds = current.CacheSeconds;
         var rateLimitPolicy = current.RateLimitPolicy;
+        var policy = current.Policy;
 
         foreach (var statement in statements)
         {
@@ -177,7 +180,8 @@ internal static class ConfigurationReader
                 ref customHttpClientType,
                 ref apiType,
                 ref cacheSeconds,
-                ref rateLimitPolicy);
+                ref rateLimitPolicy,
+                ref policy);
         }
 
         return current with
@@ -192,6 +196,7 @@ internal static class ConfigurationReader
             ApiType = apiType,
             CacheSeconds = cacheSeconds,
             RateLimitPolicy = rateLimitPolicy,
+            Policy = policy,
         };
     }
 
@@ -208,7 +213,8 @@ internal static class ConfigurationReader
         ref string? customHttpClientType,
         ref ApiType apiType,
         ref int cacheSeconds,
-        ref string? rateLimitPolicy)
+        ref string? rateLimitPolicy,
+        ref string? policy)
     {
         switch (propName)
         {
@@ -241,6 +247,9 @@ internal static class ConfigurationReader
                 break;
             case "RateLimitPolicy":
                 rateLimitPolicy = ExtractStringOrNull(value, rateLimitPolicy);
+                break;
+            case "Policy":
+                policy = ExtractStringOrNull(value, policy);
                 break;
         }
     }

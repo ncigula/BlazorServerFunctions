@@ -18,7 +18,7 @@ internal static class ServerEndpointGenerator
             ? interfaceInfo.Namespace
             : null;
 
-        var hasAuthorization = interfaceInfo.RequireAuthorization || interfaceInfo.Methods.Any(m => m.RequireAuthorization);
+        var hasAuthorization = interfaceInfo.RequireAuthorization || interfaceInfo.Methods.Any(m => m.RequireAuthorization || m.Policy != null);
         var hasCancellationToken = interfaceInfo.Methods.Any(m => m.HasCancellationToken);
         var hasCaching = interfaceInfo.Methods.Any(m => m.CacheSeconds > 0);
         var hasRateLimiting = interfaceInfo.Methods.Any(m => m.RateLimitPolicy != null);
@@ -174,7 +174,9 @@ internal static class ServerEndpointGenerator
         if (method.RateLimitPolicy != null)
             chain.Add($".RequireRateLimiting(\"{EscapeStringLiteral(method.RateLimitPolicy)}\")");
 
-        if (method.RequireAuthorization && !interfaceRequiresAuth)
+        if (method.Policy != null)
+            chain.Add($".RequireAuthorization(\"{EscapeStringLiteral(method.Policy)}\")");
+        else if (method.RequireAuthorization && !interfaceRequiresAuth)
             chain.Add(".RequireAuthorization()");
 
         for (int i = 0; i < chain.Count; i++)

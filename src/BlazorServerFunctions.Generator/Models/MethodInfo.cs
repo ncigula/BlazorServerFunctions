@@ -19,4 +19,7 @@ internal sealed record MethodInfo
 
     /// <summary>Resolved rate-limiting policy name, or <c>null</c> if none applies.</summary>
     public string? RateLimitPolicy { get; set; }
+
+    /// <summary>Resolved named authorization policy, or <c>null</c> if none applies.</summary>
+    public string? Policy { get; set; }
 }

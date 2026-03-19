@@ -30,4 +30,7 @@ internal sealed record ConfigurationInfo
 
     /// <summary>Default rate-limiting policy name (null = no rate limiting).</summary>
     public string? RateLimitPolicy { get; init; }
+
+    /// <summary>Default named authorization policy (null = no named policy).</summary>
+    public string? Policy { get; init; }
 }

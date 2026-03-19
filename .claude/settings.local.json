@@ -10,7 +10,8 @@
       "Bash(powershell -Command \"Get-Content ''X:\\\\BlazorServerFunctions\\\\tests\\\\BlazorServerFunctions.Generator.UnitTests\\\\ClientGeneratorTests.cs'' | Measure-Object -Line\")",
       "Bash(powershell -Command \"Get-Content ''X:\\\\BlazorServerFunctions\\\\tests\\\\BlazorServerFunctions.Generator.UnitTests\\\\ServerGeneratorTests.cs'' -Tail 5\")",
       "Bash(powershell -Command \"Get-Content ''X:\\\\BlazorServerFunctions\\\\tests\\\\BlazorServerFunctions.Generator.UnitTests\\\\ClientGeneratorTests.cs'' -Tail 5\")",
-      "Bash(powershell -Command \"Get-ChildItem ''X:\\\\BlazorServerFunctions\\\\tests\\\\BlazorServerFunctions.Generator.UnitTests\\\\_snapshots\\\\ClientGeneratorTests'' -Filter ''*Streaming*'' | ForEach-Object { Write-Host ''=== '' $_Name '' ===''; Get-Content $_FullName; Write-Host }\")"
+      "Bash(powershell -Command \"Get-ChildItem ''X:\\\\BlazorServerFunctions\\\\tests\\\\BlazorServerFunctions.Generator.UnitTests\\\\_snapshots\\\\ClientGeneratorTests'' -Filter ''*Streaming*'' | ForEach-Object { Write-Host ''=== '' $_Name '' ===''; Get-Content $_FullName; Write-Host }\")",
+      "Bash(ls -la /X/BlazorServerFunctions/*.md)"
     ]
   }
 }

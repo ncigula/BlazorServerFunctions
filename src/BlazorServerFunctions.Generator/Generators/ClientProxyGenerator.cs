@@ -21,7 +21,8 @@ internal static class ClientProxyGenerator
         sb.AppendLine();
 
         var hasCancellationToken = interfaceInfo.Methods.Any(m => m.HasCancellationToken);
-        AddUsingDirectives(sb: sb, hasCancellationToken: hasCancellationToken);
+        var hasStreaming = interfaceInfo.Methods.Any(m => m.AsyncType is AsyncType.AsyncEnumerable);
+        AddUsingDirectives(sb: sb, hasCancellationToken: hasCancellationToken, hasStreaming: hasStreaming);
 
         sb.Append("namespace ").Append(interfaceInfo.Namespace).Append(';').AppendLine();
         sb.AppendLine();
@@ -53,13 +54,20 @@ internal static class ClientProxyGenerator
         sb.AppendLine("    }");
     }
 
-    private static void AddUsingDirectives(StringBuilder sb, bool hasCancellationToken)
+    private static void AddUsingDirectives(StringBuilder sb, bool hasCancellationToken, bool hasStreaming)
     {
         sb.AppendLine("using System;");
         sb.AppendLine("using System.Net;");
         sb.AppendLine("using System.Net.Http;");
         sb.AppendLine("using System.Net.Http.Json;");
-        if (hasCancellationToken)
+        if (hasStreaming)
+        {
+            sb.AppendLine("using System.Collections.Generic;");
+            sb.AppendLine("using System.Runtime.CompilerServices;");
+        }
+
+        // Streaming methods always add a CancellationToken parameter even when the interface omits one
+        if (hasCancellationToken || hasStreaming)
             sb.AppendLine("using System.Threading;");
         sb.AppendLine("using System.Threading.Tasks;");
         sb.AppendLine();
@@ -85,6 +93,14 @@ internal static class ClientProxyGenerator
             method: methodInfo);
 
         sb.AppendLine("    {");
+
+        if (methodInfo.AsyncType is AsyncType.AsyncEnumerable)
+        {
+            GenerateStreamingClientMethodBody(sb, methodInfo, routeNaming);
+            sb.AppendLine("    }");
+            sb.AppendLine();
+            return;
+        }
 
         var nonRouteParams = methodInfo.Parameters.Where(static p => !p.IsRouteParameter).ToList();
         var hasNonRouteParams = nonRouteParams.Count > 0;
@@ -151,13 +167,16 @@ internal static class ClientProxyGenerator
     {
         sb.Append("    public ");
 
-        if (method.AsyncType is not AsyncType.None)
+        if (method.AsyncType is AsyncType.AsyncEnumerable)
+            sb.Append("async IAsyncEnumerable<").Append(method.ReturnType).Append('>');
+        else if (method.AsyncType is not AsyncType.None)
         {
             sb.Append("async ").Append(method.AsyncType.ToString());
             if (!string.Equals(method.ReturnType, "void", StringComparison.Ordinal))
                 sb.Append('<').Append(method.ReturnType).Append('>');
         }
-        else sb.Append(method.ReturnType);
+        else
+            sb.Append(method.ReturnType);
 
         sb.Append(' ').Append(method.Name).Append('(');
 
@@ -172,7 +191,14 @@ internal static class ClientProxyGenerator
             return declaration;
         }).ToList();
 
-        if (method.HasCancellationToken)
+        if (method.AsyncType is AsyncType.AsyncEnumerable)
+        {
+            // Streaming methods always expose [EnumeratorCancellation] CancellationToken
+            if (paramDeclarations.Count > 0)
+                sb.Append(string.Join(", ", paramDeclarations)).Append(", ");
+            sb.Append("[EnumeratorCancellation] CancellationToken cancellationToken = default");
+        }
+        else if (method.HasCancellationToken)
         {
             if (paramDeclarations.Count > 0)
                 sb.Append(string.Join(", ", paramDeclarations)).Append(", CancellationToken cancellationToken = default");
@@ -331,6 +357,93 @@ internal static class ClientProxyGenerator
             sb.AppendLine($"        var response = {awaitKeyword}_httpClient.SendAsync(requestMessage, cancellationToken){resultSuffix};");
         else
             sb.AppendLine($"        var response = {awaitKeyword}_httpClient.SendAsync(requestMessage){resultSuffix};");
+    }
+
+    private static void GenerateStreamingClientMethodBody(StringBuilder sb, MethodInfo method, RouteNaming routeNaming)
+    {
+        var urlSegment = method.CustomRoute != null
+            ? RouteTemplateToInterpolation(method.CustomRoute)
+            : method.Name.ApplyRouteNaming(routeNaming);
+
+        var nonRouteParams = method.Parameters.Where(static p => !p.IsRouteParameter).ToList();
+
+        if (method.HttpMethod is HttpMethod.Get or HttpMethod.Delete)
+        {
+            GenerateStreamingQueryStringRequest(sb, urlSegment, method.HttpMethod, nonRouteParams);
+        }
+        else
+        {
+            if (nonRouteParams.Count > 0)
+                BuildRequestObject(sb, nonRouteParams);
+            GenerateStreamingOtherRequest(sb, urlSegment, method.HttpMethod, nonRouteParams);
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("        if (!response.IsSuccessStatusCode)");
+        sb.AppendLine("        {");
+        sb.AppendLine("            var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);");
+        sb.AppendLine("            throw new HttpRequestException(errorBody, null, response.StatusCode);");
+        sb.AppendLine("        }");
+        sb.AppendLine();
+        sb.AppendLine($"        await foreach (var item in response.Content.ReadFromJsonAsAsyncEnumerable<{method.ReturnType}>(cancellationToken)!)");
+        sb.AppendLine("            yield return item!;");
+    }
+
+    private static void GenerateStreamingQueryStringRequest(
+        StringBuilder sb,
+        string urlSegment,
+        HttpMethod httpMethod,
+        List<ParameterInfo> nonRouteParams)
+    {
+        var verb = httpMethod.ToString();
+
+        if (nonRouteParams.Count > 0)
+        {
+            sb.AppendLine("        var queryString = System.Web.HttpUtility.ParseQueryString(string.Empty);");
+            foreach (var parameter in nonRouteParams)
+            {
+                sb.Append("        queryString[\"")
+                    .Append(parameter.Name.ToPascalCase())
+                    .Append("\"] = ")
+                    .Append(parameter.Name)
+                    .AppendLine($"{(parameter.Type.EndsWith("?", StringComparison.Ordinal) ? "?" : string.Empty)}.ToString(System.Globalization.CultureInfo.InvariantCulture);");
+            }
+
+            sb.AppendLine($"        var response = await _httpClient.{verb}Async(");
+            sb.AppendLine($"            $\"{{BaseRoute}}/{urlSegment}?{{queryString}}\",");
+        }
+        else
+        {
+            sb.AppendLine($"        var response = await _httpClient.{verb}Async(");
+            sb.AppendLine($"            $\"{{BaseRoute}}/{urlSegment}\",");
+        }
+
+        sb.AppendLine("            HttpCompletionOption.ResponseHeadersRead,");
+        sb.AppendLine("            cancellationToken);");
+    }
+
+    private static void GenerateStreamingOtherRequest(
+        StringBuilder sb,
+        string urlSegment,
+        HttpMethod httpMethod,
+        List<ParameterInfo> nonRouteParams)
+    {
+        sb.AppendLine("        var requestMessage = new HttpRequestMessage");
+        sb.AppendLine("        {");
+        sb.AppendLine($"            Method = HttpMethod.{httpMethod},");
+
+        if (nonRouteParams.Count > 0)
+        {
+            sb.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{urlSegment}\", UriKind.Relative),");
+            sb.AppendLine("            Content = JsonContent.Create(request)");
+        }
+        else
+        {
+            sb.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{urlSegment}\", UriKind.Relative)");
+        }
+
+        sb.AppendLine("        };");
+        sb.AppendLine("        var response = await _httpClient.SendAsync(requestMessage, HttpCompletionOption.ResponseHeadersRead, cancellationToken);");
     }
 
     private static string FormatDefaultValue(string type, object? defaultValue)

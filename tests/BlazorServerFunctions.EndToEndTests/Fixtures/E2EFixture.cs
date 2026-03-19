@@ -70,6 +70,10 @@ public sealed class E2EFixture : IDisposable
             .ConfigurePrimaryHttpMessageHandler(() => factory.Server.CreateHandler())
             .ConfigureHttpClient((_, c) => c.BaseAddress = factory.Server.BaseAddress);
 
+        services.AddHttpClient<IStreamingService, StreamingServiceClient>()
+            .ConfigurePrimaryHttpMessageHandler(() => factory.Server.CreateHandler())
+            .ConfigureHttpClient((_, c) => c.BaseAddress = factory.Server.BaseAddress);
+
         return services.BuildServiceProvider();
     }
 

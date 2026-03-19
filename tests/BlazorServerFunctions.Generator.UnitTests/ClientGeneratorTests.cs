@@ -926,4 +926,55 @@ public class ClientGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ── §3.2 IAsyncEnumerable<T> streaming ────────────────────────────────────
+
+    [Fact]
+    public Task Generate_Streaming_Get_ProducesAsyncEnumerable()
+    {
+        var source = """
+                     using System.Collections.Generic;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/weather")]
+                     public interface IWeatherService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         IAsyncEnumerable<string> StreamForecastsAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Streaming_WithCancellationToken_AddsEnumeratorCancellation()
+    {
+        var source = """
+                     using System.Collections.Generic;
+                     using System.Threading;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/events")]
+                     public interface IEventService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         IAsyncEnumerable<string> StreamEventsAsync(CancellationToken ct = default);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

@@ -18,4 +18,13 @@ public static class RegexExpressions
         @"\{(?<name>[a-zA-Z_][a-zA-Z0-9_]*)(?:[?:][^}]*)?\}",
         RegexOptions.Compiled | RegexOptions.ExplicitCapture,
         TimeSpan.FromMilliseconds(1000));
+
+    /// <summary>
+    /// Matches <c>IAsyncEnumerable&lt;T&gt;</c> return types, both fully qualified
+    /// (<c>System.Collections.Generic.IAsyncEnumerable&lt;T&gt;</c>) and short-form.
+    /// </summary>
+    public static readonly Regex IsAsyncEnumerableRegex = new Regex(
+        @"^\s*(?:System\.Collections\.Generic\.)?IAsyncEnumerable\s*<.+>\s*$",
+        RegexOptions.Compiled | RegexOptions.ExplicitCapture | RegexOptions.Singleline,
+        TimeSpan.FromMilliseconds(1000));
 }

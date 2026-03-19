@@ -900,4 +900,79 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ── §3.2 IAsyncEnumerable<T> streaming ────────────────────────────────────
+
+    [Fact]
+    public Task Generate_Streaming_Get_NoParams_DirectReturn()
+    {
+        var source = """
+                     using System.Collections.Generic;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/weather")]
+                     public interface IWeatherService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         IAsyncEnumerable<string> StreamForecastsAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Streaming_Get_WithRouteParam_DirectReturn()
+    {
+        var source = """
+                     using System.Collections.Generic;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/sensors")]
+                     public interface ISensorService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Route = "{deviceId}/readings")]
+                         IAsyncEnumerable<string> StreamReadingsAsync(int deviceId);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Streaming_WithCancellationToken_DirectReturn()
+    {
+        var source = """
+                     using System.Collections.Generic;
+                     using System.Threading;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/events")]
+                     public interface IEventService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         IAsyncEnumerable<string> StreamEventsAsync(CancellationToken ct = default);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

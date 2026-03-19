@@ -383,9 +383,19 @@ internal static class InterfaceParser
         IMethodSymbol methodSymbol)
     {
         var returnType = methodSymbol.ReturnType.ToDisplayString();
+
+        // IAsyncEnumerable<T> — checked before the Task/ValueTask guard so it isn't rejected by BSF007
+        if (RegexExpressions.IsAsyncEnumerableRegex.IsMatch(returnType))
+        {
+            var innerType = methodSymbol.ReturnType is INamedTypeSymbol { TypeArguments.Length: > 0 } iae
+                ? iae.TypeArguments[0].ToDisplayString()
+                : "object";
+            return (AsyncType.AsyncEnumerable, innerType);
+        }
+
         bool isAsync = RegexExpressions.IsAsyncTypeRegex.IsMatch(returnType);
 
-        // BSF007: Method must return Task or ValueTask
+        // BSF007: Method must return Task, ValueTask, or IAsyncEnumerable<T>
         if (!isAsync)
         {
             context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.InvalidReturnType,

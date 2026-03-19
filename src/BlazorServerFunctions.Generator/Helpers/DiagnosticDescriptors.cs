@@ -93,7 +93,7 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor InvalidReturnType = new(
         id: "BSF007",
         title: "Invalid return type",
-        messageFormat: "Method '{0}' must return Task, Task<T>, ValueTask, or ValueTask<T>",
+        messageFormat: "Method '{0}' must return Task, Task<T>, ValueTask, ValueTask<T>, or IAsyncEnumerable<T>",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);

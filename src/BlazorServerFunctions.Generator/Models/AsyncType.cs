@@ -4,5 +4,6 @@ public enum AsyncType
 {
     None,
     Task,
-    ValueTask
+    ValueTask,
+    AsyncEnumerable
 }

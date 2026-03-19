@@ -105,7 +105,7 @@ internal static class ServerEndpointGenerator
 
         sb.Append("        group.Map").Append(httpMethod).Append("(\"/").Append(routeSegment).AppendLine("\",");
 
-        var asyncKeyword = method.AsyncType is not AsyncType.None ? "async " : string.Empty;
+        var asyncKeyword = method.AsyncType is AsyncType.Task or AsyncType.ValueTask ? "async " : string.Empty;
         sb.Append($"            {asyncKeyword}(");
 
         GenerateLambdaParameters(sb, interfaceName, method, routeParams, nonRouteParams);
@@ -115,7 +115,8 @@ internal static class ServerEndpointGenerator
 
         GenerateServiceCall(sb, method);
 
-        GenerateResultReturn(sb, method.ReturnType);
+        if (method.AsyncType is not AsyncType.AsyncEnumerable)
+            GenerateResultReturn(sb, method.ReturnType);
 
         sb.AppendLine("            })");
 
@@ -174,13 +175,19 @@ internal static class ServerEndpointGenerator
     {
         sb.Append("                ");
 
-        if (!string.Equals(method.ReturnType, "void", StringComparison.Ordinal))
+        // Streaming: return the IAsyncEnumerable<T> directly — ASP.NET Core handles chunked streaming.
+        if (method.AsyncType is AsyncType.AsyncEnumerable)
         {
-            sb.Append("var result = ");
+            sb.Append("return ");
         }
+        else
+        {
+            if (!string.Equals(method.ReturnType, "void", StringComparison.Ordinal))
+                sb.Append("var result = ");
 
-        if (method.AsyncType is not AsyncType.None)
-            sb.Append("await ");
+            if (method.AsyncType is not AsyncType.None)
+                sb.Append("await ");
+        }
 
         sb.Append("service.").Append(method.Name).Append('(');
 

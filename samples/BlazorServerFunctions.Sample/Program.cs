@@ -26,15 +26,27 @@ builder.Services.AddAuthentication("Cookies")
     {
         options.LoginPath = "/demos/admin/wasm";
         // API clients (HttpClient from WASM) don't follow redirects gracefully —
-        // return 401 directly so the generated client throws HttpRequestException
-        // instead of following the redirect to the login page and returning HTML.
+        // return 401/403 with a ProblemDetails JSON body so the generated client
+        // throws HttpRequestException with the correct status code and detail.
         options.Events.OnRedirectToLogin = ctx =>
         {
             ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
-            return Task.CompletedTask;
+            ctx.Response.ContentType = "application/problem+json";
+            return ctx.Response.WriteAsync(
+                """{"status":401,"title":"Unauthorized","detail":"Authentication is required."}""");
+        };
+        options.Events.OnRedirectToAccessDenied = ctx =>
+        {
+            ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+            ctx.Response.ContentType = "application/problem+json";
+            return ctx.Response.WriteAsync(
+                """{"status":403,"title":"Forbidden","detail":"Insufficient permissions."}""");
         };
     });
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+    // "AdminOnly" policy requires the "Admin" role — used by IAdminService.GetPolicySecretAsync
+    // and GetRoleAndPolicySecretAsync to demonstrate named policy enforcement alongside Roles.
+    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin")));
 builder.Services.AddProblemDetails();
 
 builder.Services.AddScoped<IWeatherService, WeatherService>();
@@ -94,6 +106,19 @@ app.MapPost("/demos/admin/login", async (HttpContext ctx) =>
     var identity = new ClaimsIdentity(claims, "Cookies");
     await ctx.SignInAsync(new ClaimsPrincipal(identity)).ConfigureAwait(false);
     return Results.Redirect("/demos/admin/wasm");
+}).DisableAntiforgery();
+
+// Signs in as a user with the "Admin" role — used in E2E tests for role/policy scenarios.
+app.MapPost("/demos/admin/login/admin", async (HttpContext ctx) =>
+{
+    var claims = new List<Claim>
+    {
+        new(ClaimTypes.Name, "admin-user"),
+        new(ClaimTypes.Role, "Admin"),
+    };
+    var identity = new ClaimsIdentity(claims, "Cookies");
+    await ctx.SignInAsync(new ClaimsPrincipal(identity)).ConfigureAwait(false);
+    return Results.Ok();
 }).DisableAntiforgery();
 
 app.MapPost("/demos/admin/logout", async (HttpContext ctx) =>

@@ -24,7 +24,10 @@ internal static class IOrderServiceServerExtensions
                 var result = await service.CreateOrderAsync(request.UserId, request.ProductId);
                 return Results.Ok(result);
             })
-            .WithName("IOrderService_CreateOrderAsync");
+            .WithName("IOrderService_CreateOrderAsync")
+            .WithTags("OrderService")
+            .Produces<Order>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

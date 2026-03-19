@@ -24,7 +24,10 @@ internal static class IUserServiceServerExtensions
                 var result = await service.GetAllAsync();
                 return Results.Ok(result);
             })
-            .WithName("IUserService_GetAllAsync");
+            .WithName("IUserService_GetAllAsync")
+            .WithTags("UserService")
+            .Produces<System.Collections.Generic.List<User>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapGet("/GetByIdAsync",
             async ([AsParameters] GetByIdAsyncRequest request, IUserService service) =>
@@ -32,7 +35,10 @@ internal static class IUserServiceServerExtensions
                 var result = await service.GetByIdAsync(request.Id);
                 return Results.Ok(result);
             })
-            .WithName("IUserService_GetByIdAsync");
+            .WithName("IUserService_GetByIdAsync")
+            .WithTags("UserService")
+            .Produces<User>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/CreateAsync",
             async ([FromBody] CreateAsyncRequest request, IUserService service) =>
@@ -40,7 +46,10 @@ internal static class IUserServiceServerExtensions
                 var result = await service.CreateAsync(request.Name, request.Email);
                 return Results.Ok(result);
             })
-            .WithName("IUserService_CreateAsync");
+            .WithName("IUserService_CreateAsync")
+            .WithTags("UserService")
+            .Produces<User>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

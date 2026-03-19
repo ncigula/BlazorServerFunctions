@@ -24,7 +24,10 @@ internal static class IUserServiceServerExtensions
                 await service.DeleteAsync(request.Id);
                 return Results.Ok();
             })
-            .WithName("IUserService_DeleteAsync");
+            .WithName("IUserService_DeleteAsync")
+            .WithTags("UserService")
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

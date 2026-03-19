@@ -24,7 +24,10 @@ internal static class ICalculatorServiceServerExtensions
                 var result = await service.AddAsync(request.FirstNumber, request.SecondNumber);
                 return Results.Ok(result);
             })
-            .WithName("ICalculatorService_AddAsync");
+            .WithName("ICalculatorService_AddAsync")
+            .WithTags("CalculatorService")
+            .Produces<int>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

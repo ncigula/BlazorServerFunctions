@@ -24,7 +24,10 @@ internal static class ITestServiceServerExtensions
                 var result = await service.GetAllMessagesAsync();
                 return Results.Ok(result);
             })
-            .WithName("ITestService_GetAllMessagesAsync");
+            .WithName("ITestService_GetAllMessagesAsync")
+            .WithTags("TestService")
+            .Produces<System.Collections.Generic.List<Message>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/CreateAsync",
             async ([FromBody] CreateAsyncRequest request, ITestService service) =>
@@ -32,7 +35,10 @@ internal static class ITestServiceServerExtensions
                 var result = await service.CreateAsync(request.Id, request.Name);
                 return Results.Ok(result);
             })
-            .WithName("ITestService_CreateAsync");
+            .WithName("ITestService_CreateAsync")
+            .WithTags("TestService")
+            .Produces<User>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/AnotherMethodAsync",
             async (ITestService service) =>
@@ -40,7 +46,10 @@ internal static class ITestServiceServerExtensions
                 await service.AnotherMethodAsync();
                 return Results.Ok();
             })
-            .WithName("ITestService_AnotherMethodAsync");
+            .WithName("ITestService_AnotherMethodAsync")
+            .WithTags("TestService")
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

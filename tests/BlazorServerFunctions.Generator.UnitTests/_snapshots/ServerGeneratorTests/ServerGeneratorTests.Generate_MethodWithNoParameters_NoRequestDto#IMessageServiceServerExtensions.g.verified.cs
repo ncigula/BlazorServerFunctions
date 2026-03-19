@@ -24,7 +24,10 @@ internal static class IMessageServiceServerExtensions
                 var result = await service.GetAllMessagesAsync();
                 return Results.Ok(result);
             })
-            .WithName("IMessageService_GetAllMessagesAsync");
+            .WithName("IMessageService_GetAllMessagesAsync")
+            .WithTags("MessageService")
+            .Produces<System.Collections.Generic.List<Message>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

@@ -26,6 +26,7 @@
         <PackageReference Include="Verify.SourceGenerators"/>
         <PackageReference Include="Microsoft.AspNetCore.App"/>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly"/>
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi"/>
     </ItemGroup>
 
     <ItemGroup>

@@ -975,4 +975,85 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ── §3.4 OpenAPI Metadata ──────────────────────────────────────────────────
+
+    private static readonly PortableExecutableReference OpenApiReference =
+        MetadataReference.CreateFromFile(
+            typeof(Microsoft.AspNetCore.Builder.OpenApiEndpointConventionBuilderExtensions).Assembly.Location);
+
+    [Fact]
+    public Task Generate_OpenApiMetadata_WithOpenApiPackage_EmitsWithOpenApi()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/weather")]
+                     public interface IWeatherService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<WeatherForecast[]> GetForecastsAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator(),
+            OpenApiReference);
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_OpenApiMetadata_VoidReturn_EmitsProducesWithoutTypeArg()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/notifications")]
+                     public interface INotificationService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task SendAsync(string message);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator(),
+            OpenApiReference);
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_OpenApiMetadata_Streaming_SkipsProducesAndProblem()
+    {
+        var source = """
+                     using System.Collections.Generic;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/weather")]
+                     public interface IWeatherService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         IAsyncEnumerable<WeatherForecast> StreamForecastsAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator(),
+            OpenApiReference);
+
+        return result.VerifyNoDiagnostics();
+    }
 }

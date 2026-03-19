@@ -24,7 +24,10 @@ internal static class ICounterServiceServerExtensions
                 var result = await service.GetCountAsync();
                 return Results.Ok(result);
             })
-            .WithName("ICounterService_GetCountAsync");
+            .WithName("ICounterService_GetCountAsync")
+            .WithTags("CounterService")
+            .Produces<int>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

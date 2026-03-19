@@ -26,7 +26,10 @@ internal static class IAdminServiceServerExtensions
                 var result = await service.GetSecretAsync();
                 return Results.Ok(result);
             })
-            .WithName("IAdminService_GetSecretAsync");
+            .WithName("IAdminService_GetSecretAsync")
+            .WithTags("AdminService")
+            .Produces<string>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/DoActionAsync",
             async ([FromBody] DoActionAsyncRequest request, IAdminService service) =>
@@ -34,7 +37,10 @@ internal static class IAdminServiceServerExtensions
                 await service.DoActionAsync(request.Command);
                 return Results.Ok();
             })
-            .WithName("IAdminService_DoActionAsync");
+            .WithName("IAdminService_DoActionAsync")
+            .WithTags("AdminService")
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

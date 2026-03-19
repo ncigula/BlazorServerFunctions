@@ -24,7 +24,10 @@ internal static class IValueTaskServiceServerExtensions
                 var result = await service.ProcessAsync();
                 return Results.Ok(result);
             })
-            .WithName("IValueTaskService_ProcessAsync");
+            .WithName("IValueTaskService_ProcessAsync")
+            .WithTags("ValueTaskService")
+            .Produces<Result>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

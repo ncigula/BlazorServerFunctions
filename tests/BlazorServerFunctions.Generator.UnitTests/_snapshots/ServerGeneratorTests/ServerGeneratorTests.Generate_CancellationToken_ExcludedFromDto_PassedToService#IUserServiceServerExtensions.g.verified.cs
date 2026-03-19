@@ -25,7 +25,10 @@ internal static class IUserServiceServerExtensions
                 var result = await service.GetUserAsync(request.Id, cancellationToken);
                 return Results.Ok(result);
             })
-            .WithName("IUserService_GetUserAsync");
+            .WithName("IUserService_GetUserAsync")
+            .WithTags("UserService")
+            .Produces<User>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         group.MapPost("/CreateUserAsync",
             async ([FromBody] CreateUserAsyncRequest request, IUserService service, CancellationToken cancellationToken) =>
@@ -33,7 +36,10 @@ internal static class IUserServiceServerExtensions
                 var result = await service.CreateUserAsync(request.Name, cancellationToken);
                 return Results.Ok(result);
             })
-            .WithName("IUserService_CreateUserAsync");
+            .WithName("IUserService_CreateUserAsync")
+            .WithTags("UserService")
+            .Produces<User>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

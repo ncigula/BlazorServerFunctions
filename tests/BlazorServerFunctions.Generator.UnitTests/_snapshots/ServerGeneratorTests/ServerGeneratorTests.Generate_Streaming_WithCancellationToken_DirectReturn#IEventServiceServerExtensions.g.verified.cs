@@ -24,7 +24,8 @@ internal static class IEventServiceServerExtensions
             {
                 return service.StreamEventsAsync(cancellationToken);
             })
-            .WithName("IEventService_StreamEventsAsync");
+            .WithName("IEventService_StreamEventsAsync")
+            .WithTags("EventService");
 
         return endpoints;
     }

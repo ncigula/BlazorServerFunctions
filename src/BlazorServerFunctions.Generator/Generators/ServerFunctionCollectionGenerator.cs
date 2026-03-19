@@ -13,6 +13,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 {
     private const string ServerTypeMarker = "Microsoft.AspNetCore.Routing.IEndpointRouteBuilder";
     private const string ClientTypeMarker = "Microsoft.AspNetCore.Components.WebAssembly.Hosting.WebAssemblyHostBuilder";
+    private const string OpenApiMarker = "Microsoft.AspNetCore.Builder.OpenApiEndpointConventionBuilderExtensions";
 
     public void Initialize(IncrementalGeneratorInitializationContext context)
     {
@@ -168,12 +169,14 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         bool isServer = compilation.GetTypeByMetadataName(ServerTypeMarker) != null;
         bool isClient = compilation.GetTypeByMetadataName(ClientTypeMarker) != null;
         bool isLibrary = !isServer && !isClient;
+        bool hasOpenApi = compilation.GetTypeByMetadataName(OpenApiMarker) is not null;
 
         return new ProjectInfo
         {
             GenerateEndpoints = isServer,
             GenerateClients = isClient || isLibrary,
-            IsLibrary = isLibrary
+            IsLibrary = isLibrary,
+            HasOpenApiPackage = hasOpenApi
         };
     }
 
@@ -211,7 +214,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             allInterfaces.AddRange(referencedInterfaceInfos);
 
             if (allInterfaces.Count > 0)
-                GenerateEndpoints(context, allInterfaces, compilation.AssemblyName);
+                GenerateEndpoints(context, allInterfaces, compilation.AssemblyName, projectInfo.HasOpenApiPackage);
         }
 
         // ── Generate Client Proxies ───────────────────────────────────────────
@@ -359,11 +362,12 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
     private static void GenerateEndpoints(
         SourceProductionContext context,
         List<InterfaceInfo> allInterfaces,
-        string? targetNamespace)
+        string? targetNamespace,
+        bool hasOpenApiPackage)
     {
         foreach (var interfaceInfo in allInterfaces)
         {
-            var serverCode = ServerEndpointGenerator.Generate(interfaceInfo, targetNamespace);
+            var serverCode = ServerEndpointGenerator.Generate(interfaceInfo, targetNamespace, hasOpenApiPackage);
             context.AddSource($"{interfaceInfo.Name}ServerExtensions.g.cs", serverCode);
         }
 

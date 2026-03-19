@@ -3,6 +3,7 @@
 #nullable enable
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,19 +19,20 @@ internal static class INotificationServiceServerExtensions
     {
         var group = endpoints.MapGroup("/api/functions/notifications");
 
-        group.MapPost("/SendNotificationAsync",
-            async ([FromBody] SendNotificationAsyncRequest request, INotificationService service) =>
+        group.MapPost("/SendAsync",
+            async ([FromBody] SendAsyncRequest request, INotificationService service) =>
             {
-                await service.SendNotificationAsync(request.Message);
+                await service.SendAsync(request.Message);
                 return Results.Ok();
             })
-            .WithName("INotificationService_SendNotificationAsync")
+            .WithName("INotificationService_SendAsync")
             .WithTags("NotificationService")
             .Produces(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .ProducesProblem(StatusCodes.Status500InternalServerError)
+            .WithOpenApi();
 
         return endpoints;
     }
 
-    private record SendNotificationAsyncRequest(string Message);
+    private record SendAsyncRequest(string Message);
 }

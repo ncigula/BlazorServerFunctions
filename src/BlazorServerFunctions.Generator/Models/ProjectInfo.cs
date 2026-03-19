@@ -11,4 +11,10 @@ internal sealed record ProjectInfo
     /// the consuming Client/Server project generates registration when it references this library.
     /// </summary>
     public bool IsLibrary { get; set; }
+
+    /// <summary>
+    /// True when <c>Microsoft.AspNetCore.OpenApi</c> is referenced in the compilation.
+    /// When true, <c>.WithOpenApi()</c> is emitted on each generated endpoint.
+    /// </summary>
+    public bool HasOpenApiPackage { get; init; }
 }

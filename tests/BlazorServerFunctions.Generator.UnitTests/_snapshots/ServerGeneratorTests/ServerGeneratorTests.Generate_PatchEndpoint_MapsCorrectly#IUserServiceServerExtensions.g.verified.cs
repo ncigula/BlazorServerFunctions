@@ -24,7 +24,10 @@ internal static class IUserServiceServerExtensions
                 var result = await service.PatchUserAsync(request.Id, request.Name);
                 return Results.Ok(result);
             })
-            .WithName("IUserService_PatchUserAsync");
+            .WithName("IUserService_PatchUserAsync")
+            .WithTags("UserService")
+            .Produces<User>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

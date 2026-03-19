@@ -7,7 +7,7 @@ namespace BlazorServerFunctions.Generator.Generators;
 
 internal static class ServerEndpointGenerator
 {
-    public static string Generate(InterfaceInfo interfaceInfo, string? targetNamespace)
+    public static string Generate(InterfaceInfo interfaceInfo, string? targetNamespace, bool hasOpenApiPackage = false)
     {
         var sb = new StringBuilder();
         var effectiveNamespace = !string.IsNullOrEmpty(targetNamespace) ? targetNamespace : interfaceInfo.Namespace;
@@ -22,7 +22,7 @@ internal static class ServerEndpointGenerator
         var hasCancellationToken = interfaceInfo.Methods.Any(m => m.HasCancellationToken);
 
         GenerateFileHeader(sb, interfaceInfo.Configuration.Nullable);
-        GenerateUsingDirectives(sb, hasAuthorization, hasCancellationToken, interfaceUsingNs);
+        GenerateUsingDirectives(sb, hasAuthorization, hasCancellationToken, interfaceUsingNs, hasOpenApiPackage);
 
         if (!string.IsNullOrEmpty(effectiveNamespace))
         {
@@ -33,7 +33,7 @@ internal static class ServerEndpointGenerator
         sb.Append("internal static class ").Append(interfaceInfo.Name).AppendLine("ServerExtensions");
         sb.AppendLine("{");
 
-        GenerateMapEndpointsMethod(sb, interfaceInfo);
+        GenerateMapEndpointsMethod(sb, interfaceInfo, hasOpenApiPackage);
         GenerateRequestDtos(sb, interfaceInfo);
 
         sb.AppendLine("}");
@@ -49,11 +49,13 @@ internal static class ServerEndpointGenerator
         sb.AppendLine();
     }
 
-    private static void GenerateUsingDirectives(StringBuilder sb, bool hasAuthorization, bool hasCancellationToken, string? additionalNamespace)
+    private static void GenerateUsingDirectives(StringBuilder sb, bool hasAuthorization, bool hasCancellationToken, string? additionalNamespace, bool hasOpenApiPackage)
     {
         if (hasAuthorization)
             sb.AppendLine("using Microsoft.AspNetCore.Authorization;");
         sb.AppendLine("using Microsoft.AspNetCore.Builder;");
+        if (hasOpenApiPackage)
+            sb.AppendLine("using Microsoft.AspNetCore.OpenApi;");
         sb.AppendLine("using Microsoft.AspNetCore.Routing;");
         sb.AppendLine("using Microsoft.AspNetCore.Http;");
         sb.AppendLine("using Microsoft.AspNetCore.Mvc;");
@@ -65,7 +67,7 @@ internal static class ServerEndpointGenerator
         sb.AppendLine();
     }
 
-    private static void GenerateMapEndpointsMethod(StringBuilder sb, InterfaceInfo interfaceInfo)
+    private static void GenerateMapEndpointsMethod(StringBuilder sb, InterfaceInfo interfaceInfo, bool hasOpenApiPackage)
     {
         var baseRoute = $"/{interfaceInfo.Configuration.BaseRoute.TrimStart('/')}/{interfaceInfo.RoutePrefix}";
         var routeNaming = interfaceInfo.Configuration.RouteNaming;
@@ -86,14 +88,22 @@ internal static class ServerEndpointGenerator
 
         foreach (var method in interfaceInfo.Methods)
         {
-            GenerateEndpoint(sb, interfaceInfo.Name, method, interfaceInfo.RequireAuthorization, routeNaming);
+            GenerateEndpoint(sb, interfaceInfo.Name, method, interfaceInfo.RequireAuthorization, routeNaming,
+                interfaceInfo.Configuration, hasOpenApiPackage);
         }
 
         sb.AppendLine("        return endpoints;");
         sb.AppendLine("    }");
     }
 
-    private static void GenerateEndpoint(StringBuilder sb, string interfaceName, MethodInfo method, bool interfaceRequiresAuth, RouteNaming routeNaming)
+    private static void GenerateEndpoint(
+        StringBuilder sb,
+        string interfaceName,
+        MethodInfo method,
+        bool interfaceRequiresAuth,
+        RouteNaming routeNaming,
+        ConfigurationInfo config,
+        bool hasOpenApiPackage)
     {
         // When the user specified an explicit Route, use it verbatim (no naming transformation).
         // ApplyRouteNaming is only applied to auto-derived method names.
@@ -120,25 +130,42 @@ internal static class ServerEndpointGenerator
 
         sb.AppendLine("            })");
 
-        var methodRequiresAuth = method.RequireAuthorization && !interfaceRequiresAuth;
-        sb.Append("            .WithName(\"")
-            .Append(interfaceName)
-            .Append('_')
-            .Append(method.Name)
-            .Append('"');
+        // Build the fluent chain
+        var chain = new List<string>
+        {
+            $".WithName(\"{interfaceName}_{method.Name}\")",
+            $".WithTags(\"{DeriveTag(interfaceName)}\")"
+        };
 
-        if (methodRequiresAuth)
+        if (method.AsyncType is not AsyncType.AsyncEnumerable)
         {
-            sb.AppendLine(")");
-            sb.AppendLine("            .RequireAuthorization();");
+            chain.Add(string.Equals(method.ReturnType, "void", StringComparison.Ordinal)
+                ? ".Produces(StatusCodes.Status200OK)"
+                : $".Produces<{method.ReturnType}>(StatusCodes.Status200OK)");
+
+            if (config.GenerateProblemDetails)
+                chain.Add(".ProducesProblem(StatusCodes.Status500InternalServerError)");
         }
-        else
+
+        if (hasOpenApiPackage)
+            chain.Add(".WithOpenApi()");
+
+        if (method.RequireAuthorization && !interfaceRequiresAuth)
+            chain.Add(".RequireAuthorization()");
+
+        for (int i = 0; i < chain.Count; i++)
         {
-            sb.AppendLine(");");
+            sb.Append("            ").Append(chain[i]);
+            sb.AppendLine(i == chain.Count - 1 ? ";" : "");
         }
 
         sb.AppendLine();
     }
+
+    private static string DeriveTag(string interfaceName) =>
+        interfaceName.Length > 1 && interfaceName[0] == 'I' && char.IsUpper(interfaceName[1])
+            ? interfaceName.Substring(1)
+            : interfaceName;
 
     private static void GenerateLambdaParameters(
         StringBuilder sb,

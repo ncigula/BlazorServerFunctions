@@ -24,7 +24,10 @@ internal static class INestedServiceServerExtensions
                 var result = await service.GetAsync();
                 return Results.Ok(result);
             })
-            .WithName("INestedService_GetAsync");
+            .WithName("INestedService_GetAsync")
+            .WithTags("NestedService")
+            .Produces<string>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

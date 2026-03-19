@@ -24,7 +24,10 @@ internal static class ISpecialServiceServerExtensions
                 var result = await service.SpecialMethodAsync();
                 return Results.Ok(result);
             })
-            .WithName("ISpecialService_SpecialMethodAsync");
+            .WithName("ISpecialService_SpecialMethodAsync")
+            .WithTags("SpecialService")
+            .Produces<Result>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

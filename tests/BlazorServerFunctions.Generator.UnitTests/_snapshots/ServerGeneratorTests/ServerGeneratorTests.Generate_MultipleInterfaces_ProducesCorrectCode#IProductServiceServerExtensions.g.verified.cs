@@ -24,7 +24,10 @@ internal static class IProductServiceServerExtensions
                 var result = await service.GetAllProductsAsync();
                 return Results.Ok(result);
             })
-            .WithName("IProductService_GetAllProductsAsync");
+            .WithName("IProductService_GetAllProductsAsync")
+            .WithTags("ProductService")
+            .Produces<System.Collections.Generic.List<Product>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

@@ -3,6 +3,7 @@
 #nullable enable
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -24,7 +25,8 @@ internal static class IWeatherServiceServerExtensions
                 return service.StreamForecastsAsync();
             })
             .WithName("IWeatherService_StreamForecastsAsync")
-            .WithTags("WeatherService");
+            .WithTags("WeatherService")
+            .WithOpenApi();
 
         return endpoints;
     }

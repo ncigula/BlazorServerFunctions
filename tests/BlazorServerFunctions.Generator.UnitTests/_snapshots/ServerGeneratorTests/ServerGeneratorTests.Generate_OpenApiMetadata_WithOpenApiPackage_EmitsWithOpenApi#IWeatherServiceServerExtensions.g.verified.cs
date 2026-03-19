@@ -3,6 +3,7 @@
 #nullable enable
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.OpenApi;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -18,13 +19,17 @@ internal static class IWeatherServiceServerExtensions
     {
         var group = endpoints.MapGroup("/api/functions/weather");
 
-        group.MapGet("/StreamForecastsAsync",
-            (IWeatherService service) =>
+        group.MapGet("/GetForecastsAsync",
+            async (IWeatherService service) =>
             {
-                return service.StreamForecastsAsync();
+                var result = await service.GetForecastsAsync();
+                return Results.Ok(result);
             })
-            .WithName("IWeatherService_StreamForecastsAsync")
-            .WithTags("WeatherService");
+            .WithName("IWeatherService_GetForecastsAsync")
+            .WithTags("WeatherService")
+            .Produces<WeatherForecast[]>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError)
+            .WithOpenApi();
 
         return endpoints;
     }

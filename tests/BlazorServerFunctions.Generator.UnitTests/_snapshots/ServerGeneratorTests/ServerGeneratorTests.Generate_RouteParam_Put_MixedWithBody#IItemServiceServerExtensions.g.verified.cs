@@ -24,7 +24,10 @@ internal static class IItemServiceServerExtensions
                 var result = await service.UpdateAsync(id, request.Value);
                 return Results.Ok(result);
             })
-            .WithName("IItemService_UpdateAsync");
+            .WithName("IItemService_UpdateAsync")
+            .WithTags("ItemService")
+            .Produces<string>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

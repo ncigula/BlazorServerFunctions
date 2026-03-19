@@ -24,7 +24,10 @@ internal static class IUserPostServiceServerExtensions
                 var result = await service.GetUserPostsAsync(id, request.Page);
                 return Results.Ok(result);
             })
-            .WithName("IUserPostService_GetUserPostsAsync");
+            .WithName("IUserPostService_GetUserPostsAsync")
+            .WithTags("UserPostService")
+            .Produces<string>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

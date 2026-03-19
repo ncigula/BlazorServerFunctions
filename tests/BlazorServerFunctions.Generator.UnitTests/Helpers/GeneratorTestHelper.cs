@@ -12,7 +12,7 @@ public static class GeneratorTestHelper
         return RunGenerator(source, generator, ProjectType.Server, extraReferences);
     }
 
-    public static GeneratorDriverRunResult RunGeneratorAsClient(
+public static GeneratorDriverRunResult RunGeneratorAsClient(
         string source,
         IIncrementalGenerator generator,
         params PortableExecutableReference[] extraReferences)

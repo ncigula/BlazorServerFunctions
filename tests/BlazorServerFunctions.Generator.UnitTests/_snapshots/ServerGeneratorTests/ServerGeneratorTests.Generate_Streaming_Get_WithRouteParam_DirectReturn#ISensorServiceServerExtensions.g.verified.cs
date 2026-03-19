@@ -23,7 +23,8 @@ internal static class ISensorServiceServerExtensions
             {
                 return service.StreamReadingsAsync(deviceId);
             })
-            .WithName("ISensorService_StreamReadingsAsync");
+            .WithName("ISensorService_StreamReadingsAsync")
+            .WithTags("SensorService");
 
         return endpoints;
     }

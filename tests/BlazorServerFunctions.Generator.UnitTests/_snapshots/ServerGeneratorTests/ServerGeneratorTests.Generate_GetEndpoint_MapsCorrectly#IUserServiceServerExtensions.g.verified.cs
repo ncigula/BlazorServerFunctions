@@ -24,7 +24,10 @@ internal static class IUserServiceServerExtensions
                 var result = await service.GetAllAsync();
                 return Results.Ok(result);
             })
-            .WithName("IUserService_GetAllAsync");
+            .WithName("IUserService_GetAllAsync")
+            .WithTags("UserService")
+            .Produces<System.Collections.Generic.List<User>>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

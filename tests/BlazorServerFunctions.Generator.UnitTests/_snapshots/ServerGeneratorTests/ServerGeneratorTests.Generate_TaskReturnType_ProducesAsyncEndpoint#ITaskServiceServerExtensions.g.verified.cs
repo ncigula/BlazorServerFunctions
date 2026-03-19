@@ -24,7 +24,10 @@ internal static class ITaskServiceServerExtensions
                 var result = await service.ProcessAsync();
                 return Results.Ok(result);
             })
-            .WithName("ITaskService_ProcessAsync");
+            .WithName("ITaskService_ProcessAsync")
+            .WithTags("TaskService")
+            .Produces<Result>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

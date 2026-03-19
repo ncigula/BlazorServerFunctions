@@ -24,7 +24,10 @@ internal static class IItemServiceServerExtensions
                 await service.DeleteAsync(id);
                 return Results.Ok();
             })
-            .WithName("IItemService_DeleteAsync");
+            .WithName("IItemService_DeleteAsync")
+            .WithTags("ItemService")
+            .Produces(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

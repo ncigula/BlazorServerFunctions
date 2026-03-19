@@ -24,7 +24,10 @@ internal static class IDataServiceServerExtensions
                 var result = await service.ProcessAsync(request.Id, request.Timestamp, request.Numbers, request.Metadata);
                 return Results.Ok(result);
             })
-            .WithName("IDataService_ProcessAsync");
+            .WithName("IDataService_ProcessAsync")
+            .WithTags("DataService")
+            .Produces<Result>(StatusCodes.Status200OK)
+            .ProducesProblem(StatusCodes.Status500InternalServerError);
 
         return endpoints;
     }

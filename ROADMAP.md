@@ -111,8 +111,8 @@ No JSON files, no MSBuild properties — everything lives in C# with full IDE su
 | 3.2 | **`IAsyncEnumerable<T>` streaming** | 🔴 | Server: chunked JSON via `Results.Stream`; Client: `GetFromJsonAsAsyncEnumerable<T>()`                                                                                                |
 | 3.3 | **File upload** | 🟡 | `Stream` / `IFormFile` params → multipart on client, `[FromForm]` on server                                                                                                           |
 | 3.4 | **OpenAPI metadata** | ✅ | `.WithTags()` always; `.Produces<T>()`/`.ProducesProblem(500)` for non-streaming; `.WithOpenApi()` auto-detected when `Microsoft.AspNetCore.OpenApi` is referenced                    |
-| 3.5 | **Response/output caching** | 🟢 | `[ServerFunction(CacheSeconds = 30)]` → `.CacheOutput(...)`; Add to the configuration but have the attribute override it`                                                              |
-| 3.6 | **Rate limiting** | 🟢 | `[ServerFunction(RateLimitPolicy = "fixed")]` → `.RequireRateLimiting(...)`; Add to the configuration but have the attribute override it`                                                                                                          |
+| 3.5 | **Response/output caching** | ✅ | `[ServerFunction(CacheSeconds = 30)]` → `.CacheOutput(...)`; `ServerFunctionConfiguration.CacheSeconds` for collection default; BSF019/BSF020 guard streaming + non-GET |
+| 3.6 | **Rate limiting** | ✅ | `[ServerFunction(RateLimitPolicy = "fixed")]` → `.RequireRateLimiting(...)`; `ServerFunctionConfiguration.RateLimitPolicy` for collection default; valid on any method/return type |
 | 3.7 | **API versioning** | 🟡 | `[ServerFunctionCollection(Version = "v2")]` → route prefix `/api/v2/...`                                                                                                             |
 | 3.8 | **Result\<T\> converter** | 🟡 | Opt-in per-interface/method converter that unwraps service return types (e.g. `Result<T>`) into `IResult` — success path → `Results.Ok(value)`, failure path → `Results.Problem(...)` |
 
@@ -209,9 +209,10 @@ Other solutions could be using design patterns like the Strategy pattern (and ot
 - [x] 3.2 `IAsyncEnumerable<T>` streaming
 - [ ] 3.3 File upload (`Stream` / `IFormFile` → multipart on client, `[FromForm]` on server)
 - [x] 3.4 OpenAPI metadata (`.WithTags()`, `.Produces<T>()`, `.ProducesProblem()`, auto-detected `.WithOpenApi()`)
-- [ ] 3.5 Response/output caching (`[ServerFunction(CacheSeconds = 30)]`)
-- [ ] 3.6 Rate limiting (`[ServerFunction(RateLimitPolicy = "fixed")]`)
+- [x] 3.5 Response/output caching (`[ServerFunction(CacheSeconds = 30)]`, `ServerFunctionConfiguration.CacheSeconds`, BSF019/BSF020)
+- [x] 3.6 Rate limiting (`[ServerFunction(RateLimitPolicy = "fixed")]`, `ServerFunctionConfiguration.RateLimitPolicy`)
 - [ ] 3.7 API versioning (`[ServerFunctionCollection(Version = "v2")]`)
+- [ ] 3.8 Custom converter for service return types before returning from the minimal API - for instance Result<T, Error> into IResult or ProblemDetails
 
 ### §4 — Security & auth
 - [ ] 4.1 Named authorization policies (`[ServerFunction(Policy = "AdminOnly")]`)

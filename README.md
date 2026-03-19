@@ -119,6 +119,8 @@ public interface IUserService
 | `Nullable` | `bool` | `true` | Emit `#nullable enable` at the top of generated files |
 | `CustomHttpClientType` | `Type?` | `null` | Use a custom `HttpClient` subclass in generated proxy constructors |
 | `ApiType` | `ApiType` | `REST` | Transport protocol (`REST` or `GRPC`) |
+| `CacheSeconds` | `int` | `0` | Default output-cache duration (seconds) for all GET endpoints; `0` = disabled; overridable per method |
+| `RateLimitPolicy` | `string?` | `null` | Default rate-limiting policy name for all endpoints; `null` = none; overridable per method |
 
 **Configuration priority (highest wins):**
 ```
@@ -143,13 +145,15 @@ Applied to an interface. Controls route prefix, authorization, and optional conf
 
 ### `[ServerFunction]`
 
-Applied to a method. Controls the HTTP method, route, and per-method authorization.
+Applied to a method. Controls the HTTP method, route, authorization, caching, and rate limiting.
 
 | Property | Type | Default | Description |
 |---|---|---|---|
 | `HttpMethod` | `string` | *(required)* | `"GET"`, `"POST"`, `"PUT"`, `"PATCH"`, or `"DELETE"` |
-| `Route` | `string?` | Method name | Route segment appended to the collection's prefix |
+| `Route` | `string?` | Method name | Route segment appended to the collection's prefix; supports `{param}` placeholders |
 | `RequireAuthorization` | `bool` | `false` | Calls `.RequireAuthorization()` on this specific endpoint |
+| `CacheSeconds` | `int` | `-1` (inherit) | Seconds to cache via `.CacheOutput(...)`; `-1` = inherit from config, `0` = disable. Only valid on GET endpoints. Requires `AddOutputCache()` + `UseOutputCache()` in the server pipeline |
+| `RateLimitPolicy` | `string?` | `null` (inherit) | Named rate-limiting policy applied via `.RequireRateLimiting("name")`; `null` = inherit from config, `""` = disable. Requires `AddRateLimiter(...)` + `UseRateLimiter()` in the server pipeline |
 
 ---
 
@@ -237,6 +241,94 @@ builder.Services.AddServerFunctionClients(
 ```
 
 **Error handling** — when the server returns a non-success status code, the generated client throws `HttpRequestException`. If the server returned a Problem Details body (RFC 9457), its `detail` field is forwarded as the exception message.
+
+---
+
+## Route / Path Parameters
+
+Use `{param}` placeholders in `Route` to bind URL segments:
+
+```csharp
+[ServerFunction(HttpMethod = "GET", Route = "users/{id}")]
+Task<User> GetUserAsync(Guid id);
+
+[ServerFunction(HttpMethod = "DELETE", Route = "users/{id}")]
+Task DeleteUserAsync(Guid id);
+```
+
+The generator binds route parameters from the URL on the server and interpolates them into the request URL on the client — no manual wiring needed.
+
+---
+
+## Streaming (`IAsyncEnumerable<T>`)
+
+Return `IAsyncEnumerable<T>` for chunked server-sent streaming:
+
+```csharp
+[ServerFunction(HttpMethod = "GET")]
+IAsyncEnumerable<WeatherForecast> StreamForecastsAsync(CancellationToken ct = default);
+```
+
+The server endpoint returns the stream directly (ASP.NET Core handles chunked JSON). The client proxy reads the stream incrementally via `ReadFromJsonAsAsyncEnumerable<T>()` with `HttpCompletionOption.ResponseHeadersRead`.
+
+---
+
+## Output Caching
+
+Cache GET responses with a single attribute property:
+
+```csharp
+// Per-method
+[ServerFunction(HttpMethod = "GET", CacheSeconds = 30)]
+Task<int> GetCountAsync();
+
+// Or set a collection-level default and override per method
+public class CachedConfig : ServerFunctionConfiguration
+{
+    public CachedConfig() { CacheSeconds = 60; }
+}
+
+[ServerFunctionCollection(Configuration = typeof(CachedConfig))]
+public interface IProductService
+{
+    [ServerFunction(HttpMethod = "GET")]
+    Task<Product[]> GetAllAsync();         // cached 60 s (from config)
+
+    [ServerFunction(HttpMethod = "GET", CacheSeconds = 0)]
+    Task<Product> GetByIdAsync(Guid id);   // explicitly disabled
+}
+```
+
+Requires `builder.Services.AddOutputCache()` and `app.UseOutputCache()` in the server pipeline.
+
+---
+
+## Rate Limiting
+
+Reference any named rate-limiting policy you've already registered:
+
+```csharp
+// Define the policy in Program.cs
+builder.Services.AddRateLimiter(options =>
+    options.AddFixedWindowLimiter("api", limiter =>
+    {
+        limiter.PermitLimit = 100;
+        limiter.Window = TimeSpan.FromMinutes(1);
+    }));
+app.UseRateLimiter();
+
+// Apply via attribute (any HTTP method, including streaming)
+[ServerFunction(HttpMethod = "POST", RateLimitPolicy = "api")]
+Task<Order> CreateOrderAsync(Order order);
+
+// Or set a collection-level default
+public class RateLimitedConfig : ServerFunctionConfiguration
+{
+    public RateLimitedConfig() { RateLimitPolicy = "api"; }
+}
+```
+
+The generator emits `.RequireRateLimiting("api")` in the fluent endpoint chain. Per-method `RateLimitPolicy = ""` (empty string) explicitly opts a single method out of the collection-level default.
 
 ---
 

@@ -16,4 +16,7 @@ internal sealed record MethodInfo
     /// Already validated: streaming methods and non-GET methods always have this set to 0.
     /// </summary>
     public int CacheSeconds { get; set; }
+
+    /// <summary>Resolved rate-limiting policy name, or <c>null</c> if none applies.</summary>
+    public string? RateLimitPolicy { get; set; }
 }

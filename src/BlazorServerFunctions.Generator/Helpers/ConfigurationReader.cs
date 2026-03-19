@@ -116,6 +116,8 @@ internal static class ConfigurationReader
                     => config with { ApiType = (ApiType)at },
                 "__CacheSeconds" when field.ConstantValue is int cs
                     => config with { CacheSeconds = cs },
+                "__RateLimitPolicy" when field.ConstantValue is string rlp
+                    => config with { RateLimitPolicy = string.IsNullOrEmpty(rlp) ? null : rlp },
                 _ => config
             };
         }
@@ -153,6 +155,7 @@ internal static class ConfigurationReader
         var customHttpClientType = current.CustomHttpClientType;
         var apiType = current.ApiType;
         var cacheSeconds = current.CacheSeconds;
+        var rateLimitPolicy = current.RateLimitPolicy;
 
         foreach (var statement in statements)
         {
@@ -173,7 +176,8 @@ internal static class ConfigurationReader
                 ref nullable,
                 ref customHttpClientType,
                 ref apiType,
-                ref cacheSeconds);
+                ref cacheSeconds,
+                ref rateLimitPolicy);
         }
 
         return current with
@@ -187,6 +191,7 @@ internal static class ConfigurationReader
             CustomHttpClientType = customHttpClientType,
             ApiType = apiType,
             CacheSeconds = cacheSeconds,
+            RateLimitPolicy = rateLimitPolicy,
         };
     }
 
@@ -202,7 +207,8 @@ internal static class ConfigurationReader
         ref bool nullable,
         ref string? customHttpClientType,
         ref ApiType apiType,
-        ref int cacheSeconds)
+        ref int cacheSeconds,
+        ref string? rateLimitPolicy)
     {
         switch (propName)
         {
@@ -232,6 +238,9 @@ internal static class ConfigurationReader
                 break;
             case "CacheSeconds":
                 cacheSeconds = ExtractIntLiteral(value) ?? cacheSeconds;
+                break;
+            case "RateLimitPolicy":
+                rateLimitPolicy = ExtractStringOrNull(value, rateLimitPolicy);
                 break;
         }
     }

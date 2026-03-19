@@ -21,9 +21,10 @@ internal static class ServerEndpointGenerator
         var hasAuthorization = interfaceInfo.RequireAuthorization || interfaceInfo.Methods.Any(m => m.RequireAuthorization);
         var hasCancellationToken = interfaceInfo.Methods.Any(m => m.HasCancellationToken);
         var hasCaching = interfaceInfo.Methods.Any(m => m.CacheSeconds > 0);
+        var hasRateLimiting = interfaceInfo.Methods.Any(m => m.RateLimitPolicy != null);
 
         GenerateFileHeader(sb, interfaceInfo.Configuration.Nullable);
-        GenerateUsingDirectives(sb, hasAuthorization, hasCancellationToken, hasCaching, interfaceUsingNs, hasOpenApiPackage);
+        GenerateUsingDirectives(sb, hasAuthorization, hasCancellationToken, hasCaching, hasRateLimiting, interfaceUsingNs, hasOpenApiPackage);
 
         if (!string.IsNullOrEmpty(effectiveNamespace))
         {
@@ -50,7 +51,7 @@ internal static class ServerEndpointGenerator
         sb.AppendLine();
     }
 
-    private static void GenerateUsingDirectives(StringBuilder sb, bool hasAuthorization, bool hasCancellationToken, bool hasCaching, string? additionalNamespace, bool hasOpenApiPackage)
+    private static void GenerateUsingDirectives(StringBuilder sb, bool hasAuthorization, bool hasCancellationToken, bool hasCaching, bool hasRateLimiting, string? additionalNamespace, bool hasOpenApiPackage)
     {
         if (hasAuthorization)
             sb.AppendLine("using Microsoft.AspNetCore.Authorization;");
@@ -59,6 +60,8 @@ internal static class ServerEndpointGenerator
             sb.AppendLine("using Microsoft.AspNetCore.OpenApi;");
         if (hasCaching)
             sb.AppendLine("using Microsoft.AspNetCore.OutputCaching;");
+        if (hasRateLimiting)
+            sb.AppendLine("using Microsoft.AspNetCore.RateLimiting;");
         sb.AppendLine("using Microsoft.AspNetCore.Routing;");
         sb.AppendLine("using Microsoft.AspNetCore.Http;");
         sb.AppendLine("using Microsoft.AspNetCore.Mvc;");
@@ -133,7 +136,19 @@ internal static class ServerEndpointGenerator
 
         sb.AppendLine("            })");
 
-        // Build the fluent chain
+        GenerateFluentChain(sb, interfaceName, method, interfaceRequiresAuth, config, hasOpenApiPackage);
+
+        sb.AppendLine();
+    }
+
+    private static void GenerateFluentChain(
+        StringBuilder sb,
+        string interfaceName,
+        MethodInfo method,
+        bool interfaceRequiresAuth,
+        ConfigurationInfo config,
+        bool hasOpenApiPackage)
+    {
         var chain = new List<string>
         {
             $".WithName(\"{interfaceName}_{method.Name}\")",
@@ -156,6 +171,9 @@ internal static class ServerEndpointGenerator
         if (method.CacheSeconds > 0)
             chain.Add($".CacheOutput(p => p.Expire(System.TimeSpan.FromSeconds({method.CacheSeconds})))");
 
+        if (method.RateLimitPolicy != null)
+            chain.Add($".RequireRateLimiting(\"{EscapeStringLiteral(method.RateLimitPolicy)}\")");
+
         if (method.RequireAuthorization && !interfaceRequiresAuth)
             chain.Add(".RequireAuthorization()");
 
@@ -164,8 +182,6 @@ internal static class ServerEndpointGenerator
             sb.Append("            ").Append(chain[i]);
             sb.AppendLine(i == chain.Count - 1 ? ";" : "");
         }
-
-        sb.AppendLine();
     }
 
     private static string DeriveTag(string interfaceName) =>
@@ -280,4 +296,7 @@ internal static class ServerEndpointGenerator
         sb.Append(string.Join(", ", properties));
         sb.AppendLine(");");
     }
+
+    private static string EscapeStringLiteral(string value) =>
+        value.Replace("\\", "\\\\").Replace("\"", "\\\"");
 }

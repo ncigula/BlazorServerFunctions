@@ -27,4 +27,7 @@ internal sealed record ConfigurationInfo
 
     /// <summary>Default output cache duration in seconds for GET endpoints (0 = no caching).</summary>
     public int CacheSeconds { get; init; }
+
+    /// <summary>Default rate-limiting policy name (null = no rate limiting).</summary>
+    public string? RateLimitPolicy { get; init; }
 }

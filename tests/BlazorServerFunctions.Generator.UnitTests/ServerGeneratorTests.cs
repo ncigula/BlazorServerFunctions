@@ -1220,4 +1220,222 @@ public class ServerGeneratorTests
 
         result.AssertDiagnostic("BSF020");
     }
+
+    // ─── §3.6 Rate Limiting ───────────────────────────────────────────────────
+
+    [Fact]
+    public Task Generate_RateLimit_BasicMethod_EmitsRequireRateLimitingChain()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/counters")]
+                     public interface ICounterService
+                     {
+                         [ServerFunction(HttpMethod = "GET", RateLimitPolicy = "fixed")]
+                         Task<int> GetCountAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RateLimit_ConfigDefault_AppliedToAllMethods()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class RateLimitedApiConfig : ServerFunctionConfiguration
+                     {
+                         public RateLimitedApiConfig() { RateLimitPolicy = "sliding"; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/items", Configuration = typeof(RateLimitedApiConfig))]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetItemAsync();
+
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetOtherItemAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RateLimit_MethodOverridesConfig()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class RateLimitedApiConfig : ServerFunctionConfiguration
+                     {
+                         public RateLimitedApiConfig() { RateLimitPolicy = "sliding"; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/items", Configuration = typeof(RateLimitedApiConfig))]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "GET", RateLimitPolicy = "fixed")]
+                         Task<string> GetItemAsync();
+
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetOtherItemAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RateLimit_MethodEmptyStringDisablesConfigDefault()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class RateLimitedApiConfig : ServerFunctionConfiguration
+                     {
+                         public RateLimitedApiConfig() { RateLimitPolicy = "sliding"; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/items", Configuration = typeof(RateLimitedApiConfig))]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "GET", RateLimitPolicy = "")]
+                         Task<string> GetItemAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RateLimit_OnPostMethod_IsValid()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/counters")]
+                     public interface ICounterService
+                     {
+                         [ServerFunction(HttpMethod = "POST", RateLimitPolicy = "fixed")]
+                         Task<int> IncrementAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RateLimit_OnStreamingMethod_IsValid()
+    {
+        var source = """
+                     using System.Collections.Generic;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "GET", RateLimitPolicy = "fixed")]
+                         IAsyncEnumerable<string> StreamDataAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RateLimit_MixedMethods_OnlyPoliciedMethodsGetChainEntry()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/counters")]
+                     public interface ICounterService
+                     {
+                         [ServerFunction(HttpMethod = "GET", RateLimitPolicy = "fixed")]
+                         Task<int> GetCountAsync();
+
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<int> IncrementAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_RateLimit_AndCacheOutput_CoexistOnSameMethod()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/counters")]
+                     public interface ICounterService
+                     {
+                         [ServerFunction(HttpMethod = "GET", CacheSeconds = 30, RateLimitPolicy = "fixed")]
+                         Task<int> GetCountAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

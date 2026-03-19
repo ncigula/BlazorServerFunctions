@@ -62,4 +62,13 @@ public class ServerFunctionConfiguration
     /// Requires <c>builder.Services.AddOutputCache()</c> and <c>app.UseOutputCache()</c>.
     /// </summary>
     public int CacheSeconds { get; set; }
+
+    /// <summary>
+    /// Default rate-limiting policy name applied to all endpoints in this collection.
+    /// <c>null</c> (default) means no rate limiting. Individual methods can override this via
+    /// <see cref="ServerFunctionAttribute.RateLimitPolicy"/> — set to <c>""</c> on a method to
+    /// opt out even when a collection-level default is configured.
+    /// Requires <c>builder.Services.AddRateLimiter(...)</c> and <c>app.UseRateLimiter()</c>.
+    /// </summary>
+    public string? RateLimitPolicy { get; set; }
 }

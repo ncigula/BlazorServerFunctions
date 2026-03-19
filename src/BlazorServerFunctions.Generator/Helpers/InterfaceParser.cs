@@ -208,6 +208,7 @@ internal static class InterfaceParser
     {
         bool hasExplicitHttpMethod = false;
         int methodCacheSeconds = -1; // -1 = not set on attribute → inherit from config
+        string? rawMethodRateLimitPolicy = null; // null = not set on attribute → inherit from config
 
         foreach (var attribute in serverFunctionAttribute?.NamedArguments ?? [])
         {
@@ -243,9 +244,23 @@ internal static class InterfaceParser
                 case "CacheSeconds":
                     methodCacheSeconds = attribute.Value.Value is int v ? v : -1;
                     break;
+
+                case "RateLimitPolicy":
+                    rawMethodRateLimitPolicy = attribute.Value.Value?.ToString();
+                    break;
             }
         }
 
+        ResolveFromConfig(methodInfo, interfaceInfo, hasExplicitHttpMethod, methodCacheSeconds, rawMethodRateLimitPolicy);
+    }
+
+    private static void ResolveFromConfig(
+        MethodInfo methodInfo,
+        InterfaceInfo interfaceInfo,
+        bool hasExplicitHttpMethod,
+        int methodCacheSeconds,
+        string? rawMethodRateLimitPolicy)
+    {
         // Apply DefaultHttpMethod from config when no explicit method was provided on this [ServerFunction]
         if (!hasExplicitHttpMethod
             && interfaceInfo.Configuration.DefaultHttpMethod is not null
@@ -258,6 +273,14 @@ internal static class InterfaceParser
         methodInfo.CacheSeconds = methodCacheSeconds == -1
             ? interfaceInfo.Configuration.CacheSeconds
             : methodCacheSeconds;
+
+        // Resolve RateLimitPolicy: null = not set → inherit config; "" = explicit disable → null; non-empty = use it
+        methodInfo.RateLimitPolicy = rawMethodRateLimitPolicy switch
+        {
+            null => interfaceInfo.Configuration.RateLimitPolicy,
+            "" => null,
+            _ => rawMethodRateLimitPolicy
+        };
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Net;
 
 namespace BlazorServerFunctions.EndToEndTests;
 
@@ -62,5 +63,15 @@ public sealed class StreamingServiceClientTests(E2EFixture fixture) : IClassFixt
             items.Add(item);
 
         Assert.Empty(items);
+    }
+
+    // ── Raw HTTP — verify the endpoint is reachable ───────────────────────────
+
+    [Fact]
+    public async Task Get_StreamItemsAsync_Endpoint_Returns200()
+    {
+        using var client = fixture.Factory.CreateClient();
+        var response = await client.GetAsync(new Uri("/api/functions/streaming/StreamItemsAsync?Count=3", UriKind.Relative));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 }

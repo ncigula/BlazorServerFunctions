@@ -79,4 +79,13 @@ public class ServerFunctionConfiguration
     /// <see cref="ServerFunctionAttribute.Policy"/> — set to <c>""</c> to opt out.
     /// </summary>
     public string? Policy { get; set; }
+
+    /// <summary>
+    /// Default named CORS policy applied to all endpoints in this collection
+    /// via <c>group.RequireCors("policyName")</c>.
+    /// <c>null</c> (default) means no CORS policy.
+    /// The <see cref="ServerFunctionCollectionAttribute.CorsPolicy"/> attribute overrides this value.
+    /// Requires <c>builder.Services.AddCors(...)</c> and <c>app.UseCors()</c> in the server pipeline.
+    /// </summary>
+    public string? CorsPolicy { get; set; }
 }

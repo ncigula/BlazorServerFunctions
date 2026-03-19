@@ -6,6 +6,7 @@ internal sealed record InterfaceInfo
     public string Namespace { get; set; } = "";
     public string? RoutePrefix { get; set; }
     public bool RequireAuthorization { get; set; }
+    public string? CorsPolicy { get; set; }
     public ConfigurationInfo Configuration { get; init; } = ConfigurationInfo.Default;
     public List<MethodInfo> Methods { get; init; } = [];
 }

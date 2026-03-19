@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-03-19
+
+### Added
+
+- **§4.3 CORS per interface** — `[ServerFunctionCollection(CorsPolicy = "AllowedOrigins")]` emits `group.RequireCors("AllowedOrigins")` on the route group for all endpoints in the collection; `ServerFunctionConfiguration.CorsPolicy` sets a collection-level config default (attribute overrides it); BSF022 error when `CorsPolicy` is set to an empty string; requires `builder.Services.AddCors(...)` and `app.UseCors()` in the server pipeline
+
+### Fixed
+
+- **`ConfigManifestGenerator` missing `__Policy` field** — `ServerFunctionConfiguration.Policy` was silently lost in cross-compilation scenarios (shared library referenced by server/client projects) because the manifest emitter omitted the `__Policy` const field while the manifest reader expected it
+
+---
+
 ## [0.3.0] - 2026-03-19
 
 ### Added

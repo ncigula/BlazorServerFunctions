@@ -123,7 +123,7 @@ No JSON files, no MSBuild properties — everything lives in C# with full IDE su
 |---|---|---|---|
 | 4.1 | **Named authorization policies** | ✅ | `[ServerFunction(Policy = "AdminOnly")]` → `.RequireAuthorization("AdminOnly")`; `ServerFunctionConfiguration.Policy` for collection default; `""` = explicitly disable |
 | 4.2 | **Role-based auth** | ✅ | `[ServerFunction(Roles = "Admin,Manager")]` → `.RequireAuthorization(new AuthorizeAttribute { Roles = "Admin,Manager" })`; can be combined with `Policy` and boolean `RequireAuthorization`; BSF021 error for empty string |
-| 4.3 | **CORS per interface** | 🟡 | `[ServerFunctionCollection(CorsPolicy = "AllowedOrigins")]` → `.RequireCors(...)` on the route group; Add to the configuration but have the attribute override it |
+| 4.3 | **CORS per interface** | ✅ | `[ServerFunctionCollection(CorsPolicy = "AllowedOrigins")]` → `group.RequireCors(...)` on the route group; `ServerFunctionConfiguration.CorsPolicy` for config default; attribute overrides config; BSF022 for empty string |
 | 4.4 | **Anti-forgery** | 🟢 | `[ServerFunction(RequireAntiForgery = true)]` → `.ValidateAntiforgery()` |
 | 4.5 | **Endpoint filters** | 🟡 | `[ServerFunction(Filter = typeof(MyFilter))]` → `.AddEndpointFilter<MyFilter>()` on the generated minimal API endpoint; supports multiple filters via array |
 
@@ -215,7 +215,7 @@ Other solutions could be using design patterns like the Strategy pattern (and ot
 ### §4 — Security & auth
 - [x] 4.1 Named authorization policies (`[ServerFunction(Policy = "AdminOnly")]`)
 - [x] 4.2 Role-based auth (`[ServerFunction(Roles = "Admin,Manager")]`)
-- [ ] 4.3 CORS per interface (`[ServerFunctionCollection(CorsPolicy = "...")]`)
+- [x] 4.3 CORS per interface (`[ServerFunctionCollection(CorsPolicy = "...")]`)
 - [ ] 4.4 Anti-forgery (`[ServerFunction(RequireAntiForgery = true)]`)
 - [ ] 4.5 Endpoint filters (`[ServerFunction(Filter = typeof(MyFilter))]`)
 

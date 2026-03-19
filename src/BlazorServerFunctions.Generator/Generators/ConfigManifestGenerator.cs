@@ -50,6 +50,8 @@ internal static class ConfigManifestGenerator
         sb.AppendLine($"    public const int __ApiType = {(int)config.ApiType};");
         sb.AppendLine($"    public const int __CacheSeconds = {config.CacheSeconds};");
         sb.AppendLine($"    public const string __RateLimitPolicy = \"{EscapeString(config.RateLimitPolicy ?? string.Empty)}\";");
+        sb.AppendLine($"    public const string __Policy = \"{EscapeString(config.Policy ?? string.Empty)}\";");
+        sb.AppendLine($"    public const string __CorsPolicy = \"{EscapeString(config.CorsPolicy ?? string.Empty)}\";");
         sb.AppendLine("}");
 
         return sb.ToString();

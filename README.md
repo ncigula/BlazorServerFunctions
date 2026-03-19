@@ -142,6 +142,7 @@ Applied to an interface. Controls route prefix, authorization, and optional conf
 |---|---|---|---|
 | `RoutePrefix` | `string?` | `null` | Route prefix prepended to all method routes (e.g. `"api/users"`) |
 | `RequireAuthorization` | `bool` | `false` | Calls `.RequireAuthorization()` on the generated route group |
+| `CorsPolicy` | `string?` | `null` | Named CORS policy applied via `group.RequireCors("name")` on the route group. `null` = no CORS. Empty string is an error (BSF022). Requires `AddCors(...)` + `UseCors()` in the server pipeline |
 | `Configuration` | `Type?` | `null` | A `ServerFunctionConfiguration` subclass that controls code generation settings |
 
 ### `[ServerFunction]`
@@ -373,6 +374,31 @@ The generator emits `.RequireAuthorization(new AuthorizeAttribute { Roles = "Adm
 [ServerFunction(HttpMethod = "GET", Policy = "PremiumPolicy", Roles = "Admin,Manager")]
 Task<AdminStats> GetStatsAsync();
 ```
+
+### CORS per interface
+
+Apply a named CORS policy to all endpoints in a collection via the `CorsPolicy` attribute:
+
+```csharp
+[ServerFunctionCollection(RoutePrefix = "api/data", CorsPolicy = "AllowedOrigins")]
+public interface IDataService
+{
+    [ServerFunction(HttpMethod = "GET")]
+    Task<string[]> GetItemsAsync();
+}
+```
+
+The generator emits `group.RequireCors("AllowedOrigins")` on the route group. You must register the policy and enable the middleware in the server:
+
+```csharp
+builder.Services.AddCors(options =>
+    options.AddPolicy("AllowedOrigins", policy =>
+        policy.WithOrigins("https://example.com").AllowAnyHeader().AllowAnyMethod()));
+
+app.UseCors(); // before UseAuthorization
+```
+
+A collection-level default can also be set via `ServerFunctionConfiguration.CorsPolicy`; the attribute value overrides the config default.
 
 ---
 

@@ -521,6 +521,32 @@ public class DiagnosticIntegrationTests
         project.AssertHasNoGeneratedFiles();
     }
 
+    // ── BSF022: Empty CorsPolicy value ────────────────────────────────────────
+
+    [Fact]
+    public void EmptyCorsPolicy_EmitsBSF022()
+    {
+        var scenario = new ProjectBuilder()
+            .AddSharedProject("MyApp.Shared", """
+                using BlazorServerFunctions.Abstractions;
+                using System.Threading.Tasks;
+
+                namespace MyApp.Shared;
+
+                [ServerFunctionCollection(CorsPolicy = "")]
+                public interface IUserService
+                {
+                    [ServerFunction(HttpMethod = "GET")]
+                    Task<string> GetUser(int id);
+                }
+                """)
+            .Build();
+
+        var project = scenario.GetProject("MyApp.Shared");
+        project.AssertHasDiagnostic("BSF022");
+        project.AssertHasNoGeneratedFiles();
+    }
+
     // ── BSF102: Too many parameters warning ───────────────────────────────────
 
     [Fact]

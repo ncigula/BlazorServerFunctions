@@ -8,6 +8,15 @@ public sealed class ServerFunctionCollectionAttribute : Attribute
     public bool RequireAuthorization { get; set; }
 
     /// <summary>
+    /// Named CORS policy applied to all endpoints in this collection via
+    /// <c>group.RequireCors("policyName")</c>.
+    /// <c>null</c> (default) means no CORS policy.
+    /// Setting this to an empty string is an error (BSF022).
+    /// Requires <c>builder.Services.AddCors(...)</c> and <c>app.UseCors()</c> in the server pipeline.
+    /// </summary>
+    public string? CorsPolicy { get; set; }
+
+    /// <summary>
     /// Compile-time configuration class. Must be a type that inherits from
     /// <see cref="ServerFunctionConfiguration"/>.
     /// </summary>

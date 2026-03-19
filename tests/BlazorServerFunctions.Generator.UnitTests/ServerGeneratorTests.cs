@@ -1811,4 +1811,160 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ─── §4.3 CORS per interface ──────────────────────────────────────────────
+
+    [Fact]
+    public Task Generate_Cors_AttributePolicy_EmitsRequireCorsOnGroup()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/data", CorsPolicy = "AllowedOrigins")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetDataAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Cors_ConfigDefault_AppliedToGroup()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class CorsApiConfig : ServerFunctionConfiguration
+                     {
+                         public CorsApiConfig() { CorsPolicy = "DefaultPolicy"; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/data", Configuration = typeof(CorsApiConfig))]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetDataAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Cors_AttributeOverridesConfig()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class CorsApiConfig : ServerFunctionConfiguration
+                     {
+                         public CorsApiConfig() { CorsPolicy = "ConfigPolicy"; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/data", Configuration = typeof(CorsApiConfig), CorsPolicy = "AttrPolicy")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetDataAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Cors_NullPolicy_NoRequireCorsCall()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetDataAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Cors_AndRequireAuthorization_CorrectOrder()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/data", RequireAuthorization = true, CorsPolicy = "AllowedOrigins")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetDataAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public void Generate_Cors_EmptyStringAttribute_EmitsBSF022()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/data", CorsPolicy = "")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetDataAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        result.AssertDiagnostic("BSF022");
+    }
 }

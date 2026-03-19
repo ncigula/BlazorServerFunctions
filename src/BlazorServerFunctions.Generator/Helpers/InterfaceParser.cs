@@ -25,7 +25,7 @@ internal static class InterfaceParser
         if (!ValidateInterfaceDeclaration(context, interfaceSymbol))
             return new InterfaceInfo { Name = interfaceSymbol.Name };
 
-        var (routePrefix, requireAuth, configuration) = ParseCollectionAttributeArgs(serverFunctionCollectionAttribute, interfaceSymbol, compilation);
+        var (routePrefix, requireAuth, configuration, corsPolicy) = ParseCollectionAttributeArgs(serverFunctionCollectionAttribute, interfaceSymbol, context, compilation);
 
         var namespaceName = interfaceSymbol.ContainingNamespace.IsGlobalNamespace
             ? "Generated"
@@ -37,6 +37,7 @@ internal static class InterfaceParser
             Namespace = namespaceName,
             RoutePrefix = routePrefix,
             RequireAuthorization = requireAuth,
+            CorsPolicy = corsPolicy,
             Configuration = configuration,
         };
 
@@ -79,14 +80,16 @@ internal static class InterfaceParser
         return true;
     }
 
-    private static (string RoutePrefix, bool RequireAuth, ConfigurationInfo Configuration) ParseCollectionAttributeArgs(
+    private static (string RoutePrefix, bool RequireAuth, ConfigurationInfo Configuration, string? CorsPolicy) ParseCollectionAttributeArgs(
         AttributeData? attribute,
         INamedTypeSymbol interfaceSymbol,
+        SourceProductionContextWrapper context,
         Compilation? compilation = null)
     {
         string? routePrefix = null;
         bool requireAuth = false;
         var configuration = ConfigurationInfo.Default;
+        string? rawCorsPolicy = null;
 
         foreach (var namedArg in attribute?.NamedArguments ?? [])
         {
@@ -102,6 +105,9 @@ internal static class InterfaceParser
                     if (namedArg.Value.Value is INamedTypeSymbol configSymbol)
                         configuration = ConfigurationReader.ReadConfiguration(configSymbol, interfaceSymbol, compilation);
                     break;
+                case "CorsPolicy":
+                    rawCorsPolicy = namedArg.Value.Value?.ToString();
+                    break;
             }
         }
 
@@ -110,7 +116,16 @@ internal static class InterfaceParser
         routePrefix = routePrefix?.TrimStart('/');
         routePrefix ??= interfaceSymbol.Name.TrimStart('I').ToLowerInvariant();
 
-        return (routePrefix, requireAuth, configuration);
+        if (rawCorsPolicy is not null && rawCorsPolicy.Length == 0)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.EmptyCorsPolicy,
+                interfaceSymbol.Locations.FirstOrDefault(), interfaceSymbol.Name));
+            rawCorsPolicy = null;
+        }
+
+        var corsPolicy = rawCorsPolicy ?? configuration.CorsPolicy;
+
+        return (routePrefix, requireAuth, configuration, corsPolicy);
     }
 
     private static IEnumerable<MethodInfo> ParseMethods(

@@ -33,4 +33,7 @@ internal sealed record ConfigurationInfo
 
     /// <summary>Default named authorization policy (null = no named policy).</summary>
     public string? Policy { get; init; }
+
+    /// <summary>Default named CORS policy (null = no CORS policy).</summary>
+    public string? CorsPolicy { get; init; }
 }

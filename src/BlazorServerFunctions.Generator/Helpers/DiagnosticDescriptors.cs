@@ -286,4 +286,15 @@ internal static class DiagnosticDescriptors
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF022: CorsPolicy is set to an empty string — has no effect
+    /// </summary>
+    public static readonly DiagnosticDescriptor EmptyCorsPolicy = new(
+        id: "BSF022",
+        title: "Empty CorsPolicy value",
+        messageFormat: "Interface '{0}' has CorsPolicy set to an empty string, which has no effect. Remove the CorsPolicy property or provide a policy name.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

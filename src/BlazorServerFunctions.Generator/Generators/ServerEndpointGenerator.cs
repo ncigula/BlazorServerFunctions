@@ -90,6 +90,11 @@ internal static class ServerEndpointGenerator
         if (interfaceInfo.RequireAuthorization)
             sb.AppendLine("        group.RequireAuthorization();");
 
+        if (interfaceInfo.CorsPolicy != null)
+            sb.Append("        group.RequireCors(\"")
+              .Append(EscapeStringLiteral(interfaceInfo.CorsPolicy))
+              .AppendLine("\");");
+
         sb.AppendLine();
 
         foreach (var method in interfaceInfo.Methods)

@@ -179,6 +179,12 @@ Reverse: user provides `.proto` → generator produces typed C# interface + clie
 
 ---
 
+## 8. Code readability and maintainability
+
+Explore possibilities for improving the code quality and maintainability in bigger classes like the Generator classes.
+Since generators mostly have static classes, it could be worthwhile to use partial classes to split the code into multiple files.
+Other solutions could be using design patterns like the Strategy pattern (and others) to improve code organization and maintainability.
+
 ## Current status
 
 - [x] All 18 BSF diagnostics implemented and tested

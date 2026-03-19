@@ -185,28 +185,61 @@ Explore possibilities for improving the code quality and maintainability in bigg
 Since generators mostly have static classes, it could be worthwhile to use partial classes to split the code into multiple files.
 Other solutions could be using design patterns like the Strategy pattern (and others) to improve code organization and maintainability.
 
-## Current status
+## Progress tracker
 
-- [x] All 18 BSF diagnostics implemented and tested
-- [x] HTTP/REST transport (GET/POST/PUT/PATCH/DELETE)
-- [x] Interface-level + method-level `RequireAuthorization`
-- [x] `configureClient` hook (auth, resilience, logging delegating handlers)
-- [x] Problem Details error body in `HttpRequestException.Message`
-- [x] Configuration system (`ServerFunctionConfiguration`, `RouteNaming`, `ApiType`, `BaseRoute`, `CustomHttpClientType`, `Nullable`, `DefaultHttpMethod`)
-- [x] Full test suite: 85 unit + 31 integration + 39 E2E
-- [x] Sample app with Server/WASM/Auto demo pages for all 4 services
-- [ ] Everything above
+### §1 — Packaging & discoverability
+- [x] 1.1 README.md
+- [x] 1.2 NuGet versioning
+- [x] 1.3 Package metadata
+- [x] 1.4 Source Link
+- [x] 1.5 CHANGELOG.md
 
----
+### §2 — Configuration system
+- [x] 2.A `ServerFunctionConfiguration`, `RouteNaming`, `ApiType` enums in Abstractions
+- [x] 2.B `Configuration = typeof(...)` property on `[ServerFunctionCollection]`
+- [x] 2.C Generator reads config type via Roslyn and merges with per-interface/method values
+- [x] 2.D `BaseRoute` applied in client proxy + server endpoint generators
+- [x] 2.E `RouteNaming` convention applied to route segments
+- [x] 2.F `HttpVersion` sets `HttpClient.DefaultRequestVersion` in generated DI registration
+- [x] 2.G `CustomHttpClientType` changes generated `AddHttpClient` registration
 
-## Suggested session order
+### §3 — HTTP transport — feature gaps
+- [x] 3.1 Route/path parameters
+- [x] 3.2 `IAsyncEnumerable<T>` streaming
+- [ ] 3.3 File upload (`Stream` / `IFormFile` → multipart on client, `[FromForm]` on server)
+- [ ] 3.4 OpenAPI metadata (`.WithName()`, `.WithTags()`, `.WithOpenApi()`, `Produces<T>()`)
+- [ ] 3.5 Response/output caching (`[ServerFunction(CacheSeconds = 30)]`)
+- [ ] 3.6 Rate limiting (`[ServerFunction(RateLimitPolicy = "fixed")]`)
+- [ ] 3.7 API versioning (`[ServerFunctionCollection(Version = "v2")]`)
 
-Make sure to update the documentation from section §1 whenever you add a new feature and mark it as done below with a checkbox.
+### §4 — Security & auth
+- [ ] 4.1 Named authorization policies (`[ServerFunction(Policy = "AdminOnly")]`)
+- [ ] 4.2 Role-based auth (`[ServerFunction(Roles = "Admin,Manager")]`)
+- [ ] 4.3 CORS per interface (`[ServerFunctionCollection(CorsPolicy = "...")]`)
+- [ ] 4.4 Anti-forgery (`[ServerFunction(RequireAntiForgery = true)]`)
+- [ ] 4.5 Endpoint filters (`[ServerFunction(Filter = typeof(MyFilter))]`)
 
-- [x] **§1** — README + versioning (quick wins, needed before public release)
-- [x] **§2.A–2.G** — Configuration class system (foundation for all future features)
-- [ ] **§3.1** — Route/path parameters (biggest HTTP gap)
-- [ ] **§4.1 + §4.2** — Named policies + roles (rounds out auth)
-- [ ] **§5.1–5.3** — Tracing + logging + validation (production readiness)
-- [ ] **§3.4** — OpenAPI metadata (discoverability)
-- [ ] **§6** — gRPC code-first (major transport addition)
+### §5 — Production readiness
+- [ ] 5.1 Distributed tracing (auto-emit `Activity` in generated server endpoints)
+- [ ] 5.2 Structured logging (`ILogger<T>` at `Debug` in generated server endpoints)
+- [ ] 5.3 Input validation (`DataAnnotations` → 400 + Problem Details)
+- [ ] 5.4 Health checks (`MapServerFunctionHealthChecks()`)
+- [ ] 5.5 Built-in resilience (`EnableResilience = true` → `AddStandardResilienceHandler()`)
+- [ ] 5.6 Code fix providers (IDE quick-fixes for BSF diagnostics)
+- [ ] 5.7 Benchmark tests (incremental generator performance with BenchmarkDotNet)
+
+### §6 — gRPC transport — code-first
+- [ ] 6.1 Proto file generator
+- [ ] 6.2 gRPC server generator
+- [ ] 6.3 gRPC client proxy
+- [ ] 6.4 gRPC DI registration
+- [ ] 6.5 Streaming via `IAsyncEnumerable<T>`
+- [ ] 6.6 Auth over gRPC
+
+### §7 — gRPC transport — manual `.proto`
+- [ ] 7.1 Proto file parser
+- [ ] 7.2 Interface generator from proto
+- [ ] 7.3 Round-trip validation
+
+### §8 — Code readability & maintainability
+- [ ] 8.1 Explore partial classes / strategy pattern in Generator classes

@@ -1056,4 +1056,168 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ─── §3.5 Output Caching ─────────────────────────────────────────────────
+
+    [Fact]
+    public Task Generate_CacheOutput_BasicMethod_EmitsCacheOutputChain()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/counters")]
+                     public interface ICounterService
+                     {
+                         [ServerFunction(HttpMethod = "GET", CacheSeconds = 30)]
+                         Task<int> GetCountAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_CacheOutput_ConfigDefault_AppliedToAllMethods()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class CachedApiConfig : ServerFunctionConfiguration
+                     {
+                         public CachedApiConfig() { CacheSeconds = 60; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/items", Configuration = typeof(CachedApiConfig))]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetItemAsync();
+
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetOtherItemAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_CacheOutput_MethodOverridesConfig()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class CachedApiConfig : ServerFunctionConfiguration
+                     {
+                         public CachedApiConfig() { CacheSeconds = 60; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/items", Configuration = typeof(CachedApiConfig))]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "GET", CacheSeconds = 10)]
+                         Task<string> GetItemAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_CacheOutput_MethodZeroDisablesConfigDefault()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp;
+
+                     public class CachedApiConfig : ServerFunctionConfiguration
+                     {
+                         public CachedApiConfig() { CacheSeconds = 60; }
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/items", Configuration = typeof(CachedApiConfig))]
+                     public interface IItemService
+                     {
+                         [ServerFunction(HttpMethod = "GET", CacheSeconds = 0)]
+                         Task<string> GetItemAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public void BSF019_CachingOnStreamingMethod_EmitsWarning()
+    {
+        var source = """
+                     using System.Collections.Generic;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "GET", CacheSeconds = 10)]
+                         IAsyncEnumerable<string> StreamDataAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        result.AssertDiagnostic("BSF019");
+    }
+
+    [Fact]
+    public void BSF020_CachingOnNonGetMethod_EmitsError()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/counters")]
+                     public interface ICounterService
+                     {
+                         [ServerFunction(HttpMethod = "POST", CacheSeconds = 30)]
+                         Task<int> IncrementAsync();
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        result.AssertDiagnostic("BSF020");
+    }
 }

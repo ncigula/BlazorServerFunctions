@@ -31,7 +31,7 @@ public class UserServiceClient : IUserService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<System.Collections.Generic.List<User>>()
+        return await response.Content.ReadFromJsonAsync<System.Collections.Generic.List<User>?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 
@@ -48,7 +48,7 @@ public class UserServiceClient : IUserService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<User>()
+        return await response.Content.ReadFromJsonAsync<User?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 
@@ -70,7 +70,7 @@ public class UserServiceClient : IUserService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<User>()
+        return await response.Content.ReadFromJsonAsync<User?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 
@@ -96,7 +96,7 @@ public class UserServiceClient : IUserService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<User>()
+        return await response.Content.ReadFromJsonAsync<User?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using BlazorServerFunctions.Sample;
 using BlazorServerFunctions.Sample.Components;
 using BlazorServerFunctions.Sample.Components.Admin;
+using BlazorServerFunctions.Sample.Components.Caching;
 using BlazorServerFunctions.Sample.Components.Crud;
 using BlazorServerFunctions.Sample.Components.Echo;
 using BlazorServerFunctions.Sample.Components.RouteParams;
@@ -40,6 +41,8 @@ builder.Services.AddScoped<IEchoService, EchoService>();
 builder.Services.AddSingleton<ICrudService, CrudService>();
 builder.Services.AddScoped<IRouteParamService, RouteParamService>();
 builder.Services.AddScoped<IStreamingService, StreamingService>();
+builder.Services.AddSingleton<ICacheableService, CacheableService>();
+builder.Services.AddOutputCache();
 
 var app = builder.Build();
 
@@ -60,6 +63,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseOutputCache();
 
 app.UseAntiforgery();
 

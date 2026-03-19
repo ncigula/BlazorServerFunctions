@@ -48,6 +48,7 @@ internal static class ConfigManifestGenerator
         sb.AppendLine($"    public const bool __Nullable = {BoolLiteral(config.Nullable)};");
         sb.AppendLine($"    public const string __CustomHttpClientType = \"{EscapeString(config.CustomHttpClientType ?? string.Empty)}\";");
         sb.AppendLine($"    public const int __ApiType = {(int)config.ApiType};");
+        sb.AppendLine($"    public const int __CacheSeconds = {config.CacheSeconds};");
         sb.AppendLine("}");
 
         return sb.ToString();

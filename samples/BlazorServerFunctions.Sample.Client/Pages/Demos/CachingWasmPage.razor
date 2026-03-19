@@ -1,0 +1,159 @@
+@page "/demos/caching/wasm"
+@rendermode InteractiveWebAssembly
+@implements IAsyncDisposable
+
+@inject ICacheableService CacheableService
+
+<PageTitle>Output Caching — WASM</PageTitle>
+
+<div class="demo-header">
+    <span class="badge bg-success">🌐 Interactive WebAssembly</span>
+    <span class="badge bg-secondary ms-2">ICacheableService → CacheableServiceClient → ASP.NET Core Output Cache</span>
+</div>
+
+<h2 class="mt-3">Output Cache Demo</h2>
+<p>
+    Each <strong>Increment</strong> call fires a <code>POST /IncrementAsync</code> which mutates
+    the server-side counter. The <strong>Read (cached)</strong> button fires
+    <code>GET /GetCountAsync</code> whose response is cached for <strong>1 second</strong> by
+    <code>.CacheOutput(p =&gt; p.Expire(TimeSpan.FromSeconds(1)))</code> in the generated endpoint.
+    You'll see a stale value until the cache expires — showing the cache is doing its job.
+</p>
+
+<div class="d-flex gap-2 mb-3 align-items-center flex-wrap">
+    <button class="btn btn-primary" @onclick="IncrementAsync" disabled="@_busy">
+        ➕ Increment
+    </button>
+    <button class="btn btn-outline-secondary" @onclick="ReadAsync" disabled="@_busy">
+        📖 Read (cached)
+    </button>
+    <button class="btn btn-outline-secondary" @onclick="StartPollingAsync" disabled="@(_polling || _busy)">
+        ▶ Start auto-poll (500 ms)
+    </button>
+    <button class="btn btn-danger" @onclick="StopPolling" disabled="@(!_polling)">
+        ⏹ Stop
+    </button>
+</div>
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+<div class="d-flex gap-4 mb-3">
+    <div class="card" style="min-width:180px">
+        <div class="card-body text-center">
+            <div class="display-4 fw-bold text-primary">@_serverCount</div>
+            <div class="text-muted small">Real counter (after Increment)</div>
+        </div>
+    </div>
+    <div class="card" style="min-width:180px">
+        <div class="card-body text-center">
+            <div class="display-4 fw-bold text-success">@_cachedCount</div>
+            <div class="text-muted small">Cached GET response</div>
+        </div>
+    </div>
+</div>
+
+@if (_log.Count > 0)
+{
+    <h5>Activity log</h5>
+    <ul class="list-unstyled font-monospace small" style="max-height:200px;overflow-y:auto">
+        @foreach (var entry in _log.AsEnumerable().Reverse())
+        {
+            <li>@entry</li>
+        }
+    </ul>
+}
+
+@code {
+    private int _serverCount;
+    private int _cachedCount;
+    private bool _busy;
+    private bool _polling;
+    private string? _error;
+    private readonly List<string> _log = [];
+
+    private CancellationTokenSource? _pollCts;
+
+    private async Task IncrementAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            _serverCount = await CacheableService.IncrementAsync();
+            Log($"POST IncrementAsync → server={_serverCount}");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task ReadAsync()
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            _cachedCount = await CacheableService.GetCountAsync();
+            Log($"GET GetCountAsync → cached={_cachedCount}");
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task StartPollingAsync()
+    {
+        _polling = true;
+        _pollCts = new CancellationTokenSource();
+        var token = _pollCts.Token;
+
+        try
+        {
+            while (!token.IsCancellationRequested)
+            {
+                _cachedCount = await CacheableService.GetCountAsync();
+                Log($"[poll] GET GetCountAsync → cached={_cachedCount}");
+                StateHasChanged();
+                await Task.Delay(500, token);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Polling cancelled — normal exit path
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _polling = false;
+            StateHasChanged();
+        }
+    }
+
+    private void StopPolling() => _pollCts?.Cancel();
+
+    private void Log(string message) =>
+        _log.Add($"{DateTimeOffset.UtcNow:HH:mm:ss.fff}  {message}");
+
+    public ValueTask DisposeAsync()
+    {
+        _pollCts?.Cancel();
+        _pollCts?.Dispose();
+        return ValueTask.CompletedTask;
+    }
+}

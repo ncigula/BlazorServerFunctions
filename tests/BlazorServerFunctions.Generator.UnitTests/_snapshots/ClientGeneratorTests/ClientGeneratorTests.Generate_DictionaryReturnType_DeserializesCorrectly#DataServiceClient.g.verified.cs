@@ -31,7 +31,7 @@ public class DataServiceClient : IDataService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>>>()
+        return await response.Content.ReadFromJsonAsync<System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>>?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 

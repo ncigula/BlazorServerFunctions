@@ -31,7 +31,7 @@ public class WeatherServiceClient : IWeatherService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<WeatherForecastDto[]>()
+        return await response.Content.ReadFromJsonAsync<WeatherForecastDto[]?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 

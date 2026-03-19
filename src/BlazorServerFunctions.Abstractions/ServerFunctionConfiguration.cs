@@ -53,4 +53,13 @@ public class ServerFunctionConfiguration
 
     /// <summary>API transport type. Default: <see cref="ApiType.REST"/>.</summary>
     public ApiType ApiType { get; set; } = ApiType.REST;
+
+    /// <summary>
+    /// Default output cache duration in seconds applied to all <c>GET</c> endpoints in this collection.
+    /// <c>0</c> (default) means no caching. Individual methods can override this via
+    /// <see cref="ServerFunctionAttribute.CacheSeconds"/> — set to <c>0</c> on a method to opt out
+    /// even when a collection-level default is configured.
+    /// Requires <c>builder.Services.AddOutputCache()</c> and <c>app.UseOutputCache()</c>.
+    /// </summary>
+    public int CacheSeconds { get; set; }
 }

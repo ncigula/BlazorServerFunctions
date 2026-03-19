@@ -31,7 +31,7 @@ public class ProductServiceClient : IProductService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<Product[]>()
+        return await response.Content.ReadFromJsonAsync<Product[]?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 

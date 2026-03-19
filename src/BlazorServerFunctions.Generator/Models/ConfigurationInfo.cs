@@ -24,4 +24,7 @@ internal sealed record ConfigurationInfo
     public string? CustomHttpClientType { get; init; }
 
     public ApiType ApiType { get; init; } = ApiType.REST;
+
+    /// <summary>Default output cache duration in seconds for GET endpoints (0 = no caching).</summary>
+    public int CacheSeconds { get; init; }
 }

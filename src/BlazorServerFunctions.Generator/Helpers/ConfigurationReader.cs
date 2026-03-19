@@ -114,6 +114,8 @@ internal static class ConfigurationReader
                     => config with { CustomHttpClientType = string.IsNullOrEmpty(ct) ? null : ct },
                 "__ApiType" when field.ConstantValue is int at
                     => config with { ApiType = (ApiType)at },
+                "__CacheSeconds" when field.ConstantValue is int cs
+                    => config with { CacheSeconds = cs },
                 _ => config
             };
         }
@@ -150,6 +152,7 @@ internal static class ConfigurationReader
         var nullable = current.Nullable;
         var customHttpClientType = current.CustomHttpClientType;
         var apiType = current.ApiType;
+        var cacheSeconds = current.CacheSeconds;
 
         foreach (var statement in statements)
         {
@@ -169,7 +172,8 @@ internal static class ConfigurationReader
                 ref enableResilience,
                 ref nullable,
                 ref customHttpClientType,
-                ref apiType);
+                ref apiType,
+                ref cacheSeconds);
         }
 
         return current with
@@ -182,6 +186,7 @@ internal static class ConfigurationReader
             Nullable = nullable,
             CustomHttpClientType = customHttpClientType,
             ApiType = apiType,
+            CacheSeconds = cacheSeconds,
         };
     }
 
@@ -196,7 +201,8 @@ internal static class ConfigurationReader
         ref bool enableResilience,
         ref bool nullable,
         ref string? customHttpClientType,
-        ref ApiType apiType)
+        ref ApiType apiType,
+        ref int cacheSeconds)
     {
         switch (propName)
         {
@@ -224,6 +230,9 @@ internal static class ConfigurationReader
             case "ApiType":
                 apiType = ExtractEnumValue(value, apiType);
                 break;
+            case "CacheSeconds":
+                cacheSeconds = ExtractIntLiteral(value) ?? cacheSeconds;
+                break;
         }
     }
 #pragma warning restore MA0051
@@ -250,6 +259,14 @@ internal static class ConfigurationReader
             return null;
 
         return fallback;
+    }
+
+    private static int? ExtractIntLiteral(ExpressionSyntax expr)
+    {
+        if (expr is LiteralExpressionSyntax lit && lit.IsKind(SyntaxKind.NumericLiteralExpression)
+            && lit.Token.Value is int i)
+            return i;
+        return null;
     }
 
     private static bool? ExtractBoolLiteral(ExpressionSyntax expr)

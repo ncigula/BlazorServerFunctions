@@ -20,9 +20,10 @@ internal static class ServerEndpointGenerator
 
         var hasAuthorization = interfaceInfo.RequireAuthorization || interfaceInfo.Methods.Any(m => m.RequireAuthorization);
         var hasCancellationToken = interfaceInfo.Methods.Any(m => m.HasCancellationToken);
+        var hasCaching = interfaceInfo.Methods.Any(m => m.CacheSeconds > 0);
 
         GenerateFileHeader(sb, interfaceInfo.Configuration.Nullable);
-        GenerateUsingDirectives(sb, hasAuthorization, hasCancellationToken, interfaceUsingNs, hasOpenApiPackage);
+        GenerateUsingDirectives(sb, hasAuthorization, hasCancellationToken, hasCaching, interfaceUsingNs, hasOpenApiPackage);
 
         if (!string.IsNullOrEmpty(effectiveNamespace))
         {
@@ -49,13 +50,15 @@ internal static class ServerEndpointGenerator
         sb.AppendLine();
     }
 
-    private static void GenerateUsingDirectives(StringBuilder sb, bool hasAuthorization, bool hasCancellationToken, string? additionalNamespace, bool hasOpenApiPackage)
+    private static void GenerateUsingDirectives(StringBuilder sb, bool hasAuthorization, bool hasCancellationToken, bool hasCaching, string? additionalNamespace, bool hasOpenApiPackage)
     {
         if (hasAuthorization)
             sb.AppendLine("using Microsoft.AspNetCore.Authorization;");
         sb.AppendLine("using Microsoft.AspNetCore.Builder;");
         if (hasOpenApiPackage)
             sb.AppendLine("using Microsoft.AspNetCore.OpenApi;");
+        if (hasCaching)
+            sb.AppendLine("using Microsoft.AspNetCore.OutputCaching;");
         sb.AppendLine("using Microsoft.AspNetCore.Routing;");
         sb.AppendLine("using Microsoft.AspNetCore.Http;");
         sb.AppendLine("using Microsoft.AspNetCore.Mvc;");
@@ -149,6 +152,9 @@ internal static class ServerEndpointGenerator
 
         if (hasOpenApiPackage)
             chain.Add(".WithOpenApi()");
+
+        if (method.CacheSeconds > 0)
+            chain.Add($".CacheOutput(p => p.Expire(System.TimeSpan.FromSeconds({method.CacheSeconds})))");
 
         if (method.RequireAuthorization && !interfaceRequiresAuth)
             chain.Add(".RequireAuthorization()");

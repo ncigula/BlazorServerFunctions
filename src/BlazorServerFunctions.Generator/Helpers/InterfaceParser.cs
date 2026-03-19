@@ -173,6 +173,7 @@ internal static class InterfaceParser
 
         var serverFunctionAttribute = GetServerFunctionAttribute(context, methodSymbol, methodInfo, interfaceInfo);
         ParseServerFunctionAttributes(context, methodSymbol, methodInfo, serverFunctionAttribute, interfaceInfo);
+        ValidateCacheSeconds(context, methodSymbol, methodInfo);
 
         return methodInfo;
     }
@@ -206,6 +207,7 @@ internal static class InterfaceParser
         InterfaceInfo interfaceInfo)
     {
         bool hasExplicitHttpMethod = false;
+        int methodCacheSeconds = -1; // -1 = not set on attribute → inherit from config
 
         foreach (var attribute in serverFunctionAttribute?.NamedArguments ?? [])
         {
@@ -237,6 +239,10 @@ internal static class InterfaceParser
                 case "RequireAuthorization":
                     methodInfo.RequireAuthorization = attribute.Value.Value is true;
                     break;
+
+                case "CacheSeconds":
+                    methodCacheSeconds = attribute.Value.Value is int v ? v : -1;
+                    break;
             }
         }
 
@@ -246,6 +252,44 @@ internal static class InterfaceParser
             && Enum.TryParse<HttpMethod>(interfaceInfo.Configuration.DefaultHttpMethod, ignoreCase: true, out var defaultMethod))
         {
             methodInfo.HttpMethod = defaultMethod;
+        }
+
+        // Resolve CacheSeconds: -1 means "not set on attribute" → fall back to config default
+        methodInfo.CacheSeconds = methodCacheSeconds == -1
+            ? interfaceInfo.Configuration.CacheSeconds
+            : methodCacheSeconds;
+    }
+
+    /// <summary>
+    /// Validates the resolved CacheSeconds value.
+    /// BSF019: streaming methods cannot be cached (warning, clamp to 0).
+    /// BSF020: non-GET methods cannot be cached (error, clamp to 0).
+    /// Must be called after both HttpMethod and AsyncType are resolved.
+    /// </summary>
+    private static void ValidateCacheSeconds(
+        SourceProductionContextWrapper context,
+        IMethodSymbol methodSymbol,
+        MethodInfo methodInfo)
+    {
+        if (methodInfo.CacheSeconds <= 0)
+            return;
+
+        if (methodInfo.AsyncType is AsyncType.AsyncEnumerable)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                DiagnosticDescriptors.CacheOnStreamingMethod,
+                methodSymbol.Locations.First(), methodInfo.Name));
+            methodInfo.CacheSeconds = 0;
+            return;
+        }
+
+        if (methodInfo.HttpMethod is not HttpMethod.Get)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(
+                DiagnosticDescriptors.CacheOnNonGetMethod,
+                methodSymbol.Locations.First(), methodInfo.Name,
+                methodInfo.HttpMethod.ToString().ToUpperInvariant()));
+            methodInfo.CacheSeconds = 0;
         }
     }
 

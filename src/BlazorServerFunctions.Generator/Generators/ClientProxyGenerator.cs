@@ -129,10 +129,16 @@ internal static class ClientProxyGenerator
 
         if (!string.Equals(methodInfo.ReturnType, "void", StringComparison.OrdinalIgnoreCase))
         {
+            // Use a nullable type argument so that ?? throw works for both value types
+            // (where ReadFromJsonAsync<T> may return T in .NET 10+) and reference types.
+            var nullableReturnType = methodInfo.ReturnType.EndsWith("?", StringComparison.Ordinal)
+                ? methodInfo.ReturnType
+                : methodInfo.ReturnType + "?";
+
             sb.Append("        return ")
                 .Append(GetAwaitKeyword(methodInfo.AsyncType))
                 .Append("response.Content.ReadFromJsonAsync<")
-                .Append(methodInfo.ReturnType)
+                .Append(nullableReturnType)
                 .Append(">()")
                 .Append(GetResultSuffix(methodInfo.AsyncType))
                 .AppendLine();

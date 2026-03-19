@@ -31,7 +31,7 @@ public class CounterServiceClient : ICounterService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<int>()
+        return await response.Content.ReadFromJsonAsync<int?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 

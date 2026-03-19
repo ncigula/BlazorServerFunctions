@@ -32,7 +32,7 @@ public class TaskServiceClient : ITaskService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<Result>()
+        return await response.Content.ReadFromJsonAsync<Result?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 

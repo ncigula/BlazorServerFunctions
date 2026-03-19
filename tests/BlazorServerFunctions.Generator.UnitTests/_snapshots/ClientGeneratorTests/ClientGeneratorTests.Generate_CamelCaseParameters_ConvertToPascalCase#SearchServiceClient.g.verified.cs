@@ -35,7 +35,7 @@ public class SearchServiceClient : ISearchService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<System.Collections.Generic.List<Result>>()
+        return await response.Content.ReadFromJsonAsync<System.Collections.Generic.List<Result>?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 
@@ -58,7 +58,7 @@ public class SearchServiceClient : ISearchService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<User>()
+        return await response.Content.ReadFromJsonAsync<User?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 

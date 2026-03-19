@@ -253,4 +253,26 @@ internal static class DiagnosticDescriptors
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF019: CacheSeconds configured on a streaming method — ignored
+    /// </summary>
+    public static readonly DiagnosticDescriptor CacheOnStreamingMethod = new(
+        id: "BSF019",
+        title: "Output caching incompatible with streaming",
+        messageFormat: "Method '{0}' returns IAsyncEnumerable<T> — output caching is incompatible with streaming and CacheSeconds will be ignored",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF020: CacheSeconds configured on a non-GET method — caching mutating endpoints is almost always wrong
+    /// </summary>
+    public static readonly DiagnosticDescriptor CacheOnNonGetMethod = new(
+        id: "BSF020",
+        title: "Output caching on non-GET method",
+        messageFormat: "Method '{0}' uses HTTP {1} — output caching is only valid for GET endpoints. CacheSeconds on POST/PUT/PATCH/DELETE will cache side-effecting responses, breaking correctness.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

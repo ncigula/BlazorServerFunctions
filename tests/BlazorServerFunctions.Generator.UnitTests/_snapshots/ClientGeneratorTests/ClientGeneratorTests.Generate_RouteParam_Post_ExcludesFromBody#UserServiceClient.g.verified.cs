@@ -37,7 +37,7 @@ public class UserServiceClient : IUserService
             throw new HttpRequestException(errorBody, null, response.StatusCode);
         }
 
-        return await response.Content.ReadFromJsonAsync<string>()
+        return await response.Content.ReadFromJsonAsync<string?>()
             ?? throw new InvalidOperationException("Response deserialization returned null");
     }
 

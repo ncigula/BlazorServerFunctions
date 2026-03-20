@@ -28,4 +28,10 @@ internal sealed record MethodInfo
 
     /// <summary>Whether to emit <c>.ValidateAntiforgery()</c> on this endpoint.</summary>
     public bool RequireAntiForgery { get; set; }
+
+    /// <summary>
+    /// Ordered list of fully-qualified filter type names (global:: prefix) to emit as
+    /// <c>.AddEndpointFilter&lt;T&gt;()</c> calls. Empty = no filters.
+    /// </summary>
+    public List<string> Filters { get; set; } = [];
 }

@@ -2043,4 +2043,133 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // §4.5 — Endpoint filters
+
+    [Fact]
+    public Task Generate_Filter_Single_EmitsAddEndpointFilter()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using Microsoft.AspNetCore.Http;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     public sealed class LoggingFilter : IEndpointFilter
+                     {
+                         public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
+                             => await next(ctx);
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "POST", Filters = new[] { typeof(LoggingFilter) })]
+                         Task<string> SubmitDataAsync(string value);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_Filter_Multiple_EmitsInOrder()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using Microsoft.AspNetCore.Http;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     public sealed class FirstFilter : IEndpointFilter
+                     {
+                         public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
+                             => await next(ctx);
+                     }
+
+                     public sealed class SecondFilter : IEndpointFilter
+                     {
+                         public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
+                             => await next(ctx);
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "POST", Filters = new[] { typeof(FirstFilter), typeof(SecondFilter) })]
+                         Task<string> SubmitDataAsync(string value);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public void Generate_Filter_None_NoAddEndpointFilterCall()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<string> SubmitDataAsync(string value);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        Assert.Empty(result.Diagnostics);
+        var serverExtensions = result.GeneratedTrees
+            .First(t => t.FilePath.Contains("IDataServiceServerExtensions", StringComparison.Ordinal))
+            .ToString();
+        Assert.DoesNotContain("AddEndpointFilter", serverExtensions, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public Task Generate_Filter_WithAntiForgery_CorrectOrder()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using Microsoft.AspNetCore.Http;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     public sealed class LoggingFilter : IEndpointFilter
+                     {
+                         public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
+                             => await next(ctx);
+                     }
+
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "POST", RequireAntiForgery = true, Filters = new[] { typeof(LoggingFilter) })]
+                         Task<string> SubmitDataAsync(string value);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

@@ -3,6 +3,7 @@ using BlazorServerFunctions.Sample;
 using BlazorServerFunctions.Sample.Components;
 using BlazorServerFunctions.Sample.Components.Admin;
 using BlazorServerFunctions.Sample.Components.AntiForgery;
+using BlazorServerFunctions.Sample.Components.Filter;
 using BlazorServerFunctions.Sample.Components.Caching;
 using BlazorServerFunctions.Sample.Components.Crud;
 using BlazorServerFunctions.Sample.Components.RateLimiting;
@@ -59,6 +60,7 @@ builder.Services.AddScoped<IStreamingService, StreamingService>();
 builder.Services.AddSingleton<ICacheableService, CacheableService>();
 builder.Services.AddSingleton<IRateLimitedService, RateLimitedService>();
 builder.Services.AddScoped<IAntiForgeryService, AntiForgeryService>();
+builder.Services.AddScoped<IFilteredEchoService, FilteredEchoService>();
 
 builder.Services.AddOutputCache();
 

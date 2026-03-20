@@ -576,6 +576,42 @@ public class DiagnosticIntegrationTests
         server.AssertCompilesSuccessfully();
     }
 
+    // ── Endpoint filters: generates .AddEndpointFilter<T>() and compiles ────────
+
+    [Fact]
+    public void Filter_Single_GeneratesAndCompiles()
+    {
+        var scenario = new ProjectBuilder()
+            .AddServerProject("MyApp.Server", """
+                using BlazorServerFunctions.Abstractions;
+                using Microsoft.AspNetCore.Http;
+                using System.Threading.Tasks;
+
+                namespace MyApp.Server;
+
+                public sealed class LoggingFilter : IEndpointFilter
+                {
+                    public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext ctx, EndpointFilterDelegate next)
+                        => await next(ctx);
+                }
+
+                [ServerFunctionCollection]
+                public interface IFilteredService
+                {
+                    [ServerFunction(HttpMethod = "GET", Filters = new[] { typeof(LoggingFilter) })]
+                    Task<string> GetAsync();
+                }
+
+                public class Program { }
+                """)
+            .Build();
+
+        var server = scenario.Server;
+        server.AssertNoDiagnostics();
+        server.AssertFileContains("IFilteredServiceServerExtensions.g.cs", ".AddEndpointFilter<global::MyApp.Server.LoggingFilter>()");
+        server.AssertCompilesSuccessfully();
+    }
+
     // ── BSF102: Too many parameters warning ───────────────────────────────────
 
     [Fact]

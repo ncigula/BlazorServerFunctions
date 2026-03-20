@@ -5,10 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.4.0] - 2026-03-19
+## [0.4.0] - 2026-03-20
 
 ### Added
 
+- **§4.5 Endpoint filters** — `[ServerFunction(Filters = new[] { typeof(MyFilter) })]` emits `.AddEndpointFilter<MyFilter>()` on the generated minimal API endpoint; multiple filter types are applied in declaration order; each type must implement `IEndpointFilter`
 - **§4.4 Anti-forgery** — `[ServerFunction(RequireAntiForgery = true)]` adds `.WithMetadata(new RequireAntiforgeryTokenAttribute())` to the generated minimal API endpoint; requires `builder.Services.AddAntiforgery()` and `app.UseAntiforgery()` in the server pipeline
 - **§4.3 CORS per interface** — `[ServerFunctionCollection(CorsPolicy = "AllowedOrigins")]` emits `group.RequireCors("AllowedOrigins")` on the route group for all endpoints in the collection; `ServerFunctionConfiguration.CorsPolicy` sets a collection-level config default (attribute overrides it); BSF022 error when `CorsPolicy` is set to an empty string; requires `builder.Services.AddCors(...)` and `app.UseCors()` in the server pipeline
 

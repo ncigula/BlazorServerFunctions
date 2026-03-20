@@ -52,4 +52,12 @@ public sealed class ServerFunctionAttribute : Attribute
     /// antiforgery middleware (<c>app.UseAntiforgery()</c>) in the server pipeline.
     /// </summary>
     public bool RequireAntiForgery { get; set; }
+
+    /// <summary>
+    /// One or more endpoint filter types applied via <c>.AddEndpointFilter&lt;TFilter&gt;()</c>
+    /// on the generated minimal API endpoint, in declaration order.
+    /// Each type must implement <c>IEndpointFilter</c>.
+    /// Example: <c>Filters = new[] { typeof(MyFilter) }</c>
+    /// </summary>
+    public Type[]? Filters { get; set; }
 }

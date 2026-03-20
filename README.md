@@ -159,6 +159,7 @@ Applied to a method. Controls the HTTP method, route, authorization, caching, an
 | `Policy` | `string?` | `null` (inherit) | Named authorization policy applied via `.RequireAuthorization("name")`; `null` = inherit from config, `""` = disable. Does not affect the boolean `RequireAuthorization` setting |
 | `Roles` | `string?` | `null` | Comma-separated role names applied via `.RequireAuthorization(new AuthorizeAttribute { Roles = "..." })`; `null` = no restriction. Can be combined with `Policy` and `RequireAuthorization`. Empty string is an error (BSF021). |
 | `RequireAntiForgery` | `bool` | `false` | Adds `.WithMetadata(new RequireAntiforgeryTokenAttribute())` to the endpoint. Requires `AddAntiforgery()` + `UseAntiforgery()` in the server pipeline. |
+| `Filters` | `Type[]?` | `null` | One or more `IEndpointFilter` types applied via `.AddEndpointFilter<T>()` in declaration order. Example: `Filters = new[] { typeof(MyFilter) }` |
 
 ---
 
@@ -420,6 +421,38 @@ Register antiforgery services and middleware in your server pipeline:
 builder.Services.AddAntiforgery();
 // ...
 app.UseAntiforgery();
+```
+
+### Endpoint filters
+
+Apply one or more `IEndpointFilter` types to a method via `Filters = new[] { typeof(...) }`:
+
+```csharp
+// Implement the filter in a project that is accessible where the interface is declared
+public sealed class LoggingFilter : IEndpointFilter
+{
+    public ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
+    {
+        // Pre-handler logic here
+        return next(context);
+    }
+}
+
+[ServerFunctionCollection]
+public interface IOrderService
+{
+    // Single filter
+    [ServerFunction(HttpMethod = "POST", Filters = new[] { typeof(LoggingFilter) })]
+    Task<OrderDto> CreateOrderAsync(OrderDto order);
+}
+```
+
+Multiple filters are applied in declaration order:
+
+```csharp
+[ServerFunction(HttpMethod = "POST", Filters = new[] { typeof(AuthFilter), typeof(LoggingFilter) })]
+Task<OrderDto> CreateOrderAsync(OrderDto order);
+// Generated: .AddEndpointFilter<AuthFilter>().AddEndpointFilter<LoggingFilter>()
 ```
 
 ---

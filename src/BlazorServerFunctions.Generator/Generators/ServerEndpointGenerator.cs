@@ -193,6 +193,9 @@ internal static class ServerEndpointGenerator
         if (method.RequireAntiForgery)
             chain.Add(".WithMetadata(new RequireAntiforgeryTokenAttribute())");
 
+        foreach (var filter in method.Filters)
+            chain.Add($".AddEndpointFilter<{filter}>()");
+
         for (int i = 0; i < chain.Count; i++)
         {
             sb.Append("            ").Append(chain[i]);

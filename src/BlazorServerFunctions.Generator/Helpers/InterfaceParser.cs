@@ -226,6 +226,7 @@ internal static class InterfaceParser
         string? rawMethodRateLimitPolicy = null; // null = not set on attribute → inherit from config
         string? rawMethodPolicy = null; // null = not set on attribute → inherit from config
         string? rawMethodRoles = null; // null = not set on attribute → no roles requirement
+        var filters = new List<string>();
 
         foreach (var attribute in serverFunctionAttribute?.NamedArguments ?? [])
         {
@@ -264,17 +265,42 @@ internal static class InterfaceParser
                 case "RequireAntiForgery":
                     methodInfo.RequireAntiForgery = attribute.Value.Value is true;
                     break;
+
+                case "Filters":
+                    filters.AddRange(ParseFilterTypes(attribute.Value));
+                    break;
             }
         }
 
+        methodInfo.Filters = filters;
+        rawMethodRoles = ValidateRoles(context, methodSymbol, methodInfo, rawMethodRoles);
+        ResolveFromConfig(methodInfo, interfaceInfo, hasExplicitHttpMethod, methodCacheSeconds, rawMethodRateLimitPolicy, rawMethodPolicy, rawMethodRoles);
+    }
+
+    private static List<string> ParseFilterTypes(TypedConstant value)
+    {
+        var filters = new List<string>();
+        foreach (var item in value.Values)
+        {
+            if (item.Value is INamedTypeSymbol filterSymbol)
+                filters.Add(filterSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat));
+        }
+        return filters;
+    }
+
+    private static string? ValidateRoles(
+        SourceProductionContextWrapper context,
+        IMethodSymbol methodSymbol,
+        MethodInfo methodInfo,
+        string? rawMethodRoles)
+    {
         if (rawMethodRoles is not null && rawMethodRoles.Length == 0)
         {
             context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.EmptyRoles,
                 methodSymbol.Locations.First(), methodInfo.Name));
-            rawMethodRoles = null;
+            return null;
         }
-
-        ResolveFromConfig(methodInfo, interfaceInfo, hasExplicitHttpMethod, methodCacheSeconds, rawMethodRateLimitPolicy, rawMethodPolicy, rawMethodRoles);
+        return rawMethodRoles;
     }
 
     private static bool ParseHttpMethodAttribute(

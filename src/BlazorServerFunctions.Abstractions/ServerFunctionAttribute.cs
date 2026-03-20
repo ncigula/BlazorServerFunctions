@@ -44,4 +44,12 @@ public sealed class ServerFunctionAttribute : Attribute
     /// Setting this to an empty string is an error (BSF021).
     /// </summary>
     public string? Roles { get; set; }
+
+    /// <summary>
+    /// When <c>true</c>, adds <c>.ValidateAntiforgery()</c> to the generated minimal API endpoint.
+    /// Default: <c>false</c>.
+    /// Requires antiforgery services (<c>builder.Services.AddAntiforgery()</c>) and the
+    /// antiforgery middleware (<c>app.UseAntiforgery()</c>) in the server pipeline.
+    /// </summary>
+    public bool RequireAntiForgery { get; set; }
 }

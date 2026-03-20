@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **§4.4 Anti-forgery** — `[ServerFunction(RequireAntiForgery = true)]` adds `.WithMetadata(new RequireAntiforgeryTokenAttribute())` to the generated minimal API endpoint; requires `builder.Services.AddAntiforgery()` and `app.UseAntiforgery()` in the server pipeline
 - **§4.3 CORS per interface** — `[ServerFunctionCollection(CorsPolicy = "AllowedOrigins")]` emits `group.RequireCors("AllowedOrigins")` on the route group for all endpoints in the collection; `ServerFunctionConfiguration.CorsPolicy` sets a collection-level config default (attribute overrides it); BSF022 error when `CorsPolicy` is set to an empty string; requires `builder.Services.AddCors(...)` and `app.UseCors()` in the server pipeline
 
 ### Fixed

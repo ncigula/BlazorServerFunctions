@@ -25,4 +25,7 @@ internal sealed record MethodInfo
 
     /// <summary>Comma-separated role names, or <c>null</c> if none applies.</summary>
     public string? Roles { get; set; }
+
+    /// <summary>Whether to emit <c>.ValidateAntiforgery()</c> on this endpoint.</summary>
+    public bool RequireAntiForgery { get; set; }
 }

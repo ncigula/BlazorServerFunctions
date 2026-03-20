@@ -260,6 +260,10 @@ internal static class InterfaceParser
                 case "Roles":
                     rawMethodRoles = attribute.Value.Value?.ToString();
                     break;
+
+                case "RequireAntiForgery":
+                    methodInfo.RequireAntiForgery = attribute.Value.Value is true;
+                    break;
             }
         }
 

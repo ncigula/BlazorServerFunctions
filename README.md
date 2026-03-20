@@ -158,6 +158,7 @@ Applied to a method. Controls the HTTP method, route, authorization, caching, an
 | `RateLimitPolicy` | `string?` | `null` (inherit) | Named rate-limiting policy applied via `.RequireRateLimiting("name")`; `null` = inherit from config, `""` = disable. Requires `AddRateLimiter(...)` + `UseRateLimiter()` in the server pipeline |
 | `Policy` | `string?` | `null` (inherit) | Named authorization policy applied via `.RequireAuthorization("name")`; `null` = inherit from config, `""` = disable. Does not affect the boolean `RequireAuthorization` setting |
 | `Roles` | `string?` | `null` | Comma-separated role names applied via `.RequireAuthorization(new AuthorizeAttribute { Roles = "..." })`; `null` = no restriction. Can be combined with `Policy` and `RequireAuthorization`. Empty string is an error (BSF021). |
+| `RequireAntiForgery` | `bool` | `false` | Adds `.WithMetadata(new RequireAntiforgeryTokenAttribute())` to the endpoint. Requires `AddAntiforgery()` + `UseAntiforgery()` in the server pipeline. |
 
 ---
 
@@ -399,6 +400,27 @@ app.UseCors(); // before UseAuthorization
 ```
 
 A collection-level default can also be set via `ServerFunctionConfiguration.CorsPolicy`; the attribute value overrides the config default.
+
+### Anti-forgery
+
+Apply `RequireAntiforgeryTokenAttribute` metadata to individual endpoints via `RequireAntiForgery = true`:
+
+```csharp
+[ServerFunctionCollection(RoutePrefix = "api/forms")]
+public interface IFormService
+{
+    [ServerFunction(HttpMethod = "POST", RequireAntiForgery = true)]
+    Task<string> SubmitFormAsync(string data);
+}
+```
+
+Register antiforgery services and middleware in your server pipeline:
+
+```csharp
+builder.Services.AddAntiforgery();
+// ...
+app.UseAntiforgery();
+```
 
 ---
 

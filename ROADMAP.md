@@ -124,7 +124,7 @@ No JSON files, no MSBuild properties — everything lives in C# with full IDE su
 | 4.1 | **Named authorization policies** | ✅ | `[ServerFunction(Policy = "AdminOnly")]` → `.RequireAuthorization("AdminOnly")`; `ServerFunctionConfiguration.Policy` for collection default; `""` = explicitly disable |
 | 4.2 | **Role-based auth** | ✅ | `[ServerFunction(Roles = "Admin,Manager")]` → `.RequireAuthorization(new AuthorizeAttribute { Roles = "Admin,Manager" })`; can be combined with `Policy` and boolean `RequireAuthorization`; BSF021 error for empty string |
 | 4.3 | **CORS per interface** | ✅ | `[ServerFunctionCollection(CorsPolicy = "AllowedOrigins")]` → `group.RequireCors(...)` on the route group; `ServerFunctionConfiguration.CorsPolicy` for config default; attribute overrides config; BSF022 for empty string |
-| 4.4 | **Anti-forgery** | 🟢 | `[ServerFunction(RequireAntiForgery = true)]` → `.ValidateAntiforgery()` |
+| 4.4 | **Anti-forgery** | ✅ | `[ServerFunction(RequireAntiForgery = true)]` → `.WithMetadata(new RequireAntiforgeryTokenAttribute())` |
 | 4.5 | **Endpoint filters** | 🟡 | `[ServerFunction(Filter = typeof(MyFilter))]` → `.AddEndpointFilter<MyFilter>()` on the generated minimal API endpoint; supports multiple filters via array |
 
 > **Delegating handlers** are runtime factory lambdas (`() => new MyHandler()`) — the Roslyn generator cannot read or embed these, so they stay as the `configureClient` hook on `AddServerFunctionClients`.
@@ -216,7 +216,7 @@ Other solutions could be using design patterns like the Strategy pattern (and ot
 - [x] 4.1 Named authorization policies (`[ServerFunction(Policy = "AdminOnly")]`)
 - [x] 4.2 Role-based auth (`[ServerFunction(Roles = "Admin,Manager")]`)
 - [x] 4.3 CORS per interface (`[ServerFunctionCollection(CorsPolicy = "...")]`)
-- [ ] 4.4 Anti-forgery (`[ServerFunction(RequireAntiForgery = true)]`)
+- [x] 4.4 Anti-forgery (`[ServerFunction(RequireAntiForgery = true)]`)
 - [ ] 4.5 Endpoint filters (`[ServerFunction(Filter = typeof(MyFilter))]`)
 
 ### §5 — Production readiness

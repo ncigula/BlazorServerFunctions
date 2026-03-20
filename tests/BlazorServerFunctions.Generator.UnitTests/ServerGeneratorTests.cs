@@ -1967,4 +1967,80 @@ public class ServerGeneratorTests
 
         result.AssertDiagnostic("BSF022");
     }
+
+    [Fact]
+    public Task Generate_AntiForgery_True_EmitsValidateAntiforgery()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "POST", RequireAntiForgery = true)]
+                         Task<string> SubmitDataAsync(string value);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public void Generate_AntiForgery_Default_NoValidateAntiforgery()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<string> SubmitDataAsync(string value);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        Assert.Empty(result.Diagnostics);
+        var serverExtensions = result.GeneratedTrees
+            .First(t => t.FilePath.Contains("IDataServiceServerExtensions", StringComparison.Ordinal))
+            .ToString();
+        Assert.DoesNotContain("ValidateAntiforgery", serverExtensions, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public Task Generate_AntiForgery_WithAuthorization_CorrectOrder()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/data")]
+                     public interface IDataService
+                     {
+                         [ServerFunction(HttpMethod = "POST", RequireAuthorization = true, RequireAntiForgery = true)]
+                         Task<string> SubmitDataAsync(string value);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

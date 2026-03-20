@@ -547,6 +547,35 @@ public class DiagnosticIntegrationTests
         project.AssertHasNoGeneratedFiles();
     }
 
+    // ── RequireAntiForgery: generates .ValidateAntiforgery() and compiles ────────
+
+    [Fact]
+    public void RequireAntiForgery_GeneratesValidateAntiforgeryAndCompiles()
+    {
+        var scenario = new ProjectBuilder()
+            .AddServerProject("MyApp.Server", """
+                using BlazorServerFunctions.Abstractions;
+                using System.Threading.Tasks;
+
+                namespace MyApp.Server;
+
+                [ServerFunctionCollection]
+                public interface IFormService
+                {
+                    [ServerFunction(HttpMethod = "POST", RequireAntiForgery = true)]
+                    Task<string> SubmitAsync(string value);
+                }
+
+                public class Program { }
+                """)
+            .Build();
+
+        var server = scenario.Server;
+        server.AssertNoDiagnostics();
+        server.AssertFileContains("IFormServiceServerExtensions.g.cs", ".WithMetadata(new RequireAntiforgeryTokenAttribute())");
+        server.AssertCompilesSuccessfully();
+    }
+
     // ── BSF102: Too many parameters warning ───────────────────────────────────
 
     [Fact]

@@ -60,6 +60,9 @@ public static class CompilationHelper
 
         yield return MetadataReference.CreateFromFile(
             Assembly.Load("Microsoft.AspNetCore.Http.Abstractions").Location);
+
+        yield return MetadataReference.CreateFromFile(
+            typeof(Microsoft.AspNetCore.Antiforgery.IAntiforgery).Assembly.Location);
     }
 
     public static IEnumerable<MetadataReference> GetClientReferences()

@@ -22,9 +22,10 @@ internal static class ServerEndpointGenerator
         var hasCancellationToken = interfaceInfo.Methods.Any(m => m.HasCancellationToken);
         var hasCaching = interfaceInfo.Methods.Any(m => m.CacheSeconds > 0);
         var hasRateLimiting = interfaceInfo.Methods.Any(m => m.RateLimitPolicy != null);
+        var hasAntiForgery = interfaceInfo.Methods.Any(m => m.RequireAntiForgery);
 
         GenerateFileHeader(sb, interfaceInfo.Configuration.Nullable);
-        GenerateUsingDirectives(sb, hasAuthorization, hasCancellationToken, hasCaching, hasRateLimiting, interfaceUsingNs, hasOpenApiPackage);
+        GenerateUsingDirectives(sb, hasAuthorization, hasCancellationToken, hasCaching, hasRateLimiting, hasAntiForgery, interfaceUsingNs, hasOpenApiPackage);
 
         if (!string.IsNullOrEmpty(effectiveNamespace))
         {
@@ -51,8 +52,10 @@ internal static class ServerEndpointGenerator
         sb.AppendLine();
     }
 
-    private static void GenerateUsingDirectives(StringBuilder sb, bool hasAuthorization, bool hasCancellationToken, bool hasCaching, bool hasRateLimiting, string? additionalNamespace, bool hasOpenApiPackage)
+    private static void GenerateUsingDirectives(StringBuilder sb, bool hasAuthorization, bool hasCancellationToken, bool hasCaching, bool hasRateLimiting, bool hasAntiForgery, string? additionalNamespace, bool hasOpenApiPackage)
     {
+        if (hasAntiForgery)
+            sb.AppendLine("using Microsoft.AspNetCore.Antiforgery;");
         if (hasAuthorization)
             sb.AppendLine("using Microsoft.AspNetCore.Authorization;");
         sb.AppendLine("using Microsoft.AspNetCore.Builder;");
@@ -186,6 +189,9 @@ internal static class ServerEndpointGenerator
 
         if (method.Roles != null)
             chain.Add($".RequireAuthorization(new AuthorizeAttribute {{ Roles = \"{EscapeStringLiteral(method.Roles)}\" }})");
+
+        if (method.RequireAntiForgery)
+            chain.Add(".WithMetadata(new RequireAntiforgeryTokenAttribute())");
 
         for (int i = 0; i < chain.Count; i++)
         {

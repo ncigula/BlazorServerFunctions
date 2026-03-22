@@ -1,0 +1,1 @@
+﻿//HintName: ServerFunctionEndpointsRegistration.g.cs

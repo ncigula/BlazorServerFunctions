@@ -169,12 +169,12 @@ are unchanged.
 
 | # | Item | Size | Notes |
 |---|---|---|---|
-| 6.1 | **gRPC server generator** | 🔴 | `XxxGrpcService` decorated with `[ServiceContract]` delegating to `IXxxService`; registered via `protobuf-net.Grpc.AspNetCore` |
+| 6.1 | **gRPC server generator** | ✅ | `XxxGrpcService` decorated with `[ServiceContract]` delegating to `IXxxService`; registered via `protobuf-net.Grpc.AspNetCore` |
 | 6.2 | **gRPC client proxy** | 🔴 | `XxxGrpcClient : IXxxService` using `GrpcChannel` + `protobuf-net.Grpc`; mirrors the REST `XxxClient` |
 | 6.3 | **Zero-config DI registration** | 🟡 | Extend existing `AddServerFunctionClients()` + `MapServerFunctionEndpoints()` — generated code resolves the address automatically by default: Blazor WASM uses `NavigationManager.BaseUri`, Aspire projects use service discovery, all other clients fall back to `IConfiguration["ServerFunctions:BaseUrl"]`; an optional `baseUrl` parameter overrides the generated default when explicitly provided; gRPC channel is constructed from the same resolved or overridden address |
 | 6.4 | **Streaming via `IAsyncEnumerable<T>`** | 🔴 | Maps naturally to gRPC server-streaming rpc; HTTP/2 makes this zero-overhead |
 | 6.5 | **Auth over gRPC** | 🟡 | Bearer tokens via `CallCredentials`; integrates with existing `configureClient` hook |
-| 6.6 | **gRPC diagnostics** | 🟢 | BSFxxx (error): `HttpMethod` on `[ServerFunction]` is meaningless for gRPC — gRPC always uses POST; BSFxxx (warning): `CacheSeconds` not supported for gRPC; BSFxxx (warning): `RequireAntiForgery` not supported for gRPC |
+| 6.6 | **gRPC diagnostics** | ✅ | BSF023 (error): `HttpMethod` on `[ServerFunction]` is meaningless for gRPC — gRPC always uses POST; BSF024 (warning): `CacheSeconds` not supported for gRPC; BSF025 (warning): `RequireAntiForgery` not supported for gRPC |
 
 ---
 
@@ -224,12 +224,12 @@ Other solutions could be using design patterns like the Strategy pattern (and ot
 - [x] 5.7 Benchmark tests (incremental generator performance with BenchmarkDotNet)
 
 ### §6 — gRPC transport — code-first
-- [ ] 6.1 gRPC server generator (`XxxGrpcService` with `[ServiceContract]`, protobuf-net.Grpc.AspNetCore)
+- [x] 6.1 gRPC server generator (`XxxGrpcService` with `[ServiceContract]`, protobuf-net.Grpc.AspNetCore)
 - [ ] 6.2 gRPC client proxy (`XxxGrpcClient : IXxxService` via `GrpcChannel` + protobuf-net.Grpc)
 - [ ] 6.3 Zero-config DI registration (smart default: Blazor WASM → `NavigationManager.BaseUri`, Aspire → service discovery, other → `IConfiguration["ServerFunctions:BaseUrl"]`; optional `baseUrl` parameter overrides the default; gRPC channel derived from same resolved/overridden address)
 - [ ] 6.4 Streaming via `IAsyncEnumerable<T>` → gRPC server-streaming rpc
 - [ ] 6.5 Auth over gRPC (Bearer via `CallCredentials`)
-- [ ] 6.6 gRPC diagnostics (BSFxxx: `HttpMethod` error; `CacheSeconds`/`RequireAntiForgery` warnings)
+- [x] 6.6 gRPC diagnostics (BSF023: `HttpMethod` error; BSF024: `CacheSeconds` warning; BSF025: `RequireAntiForgery` warning)
 
 ### §7 — Code readability & maintainability
 - [ ] 7.1 Explore partial classes / strategy pattern in Generator classes

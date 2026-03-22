@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-03-22
+
+### Added
+
+- **§6.1 gRPC server generator** — Code-first gRPC service class generation using [protobuf-net.Grpc](https://github.com/protobuf-net/protobuf-net.Grpc). No `.proto` files required.
+  - Any `[ServerFunctionCollection]` interface configured with `ApiType = ApiType.GRPC` generates an `XxxGrpcService` class decorated with `[ServiceContract]`, delegating every operation to the injected `IXxxService`
+  - Methods with ≥1 parameter get a generated `[ProtoContract]` request wrapper type (`{ServiceName}{MethodName}GrpcRequest`) — gRPC transport requires a single message per operation
+  - Methods with zero parameters receive only a `CallContext context = default` argument (no wrapper generated)
+  - `CancellationToken` parameters are stripped from the request type and forwarded as `context.CancellationToken`
+  - `IAsyncEnumerable<T>` return types are supported — protobuf-net.Grpc maps these to gRPC server-streaming automatically
+  - The consuming server project must reference `protobuf-net.Grpc.AspNetCore` (same pattern as ASP.NET Core itself for REST endpoints)
+- **§6.6 gRPC diagnostics** — Three new diagnostics guard REST-only attributes on gRPC interfaces:
+  - **BSF023** (error) — `[ServerFunction(HttpMethod = "...")]` on a gRPC method: `HttpMethod` has no effect on gRPC (transport always uses HTTP POST) and must be removed
+  - **BSF024** (warning) — `CacheSeconds > 0` on a gRPC method: output caching is not supported for gRPC and will be ignored
+  - **BSF025** (warning) — `RequireAntiForgery = true` on a gRPC method: anti-forgery tokens are not supported for gRPC and will be ignored
+  - BSF012 (`HttpMethod` required) is suppressed for gRPC interfaces — gRPC methods do not need an `HttpMethod` attribute
+
+---
+
 ## [0.7.0] - 2026-03-22
 
 ### Added

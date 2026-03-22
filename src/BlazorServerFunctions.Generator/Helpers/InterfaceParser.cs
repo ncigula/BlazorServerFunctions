@@ -144,13 +144,17 @@ internal static class InterfaceParser
 
             // BSF014: Duplicate route check — keyed on (httpMethod, route) so that
             // different verbs on the same path (GET /items/{id} vs DELETE /items/{id}) are valid.
-            var route = methodInfo.CustomRoute ?? methodInfo.Name;
-            var routeKey = $"{methodInfo.HttpMethod}:{route}";
-            if (seenRoutes.TryGetValue(routeKey, out var existingMethodName))
-                context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.DuplicateRoute,
-                    methodSymbol.Locations.First(), methodInfo.Name, route, existingMethodName));
-            else
-                seenRoutes[routeKey] = methodInfo.Name;
+            // gRPC uses method names for dispatch (not HTTP verbs + routes), so this check is REST-only.
+            if (interfaceInfo.Configuration.ApiType != ApiType.GRPC)
+            {
+                var route = methodInfo.CustomRoute ?? methodInfo.Name;
+                var routeKey = $"{methodInfo.HttpMethod}:{route}";
+                if (seenRoutes.TryGetValue(routeKey, out var existingMethodName))
+                    context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.DuplicateRoute,
+                        methodSymbol.Locations.First(), methodInfo.Name, route, existingMethodName));
+                else
+                    seenRoutes[routeKey] = methodInfo.Name;
+            }
 
             yield return methodInfo;
         }
@@ -189,6 +193,9 @@ internal static class InterfaceParser
         var serverFunctionAttribute = GetServerFunctionAttribute(context, methodSymbol, methodInfo, interfaceInfo);
         ParseServerFunctionAttributes(context, methodSymbol, methodInfo, serverFunctionAttribute, interfaceInfo);
         ValidateCacheSeconds(context, methodSymbol, methodInfo);
+
+        if (interfaceInfo.Configuration.ApiType == ApiType.GRPC)
+            ValidateGrpcConstraints(context, methodSymbol, methodInfo);
 
         return methodInfo;
     }
@@ -263,7 +270,7 @@ internal static class InterfaceParser
                     break;
 
                 case "RequireAntiForgery":
-                    methodInfo.RequireAntiForgery = attribute.Value.Value is true;
+                    ParseRequireAntiForgery(context, methodSymbol, methodInfo, attribute.Value, interfaceInfo.Configuration.ApiType);
                     break;
 
                 case "Filters":
@@ -323,6 +330,29 @@ internal static class InterfaceParser
             methodSymbol.Locations.First(), methodInfo.Name,
             value.Value?.ToString() ?? "null"));
         return true; // Still "explicit" even if invalid — prevents DefaultHttpMethod override
+    }
+
+    /// <summary>
+    /// Handles the <c>RequireAntiForgery</c> attribute argument.
+    /// BSF025: emits a warning and leaves the flag <c>false</c> when the interface uses gRPC.
+    /// </summary>
+    private static void ParseRequireAntiForgery(
+        SourceProductionContextWrapper context,
+        IMethodSymbol methodSymbol,
+        MethodInfo methodInfo,
+        TypedConstant value,
+        ApiType apiType)
+    {
+        if (apiType == ApiType.GRPC && value.Value is true)
+        {
+            // BSF025: RequireAntiForgery not supported for gRPC — leave methodInfo.RequireAntiForgery = false
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.AntiForgeryIgnoredForGrpc,
+                methodSymbol.Locations.First(), methodInfo.Name));
+        }
+        else
+        {
+            methodInfo.RequireAntiForgery = value.Value is true;
+        }
     }
 
     private static void ResolveFromConfig(
@@ -401,6 +431,24 @@ internal static class InterfaceParser
         }
     }
 
+    /// <summary>
+    /// BSF024: Output caching not supported for gRPC — clamps <see cref="MethodInfo.CacheSeconds"/> to 0.
+    /// Called only when <see cref="ApiType.GRPC"/> is active, after <see cref="ValidateCacheSeconds"/>.
+    /// </summary>
+    private static void ValidateGrpcConstraints(
+        SourceProductionContextWrapper context,
+        IMethodSymbol methodSymbol,
+        MethodInfo methodInfo)
+    {
+        // BSF024: CacheSeconds not supported for gRPC (may come from attribute or config default)
+        if (methodInfo.CacheSeconds > 0)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.CacheSecondsIgnoredForGrpc,
+                methodSymbol.Locations.First(), methodInfo.Name));
+            methodInfo.CacheSeconds = 0;
+        }
+    }
+
     /// <summary>BSF015: Validates route format after setting CustomRoute.</summary>
     private static void ValidateRouteFormat(
         SourceProductionContextWrapper context,
@@ -429,11 +477,19 @@ internal static class InterfaceParser
             context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.MissingServerFunctionAttribute,
                 methodSymbol.Locations.First(), methodInfo.Name, methodSymbol.Name));
 
-        // BSF013: HttpMethod is required unless a DefaultHttpMethod is set on the config
+        // BSF012: HttpMethod is required unless a DefaultHttpMethod is set on the config.
+        // Not applicable for gRPC — gRPC uses HTTP POST exclusively at the transport layer.
         bool hasExplicitHttpMethod = serverFunctionAttribute is not null
             && serverFunctionAttribute.NamedArguments.Any(kvp => string.Equals(kvp.Key, "HttpMethod", StringComparison.Ordinal));
 
-        if (serverFunctionAttribute is not null
+        if (interfaceInfo.Configuration.ApiType == ApiType.GRPC)
+        {
+            // BSF023: HttpMethod explicitly set on a gRPC method — must be removed
+            if (hasExplicitHttpMethod)
+                context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.HttpMethodIgnoredForGrpc,
+                    methodSymbol.Locations.First(), methodInfo.Name));
+        }
+        else if (serverFunctionAttribute is not null
             && !hasExplicitHttpMethod
             && interfaceInfo.Configuration.DefaultHttpMethod is null)
         {

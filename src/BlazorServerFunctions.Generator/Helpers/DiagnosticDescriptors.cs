@@ -297,4 +297,41 @@ internal static class DiagnosticDescriptors
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF023: HttpMethod on a gRPC interface method — gRPC always uses HTTP POST at the transport layer
+    /// </summary>
+    public static readonly DiagnosticDescriptor HttpMethodIgnoredForGrpc = new(
+        id: "BSF023",
+        title: "HttpMethod has no effect on gRPC interface",
+        messageFormat: "Method '{0}' is on a gRPC interface — HttpMethod has no effect and must be removed (gRPC always uses HTTP POST at the transport layer)",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    // ========================================
+    // WARNINGS: BSF101+ (continued)
+    // ========================================
+
+    /// <summary>
+    /// BSF024: CacheSeconds on a gRPC interface method — output caching is not supported for gRPC
+    /// </summary>
+    public static readonly DiagnosticDescriptor CacheSecondsIgnoredForGrpc = new(
+        id: "BSF024",
+        title: "CacheSeconds has no effect on gRPC interface",
+        messageFormat: "Method '{0}' is on a gRPC interface — output caching (CacheSeconds) is not supported for gRPC and will be ignored",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF025: RequireAntiForgery on a gRPC interface method — anti-forgery is not supported for gRPC
+    /// </summary>
+    public static readonly DiagnosticDescriptor AntiForgeryIgnoredForGrpc = new(
+        id: "BSF025",
+        title: "RequireAntiForgery has no effect on gRPC interface",
+        messageFormat: "Method '{0}' is on a gRPC interface — anti-forgery is not supported for gRPC and will be ignored",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

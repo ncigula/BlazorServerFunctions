@@ -2,6 +2,7 @@
 using BlazorServerFunctions.Abstractions;
 using BlazorServerFunctions.Generator.Helpers;
 using BlazorServerFunctions.Generator.Models;
+using InternalApiType = BlazorServerFunctions.Generator.Models.ApiType;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -366,13 +367,27 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         string? targetNamespace,
         bool hasOpenApiPackage)
     {
+        var restInterfaces = new List<InterfaceInfo>();
+
         foreach (var interfaceInfo in allInterfaces)
         {
-            var serverCode = ServerEndpointGenerator.Generate(interfaceInfo, targetNamespace, hasOpenApiPackage);
-            context.AddSource($"{interfaceInfo.Name}ServerExtensions.g.cs", serverCode);
+            if (interfaceInfo.Configuration.ApiType == InternalApiType.GRPC)
+            {
+                // §6.1: Emit the code-first gRPC service class (protobuf-net.Grpc).
+                var grpcCode = GrpcServerGenerator.Generate(interfaceInfo);
+                context.AddSource($"{interfaceInfo.Name}GrpcService.g.cs", grpcCode);
+            }
+            else
+            {
+                var serverCode = ServerEndpointGenerator.Generate(interfaceInfo, targetNamespace, hasOpenApiPackage);
+                context.AddSource($"{interfaceInfo.Name}ServerExtensions.g.cs", serverCode);
+                restInterfaces.Add(interfaceInfo);
+            }
         }
 
-        var registrationCode = ServerRegistrationGenerator.Generate(allInterfaces, targetNamespace);
+        // Registration covers REST interfaces only. When all interfaces are gRPC this produces
+        // an empty no-op registration (correct — gRPC registration is added in §6.3).
+        var registrationCode = ServerRegistrationGenerator.Generate(restInterfaces, targetNamespace);
         context.AddSource("ServerFunctionEndpointsRegistration.g.cs", registrationCode);
     }
 

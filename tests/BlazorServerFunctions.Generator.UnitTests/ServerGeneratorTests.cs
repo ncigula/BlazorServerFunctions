@@ -2172,4 +2172,61 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ── §5.4 Health checks ────────────────────────────────────────────────────
+
+    [Fact]
+    public Task Generate_HealthChecks_EmitsAddAndMapMethods()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IOrderService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetOrderAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_HealthChecks_MultipleInterfaces_EmitsCheckPerInterface()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IAlphaService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> GetAsync();
+                     }
+
+                     [ServerFunctionCollection]
+                     public interface IBetaService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task CreateAsync(string name);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

@@ -3,7 +3,13 @@
 #nullable enable
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -15,5 +21,51 @@ public static class ServerFunctionEndpointsRegistration
     {
         endpoints.MapINestedServiceEndpoints();
         return endpoints;
+    }
+
+    public static IServiceCollection AddServerFunctionHealthChecks(
+        this IServiceCollection services)
+    {
+        services.AddHealthChecks()
+            .Add(new HealthCheckRegistration(
+                "NestedService",
+                sp => new __BsfResolveCheck<INestedService>(sp),
+                HealthStatus.Unhealthy,
+                tags: new[] { "bsf" }));
+        return services;
+    }
+
+    public static IEndpointRouteBuilder MapServerFunctionHealthChecks(
+        this IEndpointRouteBuilder endpoints,
+        string pattern = "/health/server-functions")
+    {
+        endpoints.MapHealthChecks(pattern, new HealthCheckOptions
+        {
+            Predicate = check => check.Tags.Contains("bsf"),
+        });
+        return endpoints;
+    }
+}
+
+internal sealed class __BsfResolveCheck<TService> : IHealthCheck
+    where TService : class
+{
+    private readonly IServiceProvider _sp;
+    internal __BsfResolveCheck(IServiceProvider sp) => _sp = sp;
+
+    public Task<HealthCheckResult> CheckHealthAsync(
+        HealthCheckContext context,
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            using var scope = _sp.CreateScope();
+            _ = scope.ServiceProvider.GetRequiredService<TService>();
+            return Task.FromResult(HealthCheckResult.Healthy());
+        }
+        catch (Exception ex)
+        {
+            return Task.FromResult(HealthCheckResult.Unhealthy(ex.Message, ex));
+        }
     }
 }

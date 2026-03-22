@@ -62,6 +62,8 @@ builder.Services.AddSingleton<IRateLimitedService, RateLimitedService>();
 builder.Services.AddScoped<IAntiForgeryService, AntiForgeryService>();
 builder.Services.AddScoped<IFilteredEchoService, FilteredEchoService>();
 
+builder.Services.AddServerFunctionHealthChecks();
+
 builder.Services.AddOutputCache();
 
 builder.Services.AddRateLimiter(options =>
@@ -102,6 +104,7 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(typeof(BlazorServerFunctions.Sample.Client._Imports).Assembly);
 
 app.MapServerFunctionEndpoints();
+app.MapServerFunctionHealthChecks();
 
 // Demo login/logout for the Admin page (issues a simple cookie — not for production use).
 app.MapPost("/demos/admin/login", async (HttpContext ctx) =>

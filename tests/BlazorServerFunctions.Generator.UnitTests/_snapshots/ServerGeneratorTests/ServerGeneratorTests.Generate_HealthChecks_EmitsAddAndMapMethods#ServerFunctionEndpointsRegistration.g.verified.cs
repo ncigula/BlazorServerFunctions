@@ -19,7 +19,7 @@ public static class ServerFunctionEndpointsRegistration
     public static IEndpointRouteBuilder MapServerFunctionEndpoints(
         this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapITestServiceEndpoints();
+        endpoints.MapIOrderServiceEndpoints();
         return endpoints;
     }
 
@@ -28,8 +28,8 @@ public static class ServerFunctionEndpointsRegistration
     {
         services.AddHealthChecks()
             .Add(new HealthCheckRegistration(
-                "TestService",
-                sp => new __BsfResolveCheck<ITestService>(sp),
+                "OrderService",
+                sp => new __BsfResolveCheck<IOrderService>(sp),
                 HealthStatus.Unhealthy,
                 tags: new[] { "bsf" }));
         return services;

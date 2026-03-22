@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-22
+
+### Added
+
+- **§5.4 Health checks** — `AddServerFunctionHealthChecks()` auto-registers an `IHealthCheck` for every BSF-managed service interface using a generated `__BsfResolveCheck<T>` that opens a DI scope and calls `GetRequiredService<T>()`; `MapServerFunctionHealthChecks(pattern)` maps a filtered health endpoint (default: `/health/server-functions`) showing only BSF checks via the `"bsf"` tag; new services appear automatically with no manual maintenance required
+
+### Removed
+
+- **`ServerFunctionConfiguration.EnableResilience`** — unused config property removed; use the `configureClient` hook on `AddServerFunctionClients(configureClient: b => b.AddStandardResilienceHandler())` instead
+
+---
+
 ## [0.4.0] - 2026-03-20
 
 ### Added

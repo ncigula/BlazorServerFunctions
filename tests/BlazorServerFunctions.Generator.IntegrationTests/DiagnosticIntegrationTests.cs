@@ -612,6 +612,72 @@ public class DiagnosticIntegrationTests
         server.AssertCompilesSuccessfully();
     }
 
+    // ── §5.4 Health checks ────────────────────────────────────────────────────
+
+    [Fact]
+    public void HealthChecks_GeneratesAndCompiles()
+    {
+        var scenario = new ProjectBuilder()
+            .AddServerProject("MyApp.Server", """
+                using BlazorServerFunctions.Abstractions;
+                using System.Threading.Tasks;
+
+                namespace MyApp.Server;
+
+                [ServerFunctionCollection]
+                public interface IHealthService
+                {
+                    [ServerFunction(HttpMethod = "GET")]
+                    Task<string> GetAsync();
+                }
+
+                public class Program { }
+                """)
+            .Build();
+
+        var server = scenario.Server;
+        server.AssertNoDiagnostics();
+        server.AssertFileContains("ServerFunctionEndpointsRegistration.g.cs", "AddServerFunctionHealthChecks");
+        server.AssertFileContains("ServerFunctionEndpointsRegistration.g.cs", "MapServerFunctionHealthChecks");
+        server.AssertFileContains("ServerFunctionEndpointsRegistration.g.cs", "__BsfResolveCheck<IHealthService>");
+        server.AssertCompilesSuccessfully();
+    }
+
+    [Fact]
+    public void HealthChecks_MultipleInterfaces_EmitsCheckPerInterface()
+    {
+        var scenario = new ProjectBuilder()
+            .AddServerProject("MyApp.Server", """
+                using BlazorServerFunctions.Abstractions;
+                using System.Threading.Tasks;
+
+                namespace MyApp.Server;
+
+                [ServerFunctionCollection]
+                public interface IAlphaService
+                {
+                    [ServerFunction(HttpMethod = "GET")]
+                    Task<string> GetAsync();
+                }
+
+                [ServerFunctionCollection]
+                public interface IBetaService
+                {
+                    [ServerFunction(HttpMethod = "GET")]
+                    Task<string> GetAsync();
+                }
+
+                public class Program { }
+                """)
+            .Build();
+
+        var server = scenario.Server;
+        server.AssertNoDiagnostics();
+        server.AssertFileContains("ServerFunctionEndpointsRegistration.g.cs", "__BsfResolveCheck<IAlphaService>");
+        server.AssertFileContains("ServerFunctionEndpointsRegistration.g.cs", "__BsfResolveCheck<IBetaService>");
+        server.AssertCompilesSuccessfully();
+    }
+
     // ── BSF102: Too many parameters warning ───────────────────────────────────
 
     [Fact]

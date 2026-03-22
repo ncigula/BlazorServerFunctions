@@ -153,33 +153,32 @@ No JSON files, no MSBuild properties — everything lives in C# with full IDE su
 
 ## 6. gRPC transport — code-first
 
-Generate `.proto` + gRPC service/client from the same `[ServerFunctionCollection]` interface.
-Activated via `[ServerFunctionCollection(Configuration = typeof(MyGrpcConfig))]` where `ApiType = ApiType.gRPC`.
+Generate a gRPC service implementation and client proxy from the same `[ServerFunctionCollection]`
+interface, using [protobuf-net.Grpc](https://github.com/protobuf-net/protobuf-net.Grpc) for
+code-first gRPC. **No `.proto` files are required** — the C# interface is the contract.
+
+Activated via `ApiType = ApiType.gRPC` in a `ServerFunctionConfiguration` subclass. Switching
+transport is a one-line config change; the interface, DI registrations, and service implementation
+are unchanged.
+
+> **gRPC and HTTP methods:** gRPC always uses HTTP POST at the transport layer (HTTP/2 framing
+> handles method dispatch by service + method name, not by HTTP verb). `HttpMethod` on
+> `[ServerFunction]`, output caching (`CacheSeconds`), and anti-forgery (`RequireAntiForgery`)
+> are REST-only concepts that have no meaning on a gRPC interface. The generator emits diagnostics
+> for all of these to prevent silent misconfiguration.
 
 | # | Item | Size | Notes |
 |---|---|---|---|
-| 6.1 | **Proto file generator** | 🔴 | Walk `InterfaceInfo` → emit `.proto` (message types from DTOs, rpc from methods) |
-| 6.2 | **gRPC server generator** | 🔴 | `XxxServiceGrpcImpl : XxxServiceBase` delegating to `IXxxService` |
-| 6.3 | **gRPC client proxy** | 🔴 | `XxxServiceGrpcClient : IXxxService` using `GrpcChannel` + generated stub |
-| 6.4 | **gRPC DI registration** | 🟡 | `AddServerFunctionGrpcClients(channel)` + `MapServerFunctionGrpcServices()` |
-| 6.5 | **Streaming via IAsyncEnumerable** | 🔴 | Map `IAsyncEnumerable<T>` → gRPC server-streaming rpc |
-| 6.6 | **Auth over gRPC** | 🟡 | Bearer tokens via `CallCredentials`; integrates with `configureClient` hook |
+| 6.1 | **gRPC server generator** | 🔴 | `XxxGrpcService` decorated with `[ServiceContract]` delegating to `IXxxService`; registered via `protobuf-net.Grpc.AspNetCore` |
+| 6.2 | **gRPC client proxy** | 🔴 | `XxxGrpcClient : IXxxService` using `GrpcChannel` + `protobuf-net.Grpc`; mirrors the REST `XxxClient` |
+| 6.3 | **Zero-config DI registration** | 🟡 | Extend existing `AddServerFunctionClients()` + `MapServerFunctionEndpoints()` — generated code resolves the address automatically by default: Blazor WASM uses `NavigationManager.BaseUri`, Aspire projects use service discovery, all other clients fall back to `IConfiguration["ServerFunctions:BaseUrl"]`; an optional `baseUrl` parameter overrides the generated default when explicitly provided; gRPC channel is constructed from the same resolved or overridden address |
+| 6.4 | **Streaming via `IAsyncEnumerable<T>`** | 🔴 | Maps naturally to gRPC server-streaming rpc; HTTP/2 makes this zero-overhead |
+| 6.5 | **Auth over gRPC** | 🟡 | Bearer tokens via `CallCredentials`; integrates with existing `configureClient` hook |
+| 6.6 | **gRPC diagnostics** | 🟢 | BSFxxx (error): `HttpMethod` on `[ServerFunction]` is meaningless for gRPC — gRPC always uses POST; BSFxxx (warning): `CacheSeconds` not supported for gRPC; BSFxxx (warning): `RequireAntiForgery` not supported for gRPC |
 
 ---
 
-## 7. gRPC transport — manual `.proto`
-
-Reverse: user provides `.proto` → generator produces typed C# interface + client + server.
-
-| # | Item | Size | Notes |
-|---|---|---|---|
-| 7.1 | **Proto file parser** | 🔴 | Read `.proto` as `AdditionalFile`; parse service + message definitions |
-| 7.2 | **Interface generator from proto** | 🔴 | Emit `[ServerFunctionCollection]` interface + DTOs from proto |
-| 7.3 | **Round-trip validation** | 🟡 | code-first → proto → code-first must produce equivalent types |
-
----
-
-## 8. Code readability and maintainability
+## 7. Code readability and maintainability
 
 Explore possibilities for improving the code quality and maintainability in bigger classes like the Generator classes.
 Since generators mostly have static classes, it could be worthwhile to use partial classes to split the code into multiple files.
@@ -225,17 +224,12 @@ Other solutions could be using design patterns like the Strategy pattern (and ot
 - [x] 5.7 Benchmark tests (incremental generator performance with BenchmarkDotNet)
 
 ### §6 — gRPC transport — code-first
-- [ ] 6.1 Proto file generator
-- [ ] 6.2 gRPC server generator
-- [ ] 6.3 gRPC client proxy
-- [ ] 6.4 gRPC DI registration
-- [ ] 6.5 Streaming via `IAsyncEnumerable<T>`
-- [ ] 6.6 Auth over gRPC
+- [ ] 6.1 gRPC server generator (`XxxGrpcService` with `[ServiceContract]`, protobuf-net.Grpc.AspNetCore)
+- [ ] 6.2 gRPC client proxy (`XxxGrpcClient : IXxxService` via `GrpcChannel` + protobuf-net.Grpc)
+- [ ] 6.3 Zero-config DI registration (smart default: Blazor WASM → `NavigationManager.BaseUri`, Aspire → service discovery, other → `IConfiguration["ServerFunctions:BaseUrl"]`; optional `baseUrl` parameter overrides the default; gRPC channel derived from same resolved/overridden address)
+- [ ] 6.4 Streaming via `IAsyncEnumerable<T>` → gRPC server-streaming rpc
+- [ ] 6.5 Auth over gRPC (Bearer via `CallCredentials`)
+- [ ] 6.6 gRPC diagnostics (BSFxxx: `HttpMethod` error; `CacheSeconds`/`RequireAntiForgery` warnings)
 
-### §7 — gRPC transport — manual `.proto`
-- [ ] 7.1 Proto file parser
-- [ ] 7.2 Interface generator from proto
-- [ ] 7.3 Round-trip validation
-
-### §8 — Code readability & maintainability
-- [ ] 8.1 Explore partial classes / strategy pattern in Generator classes
+### §7 — Code readability & maintainability
+- [ ] 7.1 Explore partial classes / strategy pattern in Generator classes

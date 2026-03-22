@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-03-22
+
+### Added
+
+- **§5.6 Code fix providers** — `Ctrl+.` quick-fix actions in the IDE for six diagnostics:
+  - **BSF003** `Make interface public` — adds `public` modifier (replaces `internal`/`private` if present)
+  - **BSF012** `Set HttpMethod = "VERB"` — adds the missing `HttpMethod` argument to `[ServerFunction]`; one action per valid verb (GET, POST, PUT, DELETE, PATCH)
+  - **BSF013** `Change to HttpMethod = "VERB"` — replaces an invalid verb with a valid one; one action per valid verb
+  - **BSF020** `Remove CacheSeconds (not valid on non-GET endpoints)` — removes the `CacheSeconds` argument from `[ServerFunction]`
+  - **BSF021** `Remove empty Roles property` — removes `Roles = ""` from `[ServerFunction]`
+  - **BSF022** `Remove empty CorsPolicy property` — removes `CorsPolicy = ""` from `[ServerFunctionCollection]`
+  - Supported in Visual Studio, VS Code (C# Dev Kit), and JetBrains Rider
+
+---
+
 ## [0.5.0] - 2026-03-22
 
 ### Added

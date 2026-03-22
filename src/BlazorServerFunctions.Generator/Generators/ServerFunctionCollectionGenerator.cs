@@ -5,6 +5,7 @@ using BlazorServerFunctions.Generator.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using ProjectInfo = BlazorServerFunctions.Generator.Models.ProjectInfo;
 
 namespace BlazorServerFunctions.Generator.Generators;
 

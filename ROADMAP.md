@@ -146,7 +146,7 @@ No JSON files, no MSBuild properties — everything lives in C# with full IDE su
 | # | Item | Size | Notes |
 |---|---|---|---|
 | 5.4 | **Health checks** | ✅ | Generated `AddServerFunctionHealthChecks()` + `MapServerFunctionHealthChecks()` — auto-registers a health check for every BSF-managed service; only feasible as a generator feature because the generator knows which interfaces were registered |
-| 5.6 | **Code fix providers** | 🟡 | IDE quick-fixes for every BSF diagnostic (already have the errors, add the fix actions) |
+| 5.6 | **Code fix providers** | ✅ | IDE quick-fixes for every BSF diagnostic (already have the errors, add the fix actions) |
 | 5.7 | **Benchmark tests** | 🟡 | Measure incremental generator performance with BenchmarkDotNet; catch compile-time regressions |
 
 ---
@@ -221,7 +221,7 @@ Other solutions could be using design patterns like the Strategy pattern (and ot
 
 ### §5 — Production readiness
 - [x] 5.4 Health checks (`AddServerFunctionHealthChecks()` + `MapServerFunctionHealthChecks()`)
-- [ ] 5.6 Code fix providers (IDE quick-fixes for BSF diagnostics)
+- [x] 5.6 Code fix providers (IDE quick-fixes for BSF diagnostics)
 - [ ] 5.7 Benchmark tests (incremental generator performance with BenchmarkDotNet)
 
 ### §6 — gRPC transport — code-first

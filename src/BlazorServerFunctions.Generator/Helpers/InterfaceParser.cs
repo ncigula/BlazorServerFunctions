@@ -90,6 +90,7 @@ internal static class InterfaceParser
         bool requireAuth = false;
         var configuration = ConfigurationInfo.Default;
         string? rawCorsPolicy = null;
+        INamedTypeSymbol? configType = null;
 
         foreach (var namedArg in attribute?.NamedArguments ?? [])
         {
@@ -103,12 +104,24 @@ internal static class InterfaceParser
                     break;
                 case "Configuration":
                     if (namedArg.Value.Value is INamedTypeSymbol configSymbol)
+                    {
+                        configType = configSymbol;
                         configuration = ConfigurationReader.ReadConfiguration(configSymbol, interfaceSymbol, compilation);
+                    }
                     break;
                 case "CorsPolicy":
                     rawCorsPolicy = namedArg.Value.Value?.ToString();
                     break;
             }
+        }
+
+        // If no Configuration type was specified, read ApiType directly from the attribute
+        if (configType == null)
+        {
+            var apiTypeArg = attribute?.NamedArguments
+                .FirstOrDefault(a => string.Equals(a.Key, "ApiType", StringComparison.Ordinal));
+            if (apiTypeArg.HasValue && apiTypeArg.Value.Value.Value is int apiTypeInt)
+                configuration = configuration with { ApiType = (ApiType)apiTypeInt };
         }
 
         // Strip leading slash so route generation doesn't produce double-slashes

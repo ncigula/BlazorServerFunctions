@@ -1,0 +1,74 @@
+@page "/demos/grpc"
+@rendermode InteractiveWebAssembly
+@using BlazorServerFunctions.Sample.Shared
+@inject IGrpcDemoService GrpcService
+
+<PageTitle>gRPC Demo</PageTitle>
+
+<h1>gRPC Demo</h1>
+<p>Demonstrates code-first gRPC transport using <code>protobuf-net.Grpc</code>. The same <code>IGrpcDemoService</code> interface is used on both client and server — no <code>.proto</code> files required.</p>
+
+<h2>Unary Echo</h2>
+<div class="mb-3">
+    <input class="form-control" @bind="echoMessage" placeholder="Type a message..." />
+    <button class="btn btn-primary mt-2" @onclick="SendEcho" disabled="@isBusy">Echo</button>
+</div>
+@if (echoResult is not null)
+{
+    <div class="alert alert-success">@echoResult</div>
+}
+
+<h2>Server-Streaming Countdown</h2>
+<div class="mb-3">
+    <input class="form-control" type="number" @bind="countFrom" min="1" max="10" />
+    <button class="btn btn-secondary mt-2" @onclick="StartCountdown" disabled="@isBusy">Start Countdown</button>
+</div>
+@if (countdownItems.Count > 0)
+{
+    <ul class="list-group">
+        @foreach (var item in countdownItems)
+        {
+            <li class="list-group-item">@item</li>
+        }
+    </ul>
+}
+
+@code {
+    private string echoMessage = "Hello from gRPC!";
+    private string? echoResult;
+    private int countFrom = 5;
+    private readonly List<string> countdownItems = [];
+    private bool isBusy;
+
+    private async Task SendEcho()
+    {
+        isBusy = true;
+        echoResult = null;
+        try
+        {
+            echoResult = await GrpcService.EchoAsync(echoMessage);
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task StartCountdown()
+    {
+        isBusy = true;
+        countdownItems.Clear();
+        try
+        {
+            await foreach (var item in GrpcService.CountdownAsync(countFrom))
+            {
+                countdownItems.Add(item);
+                StateHasChanged();
+            }
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+}

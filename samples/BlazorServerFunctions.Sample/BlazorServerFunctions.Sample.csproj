@@ -9,6 +9,7 @@
                           ReferenceOutputAssembly="false" />
         <ProjectReference Include="..\BlazorServerFunctions.Sample.Client\BlazorServerFunctions.Sample.Client.csproj"/>
         <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server"/>
+        <PackageReference Include="protobuf-net.Grpc.AspNetCore"/>
         <ProjectReference Include="..\BlazorServerFunctions.Sample.Shared\BlazorServerFunctions.Sample.Shared.csproj" />
     </ItemGroup>
 </Project>

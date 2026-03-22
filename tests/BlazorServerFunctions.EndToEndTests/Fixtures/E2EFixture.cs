@@ -1,3 +1,5 @@
+using BlazorServerFunctions.Sample.Shared;
+using Grpc.Net.Client;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -81,6 +83,12 @@ public sealed class E2EFixture : IDisposable
         services.AddHttpClient<IRateLimitedService, RateLimitedServiceClient>()
             .ConfigurePrimaryHttpMessageHandler(() => factory.Server.CreateHandler())
             .ConfigureHttpClient((_, c) => c.BaseAddress = factory.Server.BaseAddress);
+
+        var grpcChannel = GrpcChannel.ForAddress(
+            factory.Server.BaseAddress,
+            new GrpcChannelOptions { HttpHandler = factory.Server.CreateHandler() });
+        services.AddSingleton(grpcChannel);
+        services.AddTransient<IGrpcDemoService, GrpcDemoServiceGrpcClient>();
 
         return services.BuildServiceProvider();
     }

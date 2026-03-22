@@ -4,8 +4,8 @@
 
 using ProtoBuf;
 using ProtoBuf.Grpc;
-using ProtoBuf.Grpc.Configuration;
 using System.Collections.Generic;
+using System.ServiceModel;
 using System.Threading.Tasks;
 
 namespace MyApp.Services;
@@ -17,14 +17,12 @@ public sealed class StreamServiceStreamNamesAsyncGrpcRequest
     public string Prefix { get; set; } = default!;
 }
 
-[ServiceContract]
-public sealed class StreamServiceGrpcService
+public sealed class StreamServiceGrpcService : IStreamServiceGrpcContract
 {
     private readonly IStreamService _service;
 
     public StreamServiceGrpcService(IStreamService service) => _service = service;
 
-    [OperationContract]
     public IAsyncEnumerable<string> StreamNamesAsync(StreamServiceStreamNamesAsyncGrpcRequest request, CallContext context = default)
         => _service.StreamNamesAsync(request.Prefix);
 

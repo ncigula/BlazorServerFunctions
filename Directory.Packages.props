@@ -44,5 +44,9 @@
         <PackageVersion Include="Verify.SourceGenerators" Version="2.5.0"/>
         <PackageVersion Include="DiffEngine" Version="15.9.1"/>
         <PackageVersion Include="BenchmarkDotNet" Version="0.14.0"/>
+        <PackageVersion Include="Grpc.Net.Client" Version="2.66.0"/>
+        <PackageVersion Include="protobuf-net.Grpc" Version="1.2.2"/>
+        <PackageVersion Include="protobuf-net.Grpc.AspNetCore" Version="1.2.2"/>
+        <PackageVersion Include="System.ServiceModel.Primitives" Version="8.1.2"/>
     </ItemGroup>
 </Project>

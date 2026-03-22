@@ -20,6 +20,7 @@ public static class ServerFunctionEndpointsRegistration
         this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapIRestServiceEndpoints();
+        endpoints.MapGrpcService<GrpcServiceGrpcService>();
         return endpoints;
     }
 
@@ -30,6 +31,11 @@ public static class ServerFunctionEndpointsRegistration
             .Add(new HealthCheckRegistration(
                 "RestService",
                 sp => new __BsfResolveCheck<IRestService>(sp),
+                HealthStatus.Unhealthy,
+                tags: new[] { "bsf" }))
+            .Add(new HealthCheckRegistration(
+                "GrpcService",
+                sp => new __BsfResolveCheck<IGrpcService>(sp),
                 HealthStatus.Unhealthy,
                 tags: new[] { "bsf" }));
         return services;

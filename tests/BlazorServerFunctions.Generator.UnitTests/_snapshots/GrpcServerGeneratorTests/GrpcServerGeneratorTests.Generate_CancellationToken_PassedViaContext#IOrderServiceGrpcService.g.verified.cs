@@ -4,7 +4,7 @@
 
 using ProtoBuf;
 using ProtoBuf.Grpc;
-using ProtoBuf.Grpc.Configuration;
+using System.ServiceModel;
 using System.Threading.Tasks;
 
 namespace MyApp.Services;
@@ -16,14 +16,12 @@ public sealed class OrderServiceCreateOrderAsyncGrpcRequest
     public int Quantity { get; set; }
 }
 
-[ServiceContract]
-public sealed class OrderServiceGrpcService
+public sealed class OrderServiceGrpcService : IOrderServiceGrpcContract
 {
     private readonly IOrderService _service;
 
     public OrderServiceGrpcService(IOrderService service) => _service = service;
 
-    [OperationContract]
     public Task<string> CreateOrderAsync(OrderServiceCreateOrderAsyncGrpcRequest request, CallContext context = default)
         => _service.CreateOrderAsync(request.Quantity, context.CancellationToken);
 

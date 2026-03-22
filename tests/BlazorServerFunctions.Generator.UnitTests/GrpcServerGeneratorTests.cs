@@ -8,34 +8,18 @@ namespace BlazorServerFunctions.Generator.UnitTests;
 /// </summary>
 public class GrpcServerGeneratorTests
 {
-    // ─── Helpers ─────────────────────────────────────────────────────────────
-
-    /// <summary>
-    /// Common gRPC config preamble included in every test source.
-    /// Declares a <c>TestGrpcConfig</c> with <c>ApiType = ApiType.GRPC</c>.
-    /// </summary>
-    private const string GrpcConfigPreamble = """
-        using BlazorServerFunctions.Abstractions;
-
-        public class TestGrpcConfig : ServerFunctionConfiguration
-        {
-            public TestGrpcConfig() { ApiType = ApiType.GRPC; }
-        }
-
-        """;
-
     // ─── Snapshot tests ───────────────────────────────────────────────────────
 
     [Fact]
     public Task Generate_BasicGrpcInterface_ProducesServiceClass()
     {
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
             namespace MyApp.Services;
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IUserService
             {
                 [ServerFunction]
@@ -53,13 +37,13 @@ public class GrpcServerGeneratorTests
     [Fact]
     public Task Generate_NoParams_UsesCallContextOnly()
     {
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
             namespace MyApp.Services;
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IPingService
             {
                 [ServerFunction]
@@ -78,21 +62,14 @@ public class GrpcServerGeneratorTests
     public Task Generate_CancellationToken_PassedViaContext()
     {
         // All using directives must appear before any type declarations in the compilation unit.
-        // The TestGrpcConfig class is declared inline here (not via preamble) so that
-        // 'using System.Threading' can precede it and Roslyn resolves CancellationToken correctly.
         var source = """
             using System.Threading;
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
-            public class TestGrpcConfig : ServerFunctionConfiguration
-            {
-                public TestGrpcConfig() { ApiType = ApiType.GRPC; }
-            }
-
             namespace MyApp.Services;
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IOrderService
             {
                 [ServerFunction]
@@ -110,14 +87,14 @@ public class GrpcServerGeneratorTests
     [Fact]
     public Task Generate_AsyncEnumerable_ServerStreaming()
     {
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Collections.Generic;
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
             namespace MyApp.Services;
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IStreamService
             {
                 [ServerFunction]
@@ -135,20 +112,20 @@ public class GrpcServerGeneratorTests
     [Fact]
     public Task Generate_MultipleInterfaces_BothGenerated()
     {
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
             namespace MyApp.Services;
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IUserService
             {
                 [ServerFunction]
                 Task<string> GetUserAsync(int id);
             }
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IProductService
             {
                 [ServerFunction]
@@ -166,7 +143,7 @@ public class GrpcServerGeneratorTests
     [Fact]
     public Task Generate_MixedRestAndGrpc_BothGenerated()
     {
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
@@ -179,7 +156,7 @@ public class GrpcServerGeneratorTests
                 Task<string> GetAsync(int id);
             }
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IGrpcService
             {
                 [ServerFunction]
@@ -197,13 +174,13 @@ public class GrpcServerGeneratorTests
     [Fact]
     public Task Generate_VoidTask_NoReturnType()
     {
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
             namespace MyApp.Services;
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface ICommandService
             {
                 [ServerFunction]
@@ -221,7 +198,7 @@ public class GrpcServerGeneratorTests
     [Fact]
     public Task Generate_DtoReturnType_PassesThroughToMethodSignature()
     {
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
@@ -233,7 +210,7 @@ public class GrpcServerGeneratorTests
                 public string Name { get; set; } = "";
             }
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IUserService
             {
                 [ServerFunction]
@@ -251,7 +228,7 @@ public class GrpcServerGeneratorTests
     [Fact]
     public Task Generate_DtoParameter_GetsNullableInitializerInRequestWrapper()
     {
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
@@ -268,7 +245,7 @@ public class GrpcServerGeneratorTests
                 public string Name { get; set; } = "";
             }
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IUserService
             {
                 [ServerFunction]
@@ -288,13 +265,13 @@ public class GrpcServerGeneratorTests
     [Fact]
     public void BSF023_HttpMethodOnGrpcInterface_EmitsError()
     {
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
             namespace MyApp.Services;
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IUserService
             {
                 [ServerFunction(HttpMethod = "GET")]
@@ -312,13 +289,13 @@ public class GrpcServerGeneratorTests
     [Fact]
     public void BSF024_CacheSecondsOnGrpcInterface_EmitsWarning()
     {
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
             namespace MyApp.Services;
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IUserService
             {
                 [ServerFunction(CacheSeconds = 30)]
@@ -336,13 +313,13 @@ public class GrpcServerGeneratorTests
     [Fact]
     public void BSF025_AntiForgeryOnGrpcInterface_EmitsWarning()
     {
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
             namespace MyApp.Services;
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IUserService
             {
                 [ServerFunction(RequireAntiForgery = true)]
@@ -361,13 +338,13 @@ public class GrpcServerGeneratorTests
     public void BSF012_NotEmitted_ForGrpcInterface()
     {
         // gRPC methods do not need HttpMethod — BSF012 must NOT be emitted
-        var source = GrpcConfigPreamble + """
+        var source = """
             using System.Threading.Tasks;
             using BlazorServerFunctions.Abstractions;
 
             namespace MyApp.Services;
 
-            [ServerFunctionCollection(Configuration = typeof(TestGrpcConfig))]
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
             public interface IUserService
             {
                 [ServerFunction]

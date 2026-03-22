@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-03-22
+
+### Added
+
+- **§6.2 gRPC client proxy generator** — Code-first gRPC client proxy generation. Any `[ServerFunctionCollection]` interface with `ApiType = ApiType.GRPC` now generates:
+  - A `[ProtoContract]` request wrapper type per method with parameters
+  - A `public I{ServiceName}GrpcContract` interface carrying `[ServiceContract]` and `[OperationContract]` annotations (the wire contract shared between client and server)
+  - A `{ServiceName}GrpcClient` class implementing the BSF interface and delegating to the contract interface via `GrpcChannel.CreateGrpcService<T>()`
+  - Consuming projects that declare the BSF interface must reference `protobuf-net.Grpc` (≥1.2.2) and `System.ServiceModel.Primitives` (≥8.1.2)
+- **§6.3 DI registration extension** — `AddServerFunctionClients()` now registers gRPC clients alongside REST clients:
+  - REST interfaces: registered via `AddHttpClient<IXxx, XxxClient>()`
+  - gRPC interfaces: `GrpcChannel` registered as `TryAddSingleton` (allows tests to pre-register their own channel); each gRPC interface registered as `AddTransient<IXxx, XxxGrpcClient>()`
+  - `baseAddress` parameter is required when at least one gRPC interface is registered (validated at runtime)
+- **§6.4 gRPC server-streaming** — `IAsyncEnumerable<T>` return types are fully supported on both client and server. protobuf-net.Grpc maps server-streaming methods automatically.
+- **`ApiType` shortcut property** — `[ServerFunctionCollection(ApiType = ApiType.GRPC)]` can now be used directly on the attribute instead of requiring a separate `Configuration` class
+- **`MapServerFunctionEndpoints()` update** — the generated `ServerFunctionEndpointsRegistration` now calls `endpoints.MapGrpcService<{ServiceName}GrpcService>()` for each gRPC interface alongside the existing REST endpoint mappings
+
+### Changed
+
+- **`ClientProxyGenerator` renamed to `RestClientProxyGenerator`** and **`ServerEndpointGenerator` renamed to `RestServerEndpointGenerator`** — internal names clarified to reflect that they only handle REST (HTTP) interfaces
+- **gRPC service class no longer carries `[ServiceContract]`** — the attribute lives on the shared contract interface (`I{ServiceName}GrpcContract`) so that client and server share the same wire contract definition, eliminating service-name mismatches
+- Request wrapper types (`{ServiceName}{MethodName}GrpcRequest`) are now emitted **only once** (in the shared/library project via the client proxy generator); the server generator skips re-emitting them when they come from a referenced assembly, preventing CS0436 duplicate-type conflicts
+
 ## [0.8.0] - 2026-03-22
 
 ### Added

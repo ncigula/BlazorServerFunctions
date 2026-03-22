@@ -4,19 +4,17 @@
 
 using ProtoBuf;
 using ProtoBuf.Grpc;
-using ProtoBuf.Grpc.Configuration;
+using System.ServiceModel;
 using System.Threading.Tasks;
 
 namespace MyApp.Services;
 
-[ServiceContract]
-public sealed class PingServiceGrpcService
+public sealed class PingServiceGrpcService : IPingServiceGrpcContract
 {
     private readonly IPingService _service;
 
     public PingServiceGrpcService(IPingService service) => _service = service;
 
-    [OperationContract]
     public Task PingAsync(CallContext context = default)
         => _service.PingAsync();
 

@@ -5,7 +5,7 @@ using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
 
 namespace BlazorServerFunctions.Generator.Generators;
 
-internal static class ServerEndpointGenerator
+internal static class RestServerEndpointGenerator
 {
     public static string Generate(InterfaceInfo interfaceInfo, string? targetNamespace, bool hasOpenApiPackage = false)
     {

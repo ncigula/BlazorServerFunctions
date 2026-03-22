@@ -278,6 +278,101 @@ The server endpoint returns the stream directly (ASP.NET Core handles chunked JS
 
 ---
 
+## gRPC Quick-Start (code-first, no `.proto` files)
+
+BlazorServerFunctions supports **code-first gRPC** via [protobuf-net.Grpc](https://github.com/protobuf-net/protobuf-net.Grpc). Set `ApiType = ApiType.GRPC` and the generator produces a gRPC service class and a matching client proxy — no `.proto` files, no manual contract maintenance.
+
+### 1. Add NuGet references
+
+**Shared project** (where the interface lives):
+
+```xml
+<PackageReference Include="protobuf-net.Grpc" Version="1.2.*" />
+<PackageReference Include="System.ServiceModel.Primitives" Version="8.1.*" />
+```
+
+**Server project**:
+
+```xml
+<PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.2.*" />
+```
+
+**Client project** (WASM / Blazor Server):
+
+```xml
+<PackageReference Include="Grpc.Net.Client" Version="2.*" />
+```
+
+### 2. Declare a gRPC interface in the shared project
+
+```csharp
+using BlazorServerFunctions.Abstractions;
+
+[ServerFunctionCollection(ApiType = ApiType.GRPC)]
+public interface IGrpcDemoService
+{
+    Task<string> EchoAsync(string message, CancellationToken ct = default);
+
+    // IAsyncEnumerable<T> maps to a gRPC server-streaming method automatically
+    IAsyncEnumerable<string> CountdownAsync(int from, CancellationToken ct = default);
+}
+```
+
+> `HttpMethod`, `CacheSeconds`, and `RequireAntiForgery` have no meaning on gRPC interfaces — the generator reports diagnostics BSF023/BSF024/BSF025 for those.
+
+### 3. Implement the service on the server
+
+```csharp
+public class GrpcDemoService : IGrpcDemoService
+{
+    public Task<string> EchoAsync(string message, CancellationToken ct)
+        => Task.FromResult($"gRPC echo: {message}");
+
+    public async IAsyncEnumerable<string> CountdownAsync(int from, [EnumeratorCancellation] CancellationToken ct)
+    {
+        for (var i = from; i >= 0; i--)
+        {
+            yield return i.ToString();
+            await Task.Delay(100, ct);
+        }
+    }
+}
+```
+
+### 4. Register on the server (`Program.cs`)
+
+```csharp
+using ProtoBuf.Grpc.Server;  // for AddCodeFirstGrpc()
+
+builder.Services.AddCodeFirstGrpc();
+builder.Services.AddScoped<IGrpcDemoService, GrpcDemoService>();
+
+var app = builder.Build();
+
+app.MapServerFunctionEndpoints(); // also calls MapGrpcService<GrpcDemoServiceGrpcService>()
+```
+
+### 5. Register on the client (`Program.cs`)
+
+```csharp
+// baseAddress is required when any gRPC interfaces are registered
+builder.Services.AddServerFunctionClients(
+    baseAddress: new Uri("https://localhost:5001"));
+```
+
+### What the generator produces
+
+For a gRPC interface the generator emits:
+
+| Generated file | Content |
+|---|---|
+| `{Interface}GrpcClient.g.cs` (shared) | `I{Service}GrpcContract` (wire contract with `[ServiceContract]`) + `{Service}GrpcClient : IXxxService` (calls the contract via `GrpcChannel.CreateGrpcService<T>()`) + `[ProtoContract]` request wrapper types |
+| `{Interface}GrpcService.g.cs` (server) | `{Service}GrpcService : I{Service}GrpcContract` — the server-side implementation that delegates to your injected `IXxxService` |
+| `ServerFunctionClientsRegistration.g.cs` | Registers `GrpcChannel` as a singleton and `{Service}GrpcClient` as transient |
+| `ServerFunctionEndpointsRegistration.g.cs` | Calls `endpoints.MapGrpcService<{Service}GrpcService>()` |
+
+---
+
 ## Output Caching
 
 Cache GET responses with a single attribute property:

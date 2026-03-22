@@ -4,7 +4,7 @@
 
 using ProtoBuf;
 using ProtoBuf.Grpc;
-using ProtoBuf.Grpc.Configuration;
+using System.ServiceModel;
 using System.Threading.Tasks;
 
 namespace MyApp.Services;
@@ -16,14 +16,12 @@ public sealed class UserServiceGetUserAsyncGrpcRequest
     public int Id { get; set; }
 }
 
-[ServiceContract]
-public sealed class UserServiceGrpcService
+public sealed class UserServiceGrpcService : IUserServiceGrpcContract
 {
     private readonly IUserService _service;
 
     public UserServiceGrpcService(IUserService service) => _service = service;
 
-    [OperationContract]
     public Task<MyApp.Services.UserDto> GetUserAsync(UserServiceGetUserAsyncGrpcRequest request, CallContext context = default)
         => _service.GetUserAsync(request.Id);
 

@@ -216,7 +216,7 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
             allInterfaces.AddRange(referencedInterfaceInfos);
 
             if (allInterfaces.Count > 0)
-                GenerateEndpoints(context, allInterfaces, compilation.AssemblyName, projectInfo.HasOpenApiPackage);
+                GenerateEndpoints(context, localInterfaceInfos, referencedInterfaceInfos, allInterfaces, compilation.AssemblyName, projectInfo.HasOpenApiPackage);
         }
 
         // ── Generate Client Proxies ───────────────────────────────────────────
@@ -236,8 +236,16 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
         // Regenerating them here causes CS0436 conflicts when the reference assembly is added.
         foreach (var interfaceInfo in localInterfaceInfos)
         {
-            var clientCode = ClientProxyGenerator.Generate(interfaceInfo);
-            context.AddSource($"{interfaceInfo.Name.TrimStart('I')}Client.g.cs", clientCode);
+            if (interfaceInfo.Configuration.ApiType == InternalApiType.GRPC)
+            {
+                var grpcClientCode = GrpcClientProxyGenerator.Generate(interfaceInfo);
+                context.AddSource($"{interfaceInfo.Name.TrimStart('I')}GrpcClient.g.cs", grpcClientCode);
+            }
+            else
+            {
+                var clientCode = RestClientProxyGenerator.Generate(interfaceInfo);
+                context.AddSource($"{interfaceInfo.Name.TrimStart('I')}Client.g.cs", clientCode);
+            }
         }
 
         // Registration is generated for Client/Server projects and for Library projects
@@ -363,31 +371,46 @@ public sealed class ServerFunctionCollectionGenerator : IIncrementalGenerator
 
     private static void GenerateEndpoints(
         SourceProductionContext context,
+        List<InterfaceInfo> localInterfaces,
+        List<InterfaceInfo> referencedInterfaces,
         List<InterfaceInfo> allInterfaces,
         string? targetNamespace,
         bool hasOpenApiPackage)
     {
-        var restInterfaces = new List<InterfaceInfo>();
-
-        foreach (var interfaceInfo in allInterfaces)
+        foreach (var interfaceInfo in localInterfaces)
         {
             if (interfaceInfo.Configuration.ApiType == InternalApiType.GRPC)
             {
                 // §6.1: Emit the code-first gRPC service class (protobuf-net.Grpc).
-                var grpcCode = GrpcServerGenerator.Generate(interfaceInfo);
+                // Local interfaces: emit request wrapper types alongside the service class.
+                var grpcCode = GrpcServerGenerator.Generate(interfaceInfo, emitRequestTypes: true);
                 context.AddSource($"{interfaceInfo.Name}GrpcService.g.cs", grpcCode);
             }
             else
             {
-                var serverCode = ServerEndpointGenerator.Generate(interfaceInfo, targetNamespace, hasOpenApiPackage);
+                var serverCode = RestServerEndpointGenerator.Generate(interfaceInfo, targetNamespace, hasOpenApiPackage);
                 context.AddSource($"{interfaceInfo.Name}ServerExtensions.g.cs", serverCode);
-                restInterfaces.Add(interfaceInfo);
             }
         }
 
-        // Registration covers REST interfaces only. When all interfaces are gRPC this produces
-        // an empty no-op registration (correct — gRPC registration is added in §6.3).
-        var registrationCode = ServerRegistrationGenerator.Generate(restInterfaces, targetNamespace);
+        foreach (var interfaceInfo in referencedInterfaces)
+        {
+            if (interfaceInfo.Configuration.ApiType == InternalApiType.GRPC)
+            {
+                // Referenced interfaces: request wrapper types already exist in the referenced assembly.
+                // Skipping them avoids CS0436 duplicate-type conflicts.
+                var grpcCode = GrpcServerGenerator.Generate(interfaceInfo, emitRequestTypes: false);
+                context.AddSource($"{interfaceInfo.Name}GrpcService.g.cs", grpcCode);
+            }
+            else
+            {
+                var serverCode = RestServerEndpointGenerator.Generate(interfaceInfo, targetNamespace, hasOpenApiPackage);
+                context.AddSource($"{interfaceInfo.Name}ServerExtensions.g.cs", serverCode);
+            }
+        }
+
+        // Registration covers all interfaces (REST + gRPC). The generator handles the split internally.
+        var registrationCode = ServerRegistrationGenerator.Generate(allInterfaces, targetNamespace);
         context.AddSource("ServerFunctionEndpointsRegistration.g.cs", registrationCode);
     }
 

@@ -5,7 +5,7 @@ using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
 
 namespace BlazorServerFunctions.Generator.Generators;
 
-internal static class ClientProxyGenerator
+internal static class RestClientProxyGenerator
 {
     public static string Generate(InterfaceInfo interfaceInfo)
     {

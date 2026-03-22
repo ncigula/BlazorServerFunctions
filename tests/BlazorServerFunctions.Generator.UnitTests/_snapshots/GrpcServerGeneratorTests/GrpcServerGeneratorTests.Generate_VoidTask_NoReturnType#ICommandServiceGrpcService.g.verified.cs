@@ -4,7 +4,7 @@
 
 using ProtoBuf;
 using ProtoBuf.Grpc;
-using ProtoBuf.Grpc.Configuration;
+using System.ServiceModel;
 using System.Threading.Tasks;
 
 namespace MyApp.Services;
@@ -16,14 +16,12 @@ public sealed class CommandServiceDeleteAsyncGrpcRequest
     public int Id { get; set; }
 }
 
-[ServiceContract]
-public sealed class CommandServiceGrpcService
+public sealed class CommandServiceGrpcService : ICommandServiceGrpcContract
 {
     private readonly ICommandService _service;
 
     public CommandServiceGrpcService(ICommandService service) => _service = service;
 
-    [OperationContract]
     public Task DeleteAsync(CommandServiceDeleteAsyncGrpcRequest request, CallContext context = default)
         => _service.DeleteAsync(request.Id);
 

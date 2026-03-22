@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using BlazorServerFunctions.Generator.Models;
 
@@ -7,10 +9,16 @@ internal static class ServerRegistrationGenerator
 {
     public static string Generate(IReadOnlyCollection<InterfaceInfo> interfaces, string? targetNamespace)
     {
-        if (interfaces.Count == 0)
+        var restInterfaces = interfaces.Where(i => i.Configuration.ApiType != ApiType.GRPC).ToList();
+        var grpcInterfaces = interfaces.Where(i => i.Configuration.ApiType == ApiType.GRPC).ToList();
+
+        if (restInterfaces.Count == 0 && grpcInterfaces.Count == 0)
             return string.Empty;
 
-        var ns = !string.IsNullOrEmpty(targetNamespace) ? targetNamespace : interfaces.First().Namespace;
+        // Use REST namespace first, fall back to gRPC namespace
+        string fallbackNs = restInterfaces.Count > 0 ? restInterfaces[0].Namespace : grpcInterfaces[0].Namespace;
+        var ns = !string.IsNullOrEmpty(targetNamespace) ? targetNamespace : fallbackNs;
+
         var externalNamespaces = interfaces
             .Select(i => i.Namespace)
             .Where(n => !string.Equals(n, ns, StringComparison.Ordinal) && !string.IsNullOrEmpty(n))
@@ -28,6 +36,8 @@ internal static class ServerRegistrationGenerator
         sb.AppendLine("using Microsoft.AspNetCore.Routing;");
         sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
         sb.AppendLine("using Microsoft.Extensions.Diagnostics.HealthChecks;");
+        // MapGrpcService<T> is an extension on IEndpointRouteBuilder from Grpc.AspNetCore.Server,
+        // resolved via the Microsoft.AspNetCore.App framework reference — no extra using needed.
         sb.AppendLine("using System;");
         sb.AppendLine("using System.Threading;");
         sb.AppendLine("using System.Threading.Tasks;");
@@ -44,7 +54,7 @@ internal static class ServerRegistrationGenerator
 
         sb.AppendLine("public static class ServerFunctionEndpointsRegistration");
         sb.AppendLine("{");
-        GenerateMapEndpointsMethod(sb, interfaces);
+        GenerateMapEndpointsMethod(sb, restInterfaces, grpcInterfaces);
         GenerateAddHealthChecksMethod(sb, interfaces);
         GenerateMapHealthChecksMethod(sb);
         sb.AppendLine("}");
@@ -54,17 +64,28 @@ internal static class ServerRegistrationGenerator
         return sb.ToString();
     }
 
-    private static void GenerateMapEndpointsMethod(StringBuilder sb, IReadOnlyCollection<InterfaceInfo> interfaces)
+    private static void GenerateMapEndpointsMethod(
+        StringBuilder sb,
+        List<InterfaceInfo> restInterfaces,
+        List<InterfaceInfo> grpcInterfaces)
     {
         sb.AppendLine("    public static IEndpointRouteBuilder MapServerFunctionEndpoints(");
         sb.AppendLine("        this IEndpointRouteBuilder endpoints)");
         sb.AppendLine("    {");
 
-        foreach (var interfaceInfo in interfaces)
+        foreach (var interfaceInfo in restInterfaces)
         {
             sb.Append("        endpoints.Map")
                 .Append(interfaceInfo.Name)
                 .AppendLine("Endpoints();");
+        }
+
+        foreach (var grpcInterface in grpcInterfaces)
+        {
+            var serviceClassName = grpcInterface.Name.TrimStart('I') + "GrpcService";
+            sb.Append("        endpoints.MapGrpcService<")
+                .Append(serviceClassName)
+                .AppendLine(">();");
         }
 
         sb.AppendLine("        return endpoints;");

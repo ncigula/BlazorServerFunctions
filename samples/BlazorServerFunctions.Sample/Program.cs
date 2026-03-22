@@ -9,7 +9,9 @@ using BlazorServerFunctions.Sample.Components.Crud;
 using BlazorServerFunctions.Sample.Components.RateLimiting;
 using BlazorServerFunctions.Sample.Components.Echo;
 using BlazorServerFunctions.Sample.Components.RouteParams;
+using BlazorServerFunctions.Sample.Components.GrpcDemo;
 using BlazorServerFunctions.Sample.Components.Streaming;
+using ProtoBuf.Grpc.Server;
 using BlazorServerFunctions.Sample.Components.Weather;
 using BlazorServerFunctions.Sample.Shared;
 using Microsoft.AspNetCore.Authentication;
@@ -51,6 +53,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin")));
 builder.Services.AddProblemDetails();
 
+builder.Services.AddCodeFirstGrpc();
+builder.Services.AddScoped<IGrpcDemoService, GrpcDemoService>();
 builder.Services.AddScoped<IWeatherService, WeatherService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IEchoService, EchoService>();

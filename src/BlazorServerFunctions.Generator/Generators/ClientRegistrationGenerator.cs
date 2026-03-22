@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text;
 using BlazorServerFunctions.Generator.Models;
 
@@ -10,9 +11,26 @@ internal static class ClientRegistrationGenerator
         if (interfaces.Count == 0)
             return string.Empty;
 
-        var sb = new StringBuilder();
+        var restInterfaces = interfaces.Where(i => i.Configuration.ApiType != ApiType.GRPC).ToList();
+        var grpcInterfaces = interfaces.Where(i => i.Configuration.ApiType == ApiType.GRPC).ToList();
 
-        var ns = !string.IsNullOrEmpty(targetNamespace) ? targetNamespace : interfaces.First().Namespace;
+        using var enumerator = interfaces.GetEnumerator();
+        enumerator.MoveNext();
+        var ns = !string.IsNullOrEmpty(targetNamespace) ? targetNamespace : enumerator.Current.Namespace;
+
+        var sb = new StringBuilder();
+        AppendFileHeader(sb, interfaces, ns, grpcInterfaces.Count > 0);
+        AppendMethodBody(sb, restInterfaces, grpcInterfaces);
+
+        return sb.ToString();
+    }
+
+    private static void AppendFileHeader(
+        StringBuilder sb,
+        IReadOnlyCollection<InterfaceInfo> interfaces,
+        string? ns,
+        bool hasGrpc)
+    {
         var externalNamespaces = interfaces
             .Select(i => i.Namespace)
             .Where(n => !string.Equals(n, ns, StringComparison.Ordinal) && !string.IsNullOrEmpty(n))
@@ -24,7 +42,11 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine("#nullable enable");
         sb.AppendLine();
         sb.AppendLine("using System;");
+        if (hasGrpc)
+            sb.AppendLine("using Grpc.Net.Client;");
         sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
+        if (hasGrpc)
+            sb.AppendLine("using Microsoft.Extensions.DependencyInjection.Extensions;");
 
         foreach (var externalNs in externalNamespaces)
             sb.Append("using ").Append(externalNs).AppendLine(";");
@@ -35,7 +57,13 @@ internal static class ClientRegistrationGenerator
             sb.Append("namespace ").Append(ns).AppendLine(";");
             sb.AppendLine();
         }
+    }
 
+    private static void AppendMethodBody(
+        StringBuilder sb,
+        List<InterfaceInfo> restInterfaces,
+        List<InterfaceInfo> grpcInterfaces)
+    {
         sb.AppendLine("public static class ServerFunctionClientsRegistration");
         sb.AppendLine("{");
         sb.AppendLine("    public static IServiceCollection AddServerFunctionClients(");
@@ -44,17 +72,11 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine("        Action<IHttpClientBuilder>? configureClient = null)");
         sb.AppendLine("    {");
 
-        foreach (var interfaceName in interfaces.Select(i => i.Name))
-        {
-            var clientClassName = interfaceName.TrimStart('I') + "Client";
+        foreach (var restInterface in restInterfaces)
+            AppendRestClientRegistration(sb, restInterface.Name);
 
-            sb.Append("        Register(services.AddHttpClient<")
-                .Append(interfaceName)
-                .Append(", ")
-                .Append(clientClassName)
-                .AppendLine(">()")
-                .AppendLine("            .ConfigureHttpClient(c => { if (baseAddress != null) c.BaseAddress = baseAddress; }));");
-        }
+        if (grpcInterfaces.Count > 0)
+            AppendGrpcClientRegistrations(sb, grpcInterfaces);
 
         sb.AppendLine();
         sb.AppendLine("        return services;");
@@ -62,7 +84,36 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine("        void Register(IHttpClientBuilder builder) => configureClient?.Invoke(builder);");
         sb.AppendLine("    }");
         sb.AppendLine("}");
+    }
 
-        return sb.ToString();
+    private static void AppendRestClientRegistration(StringBuilder sb, string interfaceName)
+    {
+        var clientClassName = interfaceName.TrimStart('I') + "Client";
+
+        sb.Append("        Register(services.AddHttpClient<")
+            .Append(interfaceName)
+            .Append(", ")
+            .Append(clientClassName)
+            .AppendLine(">()")
+            .AppendLine("            .ConfigureHttpClient(c => { if (baseAddress != null) c.BaseAddress = baseAddress; }));");
+    }
+
+    private static void AppendGrpcClientRegistrations(StringBuilder sb, List<InterfaceInfo> grpcInterfaces)
+    {
+        sb.AppendLine();
+        sb.AppendLine("        // gRPC channel — TryAddSingleton allows tests/advanced users to pre-register their own");
+        sb.AppendLine("        services.TryAddSingleton(sp => GrpcChannel.ForAddress(");
+        sb.AppendLine("            baseAddress ?? throw new InvalidOperationException(");
+        sb.AppendLine("                \"Provide baseAddress to AddServerFunctionClients() when gRPC services are registered.\")));");
+        sb.AppendLine();
+        sb.AppendLine("        // gRPC client registrations");
+        foreach (var ifaceName in grpcInterfaces.Select(i => i.Name))
+        {
+            sb.Append("        services.AddTransient<")
+                .Append(ifaceName)
+                .Append(", ")
+                .Append(ifaceName.TrimStart('I') + "GrpcClient")
+                .AppendLine(">();");
+        }
     }
 }

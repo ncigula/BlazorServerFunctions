@@ -17,6 +17,14 @@ public sealed class ServerFunctionCollectionAttribute : Attribute
     public string? CorsPolicy { get; set; }
 
     /// <summary>
+    /// Transport type for this service collection.
+    /// Shortcut for specifying <see cref="ServerFunctionConfiguration.ApiType"/>
+    /// without defining a full configuration class.
+    /// When <see cref="Configuration"/> is also specified, the config class's <c>ApiType</c> takes priority.
+    /// </summary>
+    public ApiType ApiType { get; set; } = ApiType.REST;
+
+    /// <summary>
     /// Compile-time configuration class. Must be a type that inherits from
     /// <see cref="ServerFunctionConfiguration"/>.
     /// </summary>

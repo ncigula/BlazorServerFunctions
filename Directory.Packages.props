@@ -43,5 +43,6 @@
         <PackageVersion Include="Verify.Xunit" Version="28.13.0"/>
         <PackageVersion Include="Verify.SourceGenerators" Version="2.5.0"/>
         <PackageVersion Include="DiffEngine" Version="15.9.1"/>
+        <PackageVersion Include="BenchmarkDotNet" Version="0.14.0"/>
     </ItemGroup>
 </Project>

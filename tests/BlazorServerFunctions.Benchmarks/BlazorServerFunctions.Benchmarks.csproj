@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <OutputType>Exe</OutputType>
+        <!-- Benchmarks opt out of warnings-as-errors.
+             BenchmarkDotNet requires public fields with [Params] and non-static [Benchmark]
+             methods that trigger Meziantou / SonarAnalyzer rules not applicable here. -->
+        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="BenchmarkDotNet"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.CSharp"/>
+        <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <!-- FrameworkReference is the correct way to pull in the ASP.NET Core shared
+             framework in a non-Web SDK project (avoids NETSDK1080 warning). -->
+        <FrameworkReference Include="Microsoft.AspNetCore.App"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\BlazorServerFunctions.Abstractions\BlazorServerFunctions.Abstractions.csproj"/>
+        <ProjectReference Include="..\..\src\BlazorServerFunctions.Generator\BlazorServerFunctions.Generator.csproj"/>
+    </ItemGroup>
+</Project>

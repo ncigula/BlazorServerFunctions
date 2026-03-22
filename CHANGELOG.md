@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-03-22
+
+### Added
+
+- **§5.7 Benchmark tests** — `BlazorServerFunctions.Benchmarks` project measuring incremental generator performance with [BenchmarkDotNet](https://benchmarkdotnet.org/):
+  - `FullGenerationBenchmarks` — cold-start pipeline time parameterized by interface count (1 / 5 / 20); shows scaling behaviour and allocation cost
+  - `IncrementalGenerationBenchmarks` — re-run time after an unrelated edit; a near-zero result confirms the `IIncrementalGenerator` pipeline's caching is working correctly
+  - Run locally: `dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks`
+- **GitHub Actions CI** — two workflows in `.github/workflows/`:
+  - `ci.yml` — builds the solution and runs all unit / integration / E2E tests on every push and pull request; test results uploaded as a TRX artifact
+  - `benchmarks.yml` — runs on every push to `master`; exports BenchmarkDotNet JSON and stores historical results via `github-action-benchmark` in the `gh-pages` branch (trend charts at `https://<owner>.github.io/<repo>/dev/bench/`); alerts and fails when a benchmark regresses by more than 150%
+- `benchmarks/BENCHMARKS.md` — how-to guide for running locally, interpreting output, and updating committed baselines
+
+---
+
 ## [0.6.0] - 2026-03-22
 
 ### Added

@@ -44,7 +44,6 @@ internal static class ConfigManifestGenerator
         sb.AppendLine($"    public const int __RouteNaming = {(int)config.RouteNaming};");
         sb.AppendLine($"    public const string __DefaultHttpMethod = \"{EscapeString(config.DefaultHttpMethod ?? string.Empty)}\";");
         sb.AppendLine($"    public const bool __GenerateProblemDetails = {BoolLiteral(config.GenerateProblemDetails)};");
-        sb.AppendLine($"    public const bool __EnableResilience = {BoolLiteral(config.EnableResilience)};");
         sb.AppendLine($"    public const bool __Nullable = {BoolLiteral(config.Nullable)};");
         sb.AppendLine($"    public const string __CustomHttpClientType = \"{EscapeString(config.CustomHttpClientType ?? string.Empty)}\";");
         sb.AppendLine($"    public const int __ApiType = {(int)config.ApiType};");

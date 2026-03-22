@@ -106,8 +106,6 @@ internal static class ConfigurationReader
                     => config with { DefaultHttpMethod = string.IsNullOrEmpty(dm) ? null : dm },
                 "__GenerateProblemDetails" when field.ConstantValue is bool gpd
                     => config with { GenerateProblemDetails = gpd },
-                "__EnableResilience" when field.ConstantValue is bool er
-                    => config with { EnableResilience = er },
                 "__Nullable" when field.ConstantValue is bool nb
                     => config with { Nullable = nb },
                 "__CustomHttpClientType" when field.ConstantValue is string ct
@@ -154,7 +152,6 @@ internal static class ConfigurationReader
         var routeNaming = current.RouteNaming;
         var defaultHttpMethod = current.DefaultHttpMethod;
         var generateProblemDetails = current.GenerateProblemDetails;
-        var enableResilience = current.EnableResilience;
         var nullable = current.Nullable;
         var customHttpClientType = current.CustomHttpClientType;
         var apiType = current.ApiType;
@@ -178,7 +175,6 @@ internal static class ConfigurationReader
                 ref routeNaming,
                 ref defaultHttpMethod,
                 ref generateProblemDetails,
-                ref enableResilience,
                 ref nullable,
                 ref customHttpClientType,
                 ref apiType,
@@ -194,7 +190,6 @@ internal static class ConfigurationReader
             RouteNaming = routeNaming,
             DefaultHttpMethod = defaultHttpMethod,
             GenerateProblemDetails = generateProblemDetails,
-            EnableResilience = enableResilience,
             Nullable = nullable,
             CustomHttpClientType = customHttpClientType,
             ApiType = apiType,
@@ -213,7 +208,6 @@ internal static class ConfigurationReader
         ref RouteNaming routeNaming,
         ref string? defaultHttpMethod,
         ref bool generateProblemDetails,
-        ref bool enableResilience,
         ref bool nullable,
         ref string? customHttpClientType,
         ref ApiType apiType,
@@ -235,9 +229,6 @@ internal static class ConfigurationReader
                 break;
             case "GenerateProblemDetails":
                 generateProblemDetails = ExtractBoolLiteral(value) ?? generateProblemDetails;
-                break;
-            case "EnableResilience":
-                enableResilience = ExtractBoolLiteral(value) ?? enableResilience;
                 break;
             case "Nullable":
                 nullable = ExtractBoolLiteral(value) ?? nullable;

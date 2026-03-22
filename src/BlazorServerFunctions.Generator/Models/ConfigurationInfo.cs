@@ -13,7 +13,6 @@ internal sealed record ConfigurationInfo
     public RouteNaming RouteNaming { get; init; } = RouteNaming.PascalCase;
     public string? DefaultHttpMethod { get; init; }
     public bool GenerateProblemDetails { get; init; } = true;
-    public bool EnableResilience { get; init; }
     public bool Nullable { get; init; } = true;
 
     /// <summary>

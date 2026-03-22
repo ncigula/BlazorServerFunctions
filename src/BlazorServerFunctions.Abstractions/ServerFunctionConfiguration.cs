@@ -38,9 +38,6 @@ public class ServerFunctionConfiguration
     /// <summary>Whether to generate Problem Details error responses. Default: <c>true</c>.</summary>
     public bool GenerateProblemDetails { get; set; } = true;
 
-    /// <summary>Whether to add standard resilience (retries, circuit breaker) via Microsoft.Extensions.Http.Resilience. Default: <c>false</c>.</summary>
-    public bool EnableResilience { get; set; }
-
     /// <summary>Whether to emit <c>#nullable enable</c> in generated files. Default: <c>true</c>.</summary>
     public bool Nullable { get; set; } = true;
 

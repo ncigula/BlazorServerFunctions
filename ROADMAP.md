@@ -138,14 +138,14 @@ No JSON files, no MSBuild properties — everything lives in C# with full IDE su
 ---
 
 ## 5. Production readiness
-~~~~
+
+> **Note:** Tracing (OTel), structured logging, input validation, and resilience are intentionally
+> excluded — users cover these via `IEndpointFilter` (§4.5), ASP.NET Core middleware, and the
+> `configureClient` hook on `AddServerFunctionClients`. BSF does not need to own these concerns.
+
 | # | Item | Size | Notes |
 |---|---|---|---|
-| 5.1 | **Distributed tracing** | 🟡 | Auto-emit `Activity` start/stop in generated **server endpoints only** (WASM runs client-side, no server Activity needed); integrates with OpenTelemetry |
-| 5.2 | **Structured logging** | 🟢 | Generated server endpoints log request/response at `Debug` via `ILogger<T>` |
-| 5.3 | **Input validation** | 🟡 | Generated server endpoints validate request DTOs using `Validator.TryValidateObject` (built-in `System.ComponentModel.DataAnnotations` — `[Required]`, `[Range]`, `[StringLength]`, etc.); return 400 with validation errors as Problem Details |
-| 5.4 | **Health checks** | 🟡 | `MapServerFunctionHealthChecks()` — verifies all registered service implementations resolve |
-| 5.5 | **Built-in resilience** | 🟢 | `ServerFunctionConfiguration.EnableResilience = true` (or override per-interface) → auto-applies `AddStandardResilienceHandler()` in generated `AddServerFunctionClients`; can also be toggled at registration time via `AddServerFunctionClients(..., resilience: true)` |
+| 5.4 | **Health checks** | 🟡 | Generated `AddServerFunctionHealthChecks()` + `MapServerFunctionHealthChecks()` — auto-registers a health check for every BSF-managed service; only feasible as a generator feature because the generator knows which interfaces were registered |
 | 5.6 | **Code fix providers** | 🟡 | IDE quick-fixes for every BSF diagnostic (already have the errors, add the fix actions) |
 | 5.7 | **Benchmark tests** | 🟡 | Measure incremental generator performance with BenchmarkDotNet; catch compile-time regressions |
 
@@ -220,11 +220,7 @@ Other solutions could be using design patterns like the Strategy pattern (and ot
 - [x] 4.5 Endpoint filters (`[ServerFunction(Filters = new[] { typeof(MyFilter) })]`)
 
 ### §5 — Production readiness
-- [ ] 5.1 Distributed tracing (auto-emit `Activity` in generated server endpoints)
-- [ ] 5.2 Structured logging (`ILogger<T>` at `Debug` in generated server endpoints)
-- [ ] 5.3 Input validation (`DataAnnotations` → 400 + Problem Details)
-- [ ] 5.4 Health checks (`MapServerFunctionHealthChecks()`)
-- [ ] 5.5 Built-in resilience (`EnableResilience = true` → `AddStandardResilienceHandler()`)
+- [ ] 5.4 Health checks (`AddServerFunctionHealthChecks()` + `MapServerFunctionHealthChecks()`)
 - [ ] 5.6 Code fix providers (IDE quick-fixes for BSF diagnostics)
 - [ ] 5.7 Benchmark tests (incremental generator performance with BenchmarkDotNet)
 

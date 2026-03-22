@@ -115,7 +115,6 @@ public interface IUserService
 | `RouteNaming` | `RouteNaming` | `PascalCase` | Route segment casing: `PascalCase`, `CamelCase`, `KebabCase`, `SnakeCase` |
 | `DefaultHttpMethod` | `string?` | `null` | Default HTTP method when `[ServerFunction]` doesn't specify one (suppresses BSF013) |
 | `GenerateProblemDetails` | `bool` | `true` | Emit Problem Details error responses from server endpoints |
-| `EnableResilience` | `bool` | `false` | Apply standard resilience pipeline to generated HTTP clients |
 | `Nullable` | `bool` | `true` | Emit `#nullable enable` at the top of generated files |
 | `CustomHttpClientType` | `Type?` | `null` | Use a custom `HttpClient` subclass in generated proxy constructors |
 | `ApiType` | `ApiType` | `REST` | Transport protocol (`REST` or `GRPC`) |

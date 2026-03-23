@@ -2,62 +2,170 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 @inject IAdminService AdminService
+@inject HttpClient Http
 
 <PageTitle>Admin — WASM</PageTitle>
 
 <div class="demo-header">
     <span class="badge bg-success">🌐 Interactive WebAssembly</span>
-    <span class="badge bg-secondary ms-2">IAdminService → AdminServiceClient → HTTP (RequireAuthorization)</span>
+    <span class="badge bg-secondary ms-2">IAdminService → AdminServiceClient → HTTP</span>
 </div>
 
 <h2 class="mt-3">Admin Service</h2>
 <p>
-    The generated endpoint for <code>IAdminService</code> is protected with
-    <code>[ServerFunctionCollection(RequireAuthorization = true)]</code>.
-    This page calls it via HTTP from WebAssembly — you must be authenticated to see the secret.
+    Demonstrates cookie-based authentication across three user states.
+    The same <code>IAdminService</code> interface is called in all cases —
+    the generated HTTP client forwards your session cookie automatically.
 </p>
 
-@if (_loading)
-{
-    <p><em>Loading...</em></p>
-}
-else if (_unauthorized)
-{
-    <div class="alert alert-warning d-flex align-items-center gap-3">
-        <span>🔒 <strong>Not authenticated.</strong> You need to log in to access the admin secret.</span>
+<div class="card mb-4">
+    <div class="card-body d-flex flex-wrap align-items-center gap-3">
+        <div>
+            <span class="text-muted small me-1">Session:</span>
+            @if (_loadingSecret || _loadingPolicySecret)
+            {
+                <span class="badge bg-secondary">Checking…</span>
+            }
+            else if (_secret is not null && _policySecret is not null)
+            {
+                <span class="badge bg-success">Admin</span>
+            }
+            else if (_secret is not null)
+            {
+                <span class="badge bg-primary">User</span>
+            }
+            else
+            {
+                <span class="badge bg-warning text-dark">Not authenticated</span>
+            }
+        </div>
+        <div class="ms-auto d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-primary btn-sm" @onclick="LoginUserAsync" disabled="@_busy">Login as User</button>
+            <button class="btn btn-primary btn-sm" @onclick="LoginAdminAsync" disabled="@_busy">Login as Admin</button>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="LogoutAsync" disabled="@_busy">Logout</button>
+        </div>
     </div>
-    <form method="post" action="/demos/admin/login">
-        <button type="submit" class="btn btn-primary">Login as demo-user</button>
-    </form>
-}
-else if (_result is not null)
+</div>
+
+<h3>Any Authenticated User — <code>GetSecretAsync()</code></h3>
+<p class="text-muted small">Requires any valid login (<code>[ServerFunctionCollection(RequireAuthorization = true)]</code>).</p>
+@if (_loadingSecret)
 {
-    <div class="alert alert-success">
-        <strong>Secret:</strong> <code>@_result</code>
-    </div>
-    <form method="post" action="/demos/admin/logout">
-        <button type="submit" class="btn btn-outline-secondary">Logout</button>
-    </form>
+    <p class="text-muted"><em>Loading…</em></p>
+}
+else if (_secret is not null)
+{
+    <div class="alert alert-success py-2">✅ <code>@_secret</code></div>
+}
+else if (_secretStatus == System.Net.HttpStatusCode.Unauthorized)
+{
+    <div class="alert alert-warning py-2">⚠ 401 — Not authenticated.</div>
+}
+else if (_secretStatus is not null)
+{
+    <div class="alert alert-danger py-2">⛔ @((int)_secretStatus.Value) — Unexpected error.</div>
+}
+
+<h3 class="mt-4">Admin Only — <code>GetPolicySecretAsync()</code></h3>
+<p class="text-muted small">Requires the <code>AdminOnly</code> policy (<code>[ServerFunction(Policy = "AdminOnly")]</code>).</p>
+@if (_loadingPolicySecret)
+{
+    <p class="text-muted"><em>Loading…</em></p>
+}
+else if (_policySecret is not null)
+{
+    <div class="alert alert-success py-2">✅ <code>@_policySecret</code></div>
+}
+else if (_policySecretStatus == System.Net.HttpStatusCode.Forbidden)
+{
+    <div class="alert alert-danger py-2">⛔ 403 — Forbidden. Requires Admin role.</div>
+}
+else if (_policySecretStatus == System.Net.HttpStatusCode.Unauthorized)
+{
+    <div class="alert alert-warning py-2">⚠ 401 — Not authenticated.</div>
+}
+else if (_policySecretStatus is not null)
+{
+    <div class="alert alert-danger py-2">⛔ @((int)_policySecretStatus.Value) — Unexpected error.</div>
 }
 
 @code {
-    private bool _loading = true;
-    private bool _unauthorized;
-    private string? _result;
+    private bool _busy;
+    private bool _loadingSecret;
+    private bool _loadingPolicySecret;
+    private string? _secret;
+    private string? _policySecret;
+    private System.Net.HttpStatusCode? _secretStatus;
+    private System.Net.HttpStatusCode? _policySecretStatus;
 
-    protected override async Task OnInitializedAsync()
+    protected override async Task OnInitializedAsync() => await LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _secret = null;
+        _policySecret = null;
+        _secretStatus = null;
+        _policySecretStatus = null;
+        _loadingSecret = true;
+        _loadingPolicySecret = true;
+        StateHasChanged();
+
+        await Task.WhenAll(FetchSecretAsync(), FetchPolicySecretAsync());
+    }
+
+    private async Task FetchSecretAsync()
     {
         try
         {
-            _result = await AdminService.GetSecretAsync();
+            _secret = await AdminService.GetSecretAsync();
         }
-        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+        catch (HttpRequestException ex)
         {
-            _unauthorized = true;
+            _secretStatus = ex.StatusCode;
         }
         finally
         {
-            _loading = false;
+            _loadingSecret = false;
         }
+    }
+
+    private async Task FetchPolicySecretAsync()
+    {
+        try
+        {
+            _policySecret = await AdminService.GetPolicySecretAsync();
+        }
+        catch (HttpRequestException ex)
+        {
+            _policySecretStatus = ex.StatusCode;
+        }
+        finally
+        {
+            _loadingPolicySecret = false;
+        }
+    }
+
+    private async Task LoginUserAsync()
+    {
+        _busy = true;
+        await Http.PostAsync("/demos/admin/login", content: null);
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task LoginAdminAsync()
+    {
+        _busy = true;
+        await Http.PostAsync("/demos/admin/login/admin", content: null);
+        await LoadAsync();
+        _busy = false;
+    }
+
+    private async Task LogoutAsync()
+    {
+        _busy = true;
+        await Http.PostAsync("/demos/admin/logout", content: null);
+        await LoadAsync();
+        _busy = false;
     }
 }

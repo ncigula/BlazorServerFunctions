@@ -13,6 +13,9 @@ public interface IGrpcDemoService
     [ServerFunction]
     IAsyncEnumerable<string> CountdownAsync(int from);
 
+    [ServerFunction(RequireAuthorization = true)]
+    Task<string> GetUserSecretAsync();
+
     [ServerFunction(RequireAuthorization = true, Policy = "AdminOnly")]
     Task<string> GetSecretAsync();
 }

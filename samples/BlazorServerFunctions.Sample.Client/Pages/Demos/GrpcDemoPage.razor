@@ -2,23 +2,57 @@
 @rendermode InteractiveWebAssembly
 @using BlazorServerFunctions.Sample.Shared
 @inject IGrpcDemoService GrpcService
+@inject HttpClient Http
 
 <PageTitle>gRPC Demo</PageTitle>
 
 <h1>gRPC Demo</h1>
 <p>Demonstrates code-first gRPC transport using <code>protobuf-net.Grpc</code>. The same <code>IGrpcDemoService</code> interface is used on both client and server — no <code>.proto</code> files required.</p>
 
-<h2>Unary Echo</h2>
+<div class="card mb-4">
+    <div class="card-body d-flex flex-wrap align-items-center gap-3">
+        <div>
+            <span class="text-muted small me-1">Session:</span>
+            @if (loadingUserSecret || loadingAdminSecret)
+            {
+                <span class="badge bg-secondary">Checking…</span>
+            }
+            else if (adminSecret is not null)
+            {
+                <span class="badge bg-success">Admin</span>
+            }
+            else if (userSecret is not null)
+            {
+                <span class="badge bg-primary">User</span>
+            }
+            else
+            {
+                <span class="badge bg-warning text-dark">Not authenticated</span>
+            }
+        </div>
+        <div class="ms-auto d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-primary btn-sm" @onclick="LoginUserAsync" disabled="@isBusy">Login as User</button>
+            <button class="btn btn-primary btn-sm" @onclick="LoginAdminAsync" disabled="@isBusy">Login as Admin</button>
+            <button class="btn btn-outline-secondary btn-sm" @onclick="LogoutAsync" disabled="@isBusy">Logout</button>
+        </div>
+    </div>
+</div>
+
+<hr />
+
+<h2>Public — Unary Echo</h2>
+<p class="text-muted small">No authentication required.</p>
 <div class="mb-3">
-    <input class="form-control" @bind="echoMessage" placeholder="Type a message..." />
+    <input class="form-control" @bind="echoMessage" placeholder="Type a message…" />
     <button class="btn btn-primary mt-2" @onclick="SendEcho" disabled="@isBusy">Echo</button>
 </div>
 @if (echoResult is not null)
 {
-    <div class="alert alert-success">@echoResult</div>
+    <div class="alert alert-success py-2">@echoResult</div>
 }
 
-<h2>Server-Streaming Countdown</h2>
+<h2 class="mt-4">Public — Server-Streaming Countdown</h2>
+<p class="text-muted small">No authentication required.</p>
 <div class="mb-3">
     <input class="form-control" type="number" @bind="countFrom" min="1" max="10" />
     <button class="btn btn-secondary mt-2" @onclick="StartCountdown" disabled="@isBusy">Start Countdown</button>
@@ -33,18 +67,46 @@
     </ul>
 }
 
-<h2>Auth-Protected Method (AdminOnly)</h2>
-<p>Calls <code>GetSecretAsync()</code>, which requires the <code>AdminOnly</code> policy. Log in as Admin via the <a href="/demos/admin/wasm">Admin demo page</a> first.</p>
-<div class="mb-3">
-    <button class="btn btn-danger mt-2" @onclick="GetSecret" disabled="@isBusy">Get Secret</button>
-</div>
-@if (secretResult is not null)
+<h2 class="mt-4">Any Authenticated User — <code>GetUserSecretAsync()</code></h2>
+<p class="text-muted small">Requires any valid login (<code>[ServerFunction(RequireAuthorization = true)]</code>).</p>
+@if (loadingUserSecret)
 {
-    <div class="alert alert-success">@secretResult</div>
+    <p class="text-muted"><em>Loading…</em></p>
 }
-@if (secretError is not null)
+else if (userSecret is not null)
 {
-    <div class="alert alert-danger">@secretError</div>
+    <div class="alert alert-success py-2">✅ @userSecret</div>
+}
+else if (userSecretError == "Unauthenticated")
+{
+    <div class="alert alert-warning py-2">⚠ Unauthenticated — log in above to access this method.</div>
+}
+else if (userSecretError is not null)
+{
+    <div class="alert alert-danger py-2">⛔ @userSecretError</div>
+}
+
+<h2 class="mt-4">Admin Only — <code>GetSecretAsync()</code></h2>
+<p class="text-muted small">Requires the <code>AdminOnly</code> policy (<code>[ServerFunction(Policy = "AdminOnly")]</code>).</p>
+@if (loadingAdminSecret)
+{
+    <p class="text-muted"><em>Loading…</em></p>
+}
+else if (adminSecret is not null)
+{
+    <div class="alert alert-success py-2">✅ @adminSecret</div>
+}
+else if (adminSecretError == "PermissionDenied")
+{
+    <div class="alert alert-danger py-2">⛔ Permission Denied — requires Admin role.</div>
+}
+else if (adminSecretError == "Unauthenticated")
+{
+    <div class="alert alert-warning py-2">⚠ Unauthenticated — log in above to access this method.</div>
+}
+else if (adminSecretError is not null)
+{
+    <div class="alert alert-danger py-2">⛔ @adminSecretError</div>
 }
 
 @code {
@@ -52,9 +114,63 @@
     private string? echoResult;
     private int countFrom = 5;
     private readonly List<string> countdownItems = [];
-    private string? secretResult;
-    private string? secretError;
     private bool isBusy;
+
+    private bool loadingUserSecret;
+    private string? userSecret;
+    private string? userSecretError;
+
+    private bool loadingAdminSecret;
+    private string? adminSecret;
+    private string? adminSecretError;
+
+    protected override async Task OnInitializedAsync() =>
+        await RefreshAuthSectionsAsync();
+
+    private async Task RefreshAuthSectionsAsync()
+    {
+        userSecret = null;
+        userSecretError = null;
+        adminSecret = null;
+        adminSecretError = null;
+        loadingUserSecret = true;
+        loadingAdminSecret = true;
+        StateHasChanged();
+
+        await Task.WhenAll(FetchUserSecretAsync(), FetchAdminSecretAsync());
+    }
+
+    private async Task FetchUserSecretAsync()
+    {
+        try
+        {
+            userSecret = await GrpcService.GetUserSecretAsync();
+        }
+        catch (Grpc.Core.RpcException ex)
+        {
+            userSecretError = ex.StatusCode.ToString();
+        }
+        finally
+        {
+            loadingUserSecret = false;
+        }
+    }
+
+    private async Task FetchAdminSecretAsync()
+    {
+        try
+        {
+            adminSecret = await GrpcService.GetSecretAsync();
+        }
+        catch (Grpc.Core.RpcException ex)
+        {
+            adminSecretError = ex.StatusCode.ToString();
+        }
+        finally
+        {
+            loadingAdminSecret = false;
+        }
+    }
 
     private async Task SendEcho()
     {
@@ -88,22 +204,27 @@
         }
     }
 
-    private async Task GetSecret()
+    private async Task LoginUserAsync()
     {
         isBusy = true;
-        secretResult = null;
-        secretError = null;
-        try
-        {
-            secretResult = await GrpcService.GetSecretAsync();
-        }
-        catch (Exception ex)
-        {
-            secretError = $"Error: {ex.Message}";
-        }
-        finally
-        {
-            isBusy = false;
-        }
+        await Http.PostAsync("/demos/admin/login", content: null);
+        await RefreshAuthSectionsAsync();
+        isBusy = false;
+    }
+
+    private async Task LoginAdminAsync()
+    {
+        isBusy = true;
+        await Http.PostAsync("/demos/admin/login/admin", content: null);
+        await RefreshAuthSectionsAsync();
+        isBusy = false;
+    }
+
+    private async Task LogoutAsync()
+    {
+        isBusy = true;
+        await Http.PostAsync("/demos/admin/logout", content: null);
+        await RefreshAuthSectionsAsync();
+        isBusy = false;
     }
 }

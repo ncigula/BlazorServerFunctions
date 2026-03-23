@@ -1,4 +1,9 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using BlazorServerFunctions.Sample;
 using BlazorServerFunctions.Sample.Components;
 using BlazorServerFunctions.Sample.Components.Admin;
@@ -27,8 +32,20 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddInteractiveWebAssemblyComponents();
 
-// Cookie auth for the Admin demo page.
-builder.Services.AddAuthentication("Cookies")
+// Auth for the Admin demo: Cookie for browser sessions, JWT Bearer for API clients.
+// PolicyScheme routes to the correct handler based on the Authorization header.
+const string JwtSigningKey = "dev-only-256-bit-signing-key-not-for-production!!";
+
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultScheme = "MultiScheme";
+        options.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+    })
+    .AddPolicyScheme("MultiScheme", displayName: null, options =>
+        options.ForwardDefaultSelector = ctx =>
+            ctx.Request.Headers.ContainsKey("Authorization")
+                ? JwtBearerDefaults.AuthenticationScheme
+                : CookieAuthenticationDefaults.AuthenticationScheme)
     .AddCookie(options =>
     {
         options.LoginPath = "/demos/admin/wasm";
@@ -48,6 +65,35 @@ builder.Services.AddAuthentication("Cookies")
             ctx.Response.ContentType = "application/problem+json";
             return ctx.Response.WriteAsync(
                 """{"status":403,"title":"Forbidden","detail":"Insufficient permissions."}""");
+        };
+    })
+    .AddJwtBearer(options =>
+    {
+#pragma warning disable CA5404 // dev-only demo: no issuer/audience to validate
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtSigningKey)),
+        };
+#pragma warning restore CA5404
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = ctx =>
+            {
+                ctx.HandleResponse();
+                ctx.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                ctx.Response.ContentType = "application/problem+json";
+                return ctx.Response.WriteAsync(
+                    """{"status":401,"title":"Unauthorized","detail":"Authentication is required."}""");
+            },
+            OnForbidden = ctx =>
+            {
+                ctx.Response.StatusCode = StatusCodes.Status403Forbidden;
+                ctx.Response.ContentType = "application/problem+json";
+                return ctx.Response.WriteAsync(
+                    """{"status":403,"title":"Forbidden","detail":"Insufficient permissions."}""");
+            },
         };
     });
 
@@ -81,6 +127,16 @@ builder.Services.AddRateLimiter(options =>
         limiter.PermitLimit = 10;
         limiter.Window = TimeSpan.FromSeconds(10);
     }));
+
+string CreateJwt(IEnumerable<Claim> claims)
+{
+    var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(JwtSigningKey));
+    var token = new JwtSecurityToken(
+        claims: claims,
+        expires: DateTime.UtcNow.AddHours(1),
+        signingCredentials: new SigningCredentials(key, SecurityAlgorithms.HmacSha256));
+    return new JwtSecurityTokenHandler().WriteToken(token);
+}
 
 var app = builder.Build();
 
@@ -118,13 +174,14 @@ app.MapRazorComponents<App>()
 app.MapServerFunctionEndpoints();
 app.MapServerFunctionHealthChecks();
 
-// Demo login/logout for the Admin page (issues a simple cookie — not for production use).
+// Demo login/logout for the Admin page (issues a cookie + JWT — not for production use).
+// Returns { token } in the response body so WASM pages and E2E tests can use Bearer auth.
 app.MapPost("/demos/admin/login", async (HttpContext ctx) =>
 {
     var claims = new List<Claim> { new(ClaimTypes.Name, "demo-user") };
     var identity = new ClaimsIdentity(claims, "Cookies");
     await ctx.SignInAsync(new ClaimsPrincipal(identity)).ConfigureAwait(false);
-    return Results.Redirect("/demos/admin/wasm");
+    return Results.Ok(new { token = CreateJwt(claims) });
 }).DisableAntiforgery();
 
 // Signs in as a user with the "Admin" role — used in E2E tests for role/policy scenarios.
@@ -137,13 +194,13 @@ app.MapPost("/demos/admin/login/admin", async (HttpContext ctx) =>
     };
     var identity = new ClaimsIdentity(claims, "Cookies");
     await ctx.SignInAsync(new ClaimsPrincipal(identity)).ConfigureAwait(false);
-    return Results.Ok();
+    return Results.Ok(new { token = CreateJwt(claims) });
 }).DisableAntiforgery();
 
 app.MapPost("/demos/admin/logout", async (HttpContext ctx) =>
 {
     await ctx.SignOutAsync().ConfigureAwait(false);
-    return Results.Redirect("/demos/admin/wasm");
+    return Results.Ok();
 }).DisableAntiforgery();
 
 await app.RunAsync().ConfigureAwait(true);

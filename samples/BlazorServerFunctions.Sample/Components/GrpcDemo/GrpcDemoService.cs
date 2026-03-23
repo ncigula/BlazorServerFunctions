@@ -19,6 +19,9 @@ internal sealed class GrpcDemoService : IGrpcDemoService
         }
     }
 
+    public Task<string> GetUserSecretAsync() =>
+        Task.FromResult("User secret: you are authenticated!");
+
     public Task<string> GetSecretAsync() =>
         Task.FromResult("The secret is: gRPC auth works!");
 }

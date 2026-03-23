@@ -13,11 +13,14 @@ using BlazorServerFunctions.Sample.Components.GrpcDemo;
 using BlazorServerFunctions.Sample.Components.Streaming;
 using ProtoBuf.Grpc.Server;
 using BlazorServerFunctions.Sample.Components.Weather;
+using BlazorServerFunctions.Sample.ServiceDefaults;
 using BlazorServerFunctions.Sample.Shared;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.AddServiceDefaults();
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
@@ -47,6 +50,7 @@ builder.Services.AddAuthentication("Cookies")
                 """{"status":403,"title":"Forbidden","detail":"Insufficient permissions."}""");
         };
     });
+
 builder.Services.AddAuthorization(options =>
     // "AdminOnly" policy requires the "Admin" role — used by IAdminService.GetPolicySecretAsync
     // and GetRoleAndPolicySecretAsync to demonstrate named policy enforcement alongside Roles.
@@ -54,6 +58,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddProblemDetails();
 
 builder.Services.AddCodeFirstGrpc();
+
 builder.Services.AddScoped<IGrpcDemoService, GrpcDemoService>();
 builder.Services.AddScoped<IWeatherService, WeatherService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
@@ -78,6 +83,8 @@ builder.Services.AddRateLimiter(options =>
     }));
 
 var app = builder.Build();
+
+app.MapDefaultEndpoints();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -143,5 +150,7 @@ await app.RunAsync().ConfigureAwait(true);
 
 public partial class Program
 {
-    protected Program() { }
+    protected Program()
+    {
+    }
 }

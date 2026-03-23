@@ -173,7 +173,7 @@ are unchanged.
 | 6.2 | **gRPC client proxy** | ✅ | `IXxxGrpcContract` shared contract interface with `[ServiceContract]`/`[OperationContract]`; `XxxGrpcClient : IXxxService` using `GrpcChannel.CreateGrpcService<IXxxGrpcContract>()`; request wrapper types emitted once in the shared project |
 | 6.3 | **DI registration extension** | ✅ | `AddServerFunctionClients()` registers gRPC clients via `AddTransient<IXxx, XxxGrpcClient>()` + `TryAddSingleton<GrpcChannel>`; `baseAddress` required when gRPC interfaces are present |
 | 6.4 | **Streaming via `IAsyncEnumerable<T>`** | ✅ | `IAsyncEnumerable<T>` return types map to gRPC server-streaming on both client (via protobuf-net.Grpc `Reshape`) and server; E2E tested with `CountdownAsync` |
-| 6.5 | **Auth over gRPC** | 🟡 | Bearer tokens via `CallCredentials`; integrates with existing `configureClient` hook |
+| 6.5 | **Auth over gRPC** | ✅ | `[Authorize]` emitted on generated service class/methods; `.RequireAuthorization()` chained on `MapGrpcService`; `innerGrpcHttpHandler` parameter on `AddServerFunctionClients` for injecting a `DelegatingHandler` (e.g. Bearer token handler) into the gRPC channel |
 | 6.6 | **gRPC diagnostics** | ✅ | BSF023 (error): `HttpMethod` on `[ServerFunction]` is meaningless for gRPC — gRPC always uses POST; BSF024 (warning): `CacheSeconds` not supported for gRPC; BSF025 (warning): `RequireAntiForgery` not supported for gRPC |
 
 ---
@@ -228,7 +228,7 @@ Other solutions could be using design patterns like the Strategy pattern (and ot
 - [x] 6.2 gRPC client proxy (`IXxxGrpcContract` shared contract interface; `XxxGrpcClient : IXxxService` via `GrpcChannel.CreateGrpcService<T>()`)
 - [x] 6.3 DI registration extension (`AddServerFunctionClients()` registers gRPC `TryAddSingleton<GrpcChannel>` + `AddTransient<IXxx, XxxGrpcClient>()`)
 - [x] 6.4 Streaming via `IAsyncEnumerable<T>` → gRPC server-streaming rpc (E2E tested)
-- [ ] 6.5 Auth over gRPC (Bearer via `CallCredentials`)
+- [x] 6.5 Auth over gRPC (`[Authorize]` on service class/methods; `.RequireAuthorization()` on `MapGrpcService`; `innerGrpcHttpHandler` for `DelegatingHandler` injection)
 - [x] 6.6 gRPC diagnostics (BSF023: `HttpMethod` error; BSF024: `CacheSeconds` warning; BSF025: `RequireAntiForgery` warning)
 
 ### §7 — Code readability & maintainability

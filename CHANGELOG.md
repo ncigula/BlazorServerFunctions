@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-03-23
+
+### Added
+
+- **§6.5 gRPC authentication** — `[Authorize]` attributes are now emitted on generated gRPC service classes and methods, and `.RequireAuthorization()` is chained on `MapGrpcService<T>()` registrations:
+  - Interface-level `[ServerFunctionCollection(RequireAuthorization = true)]` → `[global::Microsoft.AspNetCore.Authorization.Authorize]` on the generated service class + `.RequireAuthorization()` on `MapGrpcService<T>()`
+  - Method-level `[ServerFunction(Policy = "AdminOnly")]` → `[Authorize(Policy = "AdminOnly")]` on the service method
+  - Method-level `[ServerFunction(Roles = "Admin")]` → `[Authorize(Roles = "Admin")]` on the service method
+  - Method-level `[ServerFunction(RequireAuthorization = true)]` (no role/policy) → bare `[Authorize]` on the service method
+  - Interface-level and method-level auth are independent and composable (class-level attribute + method-level attribute are both emitted when both are set)
+- **`innerGrpcHttpHandler` parameter on `AddServerFunctionClients`** — when one or more gRPC interfaces are registered, the generated `AddServerFunctionClients` extension gains an `HttpMessageHandler? innerGrpcHttpHandler = null` parameter. Passing a `DelegatingHandler` here (e.g. one that injects `Authorization: Bearer <token>`) wraps the gRPC channel's inner transport, enabling token-based auth for gRPC-Web clients without requiring `CallCredentials` or `UnsafeUseInsecureChannelCallCredentials`.
+
+### Changed
+
+- **Sample — multi-scheme authentication** — the sample server now runs Cookie auth and JWT Bearer auth side-by-side via a `PolicyScheme` that routes to the correct handler based on the presence of an `Authorization` request header:
+  - Browser sessions continue to use cookie auth (no change to existing behaviour)
+  - API clients (including the new E2E JWT tests) send `Authorization: Bearer <token>` and are validated by `JwtBearer`
+  - Login endpoints (`/demos/admin/login`, `/demos/admin/login/admin`) now return `{ "token": "..." }` in the JSON body in addition to setting the session cookie — existing cookie-based tests are unaffected
+  - Logout endpoint no longer redirects; returns `200 OK`
+- **Sample — demo pages show 3 auth tiers** — both the Admin WASM page (`/demos/admin/wasm`) and the gRPC demo page (`/demos/grpc`) now visually distinguish three user states (Not authenticated / User / Admin) with a live session badge and in-place data refresh on login/logout. `forceLoad: true` navigation (which triggered a full WASM runtime reload) replaced with in-place `LoadAsync()` calls; Blazor WASM's browser-managed cookie jar makes reload unnecessary.
+- **`IGrpcDemoService` — new `GetUserSecretAsync()` method** — adds a "plain user" (any authenticated, no role) protected gRPC method alongside the existing AdminOnly `GetSecretAsync()`, enabling the three-tier auth demo on the gRPC page.
+
+### Tests
+
+- **`BearerTokenHandler`** — new `DelegatingHandler` (in `tests/BlazorServerFunctions.EndToEndTests/Fixtures/`) that injects `Authorization: Bearer <token>` on every outgoing request. Symmetric across REST (`HttpClient`) and gRPC (`GrpcChannel.HttpHandler`).
+- **`JwtAuthClientTests`** — 6 new E2E tests exercising JWT Bearer auth end-to-end:
+  - REST (`IAdminService.GetPolicySecretAsync`, `Policy = "AdminOnly"`): no token → 401, plain user token → 403, admin token → 200
+  - gRPC (`IGrpcDemoService.GetSecretAsync`, `Policy = "AdminOnly"`): no token → `Unauthenticated`, plain user token → `PermissionDenied`, admin token → success
+- **`GrpcAuthServiceClientTests`** — cookie-based gRPC auth tests (unauthenticated / plain user / admin via session cookie).
+- **Collection fixtures** — `E2ECollection` and `ServerCollection` introduced; all 13 `IClassFixture<E2EFixture>` test classes and 7 `IClassFixture<WebApplicationFactory<Program>>` test classes migrated. Reduces server startups from 20 to 2 per test run.
+
+---
+
 ## [0.9.0] - 2026-03-22
 
 ### Added

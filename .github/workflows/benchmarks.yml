@@ -15,35 +15,30 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup .NET
+      - name: "Setup .NET"
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.x"
 
-      - name: Build benchmarks project
+      - name: "Build benchmarks project"
         run: dotnet build tests/BlazorServerFunctions.Benchmarks -c Release
 
-      - name: Run benchmarks
+      - name: "Run benchmarks"
         run: dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks --no-build -- --exporters json --artifacts ./benchmark-artifacts
 
-      - name: Debug: show working directory
+      - name: "Debug: show working directory"
         run: pwd
 
-      - name: Debug: list all files
+      - name: "Debug: list all files"
         run: ls -R .
 
-      - name: Debug: check benchmark-artifacts
-        run: |
-          if [ ! -d "./benchmark-artifacts" ]; then
-            echo "benchmark-artifacts directory NOT FOUND"
-            exit 1
-          fi
-          echo "benchmark-artifacts directory exists"
+      - name: "Debug: check benchmark-artifacts"
+        run: if [ -d "./benchmark-artifacts" ]; then echo "benchmark-artifacts exists"; else echo "benchmark-artifacts NOT FOUND"; exit 1; fi
 
-      - name: Debug: list benchmark-artifacts
+      - name: "Debug: list benchmark-artifacts"
         run: ls -R ./benchmark-artifacts
 
-      - name: Store FullGenerationBenchmarks results
+      - name: "Store FullGenerationBenchmarks results"
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: benchmarkdotnet
@@ -54,7 +49,7 @@ jobs:
           alert-threshold: "150%"
           fail-on-alert: true
 
-      - name: Store IncrementalGenerationBenchmarks results
+      - name: "Store IncrementalGenerationBenchmarks results"
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: benchmarkdotnet
@@ -65,7 +60,7 @@ jobs:
           alert-threshold: "150%"
           fail-on-alert: true
 
-      - name: Upload benchmark artifacts
+      - name: "Upload benchmark artifacts"
         uses: actions/upload-artifact@v4
         if: always()
         with:

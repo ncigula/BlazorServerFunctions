@@ -20,7 +20,7 @@ public static class ServerFunctionEndpointsRegistration
         this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapIRestServiceEndpoints();
-        endpoints.MapGrpcService<GrpcServiceGrpcService>();
+        endpoints.MapGrpcService<GrpcServiceGrpcService>().EnableGrpcWeb();
         return endpoints;
     }
 

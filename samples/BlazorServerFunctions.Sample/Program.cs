@@ -98,6 +98,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseOutputCache();
 app.UseRateLimiter();
+app.UseGrpcWeb();
 
 app.UseAntiforgery();
 

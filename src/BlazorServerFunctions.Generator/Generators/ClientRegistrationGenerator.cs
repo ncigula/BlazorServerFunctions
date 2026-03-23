@@ -43,7 +43,10 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine();
         sb.AppendLine("using System;");
         if (hasGrpc)
+        {
             sb.AppendLine("using Grpc.Net.Client;");
+            sb.AppendLine("using Grpc.Net.Client.Web;");
+        }
         sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
         if (hasGrpc)
             sb.AppendLine("using Microsoft.Extensions.DependencyInjection.Extensions;");
@@ -104,7 +107,8 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine("        // gRPC channel — TryAddSingleton allows tests/advanced users to pre-register their own");
         sb.AppendLine("        services.TryAddSingleton(sp => GrpcChannel.ForAddress(");
         sb.AppendLine("            baseAddress ?? throw new InvalidOperationException(");
-        sb.AppendLine("                \"Provide baseAddress to AddServerFunctionClients() when gRPC services are registered.\")));");
+        sb.AppendLine("                \"Provide baseAddress to AddServerFunctionClients() when gRPC services are registered.\"),");
+        sb.AppendLine("            new GrpcChannelOptions { HttpHandler = new GrpcWebHandler(new HttpClientHandler()) }));");
         sb.AppendLine();
         sb.AppendLine("        // gRPC client registrations");
         foreach (var ifaceName in grpcInterfaces.Select(i => i.Name))

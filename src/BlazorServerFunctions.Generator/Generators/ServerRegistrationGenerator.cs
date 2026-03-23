@@ -85,7 +85,7 @@ internal static class ServerRegistrationGenerator
             var serviceClassName = grpcInterface.Name.TrimStart('I') + "GrpcService";
             sb.Append("        endpoints.MapGrpcService<")
                 .Append(serviceClassName)
-                .AppendLine(">();");
+                .AppendLine(">().EnableGrpcWeb();");
         }
 
         sb.AppendLine("        return endpoints;");

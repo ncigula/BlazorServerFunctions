@@ -4,6 +4,7 @@
 
 using System;
 using Grpc.Net.Client;
+using Grpc.Net.Client.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MyApp.Services;
@@ -23,7 +24,8 @@ public static class ServerFunctionClientsRegistration
         // gRPC channel — TryAddSingleton allows tests/advanced users to pre-register their own
         services.TryAddSingleton(sp => GrpcChannel.ForAddress(
             baseAddress ?? throw new InvalidOperationException(
-                "Provide baseAddress to AddServerFunctionClients() when gRPC services are registered.")));
+                "Provide baseAddress to AddServerFunctionClients() when gRPC services are registered."),
+            new GrpcChannelOptions { HttpHandler = new GrpcWebHandler(new HttpClientHandler()) }));
 
         // gRPC client registrations
         services.AddTransient<IGrpcService, GrpcServiceGrpcClient>();

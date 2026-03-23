@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   benchmark:
-    name: Run Benchmarks
     runs-on: ubuntu-latest
 
     steps:
@@ -25,11 +24,26 @@ jobs:
         run: dotnet build tests/BlazorServerFunctions.Benchmarks -c Release
 
       - name: Run benchmarks
-        run: >
-          dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks --no-build
-          -- --exporters json --artifacts ./benchmark-artifacts
+        run: |
+          echo "Running benchmarks..."
+          dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks --no-build \
+            -- --exporters json --artifacts ./benchmark-artifacts
 
-      - name: List benchmark artifacts (debug)
+      - name: Debug: Show working directory
+        run: pwd
+
+      - name: Debug: List all files recursively
+        run: ls -R .
+
+      - name: Debug: Check benchmark-artifacts existence
+        run: |
+          if [ ! -d "./benchmark-artifacts" ]; then
+            echo "❌ benchmark-artifacts directory NOT FOUND"
+            exit 1
+          fi
+          echo "benchmark-artifacts directory exists"
+
+      - name: Debug: List benchmark-artifacts
         run: ls -R ./benchmark-artifacts
 
       - name: Store FullGenerationBenchmarks results

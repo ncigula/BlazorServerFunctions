@@ -15,7 +15,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// same client for the underlying HTTP transport.
 /// </para>
 /// </summary>
-public sealed class GrpcAuthServiceClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class GrpcAuthServiceClientTests(E2EFixture fixture)
 {
     private IGrpcDemoService UnauthenticatedClient =>
         fixture.ClientServices.GetRequiredService<IGrpcDemoService>();

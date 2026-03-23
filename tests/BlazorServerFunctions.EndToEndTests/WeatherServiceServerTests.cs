@@ -4,7 +4,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// Server path: resolves IWeatherService directly from DI → WeatherService.
 /// Mirrors Blazor Server components which call services in-process without HTTP.
 /// </summary>
-public sealed class WeatherServiceServerTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+[Collection("Server")]
+public sealed class WeatherServiceServerTests(WebApplicationFactory<Program> factory)
 {
     [Fact]
     public async Task GetWeatherForecastsAsync_Returns5Forecasts()

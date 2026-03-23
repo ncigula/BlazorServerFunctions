@@ -17,7 +17,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// <c>innerGrpcHttpHandler</c> / <c>configureClient</c> injection points work symmetrically.
 /// </para>
 /// </summary>
-public sealed class JwtAuthClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class JwtAuthClientTests(E2EFixture fixture)
 {
     private async Task<string> GetTokenAsync(string loginPath)
     {

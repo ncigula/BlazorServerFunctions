@@ -4,7 +4,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// Server path: resolves IAdminService directly from DI → AdminService.
 /// No auth check applies — server-side components already run in an authenticated context.
 /// </summary>
-public sealed class AdminServiceServerTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+[Collection("Server")]
+public sealed class AdminServiceServerTests(WebApplicationFactory<Program> factory)
 {
     [Fact]
     public async Task GetSecretAsync_ReturnsSecret_WithoutAuthCheck()

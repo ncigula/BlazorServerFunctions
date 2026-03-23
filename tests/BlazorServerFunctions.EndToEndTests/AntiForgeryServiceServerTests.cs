@@ -14,8 +14,9 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// <c>.ValidateAntiforgery()</c> is wired up on the endpoint.
 /// </para>
 /// </summary>
+[Collection("Server")]
 public sealed class AntiForgeryServiceServerTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+   
 {
     [Fact]
     public async Task SubmitAsync_WithoutAntiForgeryToken_Returns400()

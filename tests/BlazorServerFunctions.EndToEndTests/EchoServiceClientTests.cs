@@ -4,7 +4,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// Client path: resolves IEchoService from DI → EchoServiceClient (HTTP proxy) → in-memory server.
 /// Verifies GET query-string binding and POST body binding in generated endpoints.
 /// </summary>
-public sealed class EchoServiceClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class EchoServiceClientTests(E2EFixture fixture)
 {
     private IEchoService Client =>
         fixture.ClientServices.GetRequiredService<IEchoService>();

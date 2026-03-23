@@ -7,7 +7,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// Verifies IAsyncEnumerable&lt;T&gt; streaming end-to-end via the generated client proxy:
 /// IStreamingService → StreamingServiceClient (HTTP) → generated server endpoint → StreamingService.
 /// </summary>
-public sealed class StreamingServiceClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class StreamingServiceClientTests(E2EFixture fixture)
 {
     private IStreamingService Client =>
         fixture.ClientServices.GetRequiredService<IStreamingService>();

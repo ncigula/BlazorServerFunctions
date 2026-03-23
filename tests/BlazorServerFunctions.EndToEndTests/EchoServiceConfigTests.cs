@@ -8,7 +8,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// producing routes under <c>/api/v1/echoservice/</c> with kebab-case method segments
 /// instead of the default <c>/api/functions/echoservice/</c> PascalCase segments.
 /// </summary>
-public sealed class EchoServiceConfigTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class EchoServiceConfigTests(E2EFixture fixture)
 {
     // ── Client proxy (via generated EchoServiceClient) ──────────────────────
 

@@ -3,7 +3,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// <summary>
 /// Server path: resolves IEchoService directly from DI → EchoService.
 /// </summary>
-public sealed class EchoServiceServerTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+[Collection("Server")]
+public sealed class EchoServiceServerTests(WebApplicationFactory<Program> factory)
 {
     [Fact]
     public async Task GetEchoAsync_ReturnsMessage()

@@ -8,7 +8,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// <c>AddServerFunctionClients</c> extension method actually wires delegating
 /// handlers into the HTTP pipeline used by every registered client proxy.
 /// </summary>
-public sealed class ConfigureClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class ConfigureClientTests(E2EFixture fixture)
 {
     [Fact]
     public async Task ConfigureClient_DelegatingHandler_IsInvokedForEveryRequest()

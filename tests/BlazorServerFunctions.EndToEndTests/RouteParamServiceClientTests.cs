@@ -6,7 +6,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// Verifies that route parameters are correctly bound on the server and interpolated
 /// in the client URL for all HTTP verbs that use them.
 /// </summary>
-public sealed class RouteParamServiceClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class RouteParamServiceClientTests(E2EFixture fixture)
 {
     private IRouteParamService Client =>
         fixture.ClientServices.GetRequiredService<IRouteParamService>();

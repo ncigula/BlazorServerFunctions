@@ -11,7 +11,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// where a delegating handler attaches a JWT token or cookie to each request.
 /// </para>
 /// </summary>
-public sealed class AdminServiceClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class AdminServiceClientTests(E2EFixture fixture)
 {
     // No credentials → server's OnRedirectToLogin returns 401 directly (not a redirect).
     private IAdminService UnauthenticatedClient =>

@@ -7,8 +7,9 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// check for every BSF-managed service, and that <c>MapServerFunctionHealthChecks()</c> exposes
 /// them at <c>/health/server-functions</c>.
 /// </summary>
+[Collection("Server")]
 public sealed class HealthCheckServerTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+   
 {
     [Fact]
     public async Task HealthEndpoint_AllServicesResolvable_ReturnsHealthy()

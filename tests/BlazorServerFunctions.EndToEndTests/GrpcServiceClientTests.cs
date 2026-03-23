@@ -3,7 +3,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace BlazorServerFunctions.EndToEndTests;
 
-public class GrpcServiceClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public class GrpcServiceClientTests(E2EFixture fixture)
 {
     private static readonly string[] s_countdownExpected = ["3", "2", "1", "0"];
 

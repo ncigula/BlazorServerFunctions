@@ -3,7 +3,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// <summary>
 /// Server path: resolves ICrudService directly from DI → CrudService.
 /// </summary>
-public sealed class CrudServiceServerTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+[Collection("Server")]
+public sealed class CrudServiceServerTests(WebApplicationFactory<Program> factory)
 {
     [Fact]
     public async Task GetAsync_ReturnsItemWithCorrectId()

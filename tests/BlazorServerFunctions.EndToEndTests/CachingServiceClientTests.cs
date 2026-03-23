@@ -4,7 +4,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// §3.5 Output Caching — verifies that GET endpoints annotated with CacheSeconds
 /// return stale responses while the cache is valid, and fresh responses once it expires.
 /// </summary>
-public sealed class CachingServiceClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class CachingServiceClientTests(E2EFixture fixture)
 {
     private ICacheableService Client =>
         fixture.ClientServices.GetRequiredService<ICacheableService>();

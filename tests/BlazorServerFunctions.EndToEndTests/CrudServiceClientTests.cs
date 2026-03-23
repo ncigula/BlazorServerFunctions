@@ -7,7 +7,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// Client path: resolves ICrudService from DI → CrudServiceClient (HTTP proxy) → in-memory server.
 /// Verifies all HTTP verbs and complex DTO JSON round-trip through generated endpoints.
 /// </summary>
-public sealed class CrudServiceClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class CrudServiceClientTests(E2EFixture fixture)
 {
     private ICrudService Client =>
         fixture.ClientServices.GetRequiredService<ICrudService>();

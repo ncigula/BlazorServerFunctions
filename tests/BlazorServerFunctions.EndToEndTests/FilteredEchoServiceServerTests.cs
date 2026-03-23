@@ -12,8 +12,9 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// a directly observable side-effect we can assert on without any browser or token ceremony.
 /// </para>
 /// </summary>
+[Collection("Server")]
 public sealed class FilteredEchoServiceServerTests(WebApplicationFactory<Program> factory)
-    : IClassFixture<WebApplicationFactory<Program>>
+   
 {
     [Fact]
     public async Task EchoAsync_ResponseContainsCorrelationHeader()

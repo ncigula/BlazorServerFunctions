@@ -5,7 +5,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// Exercises the generated client proxy + generated server endpoints together,
 /// mirroring Blazor WASM/Auto components that inject IWeatherService.
 /// </summary>
-public sealed class WeatherServiceClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class WeatherServiceClientTests(E2EFixture fixture)
 {
     private IWeatherService Client =>
         fixture.ClientServices.GetRequiredService<IWeatherService>();

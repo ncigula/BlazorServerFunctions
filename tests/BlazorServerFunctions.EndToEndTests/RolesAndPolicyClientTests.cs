@@ -20,7 +20,8 @@ namespace BlazorServerFunctions.EndToEndTests;
 /// client can forward the detail and tests can assert on the body content.
 /// </para>
 /// </summary>
-public sealed class RolesAndPolicyClientTests(E2EFixture fixture) : IClassFixture<E2EFixture>
+[Collection("E2E")]
+public sealed class RolesAndPolicyClientTests(E2EFixture fixture)
 {
     // Unauthenticated client — no cookie jar interaction.
     private IAdminService UnauthenticatedClient =>

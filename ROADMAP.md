@@ -184,6 +184,12 @@ Explore possibilities for improving the code quality and maintainability in bigg
 Since generators mostly have static classes, it could be worthwhile to use partial classes to split the code into multiple files.
 Other solutions could be using design patterns like the Strategy pattern (and others) to improve code organization and maintainability.
 
+---
+
+## 8. CI/CD complete build 
+For reference consult the mapperly generator - https://github.com/riok/mapperly/tree/main/benchmarks/Riok.Mapperly.Benchmarks, https://github.com/riok/mapperly/tree/main/.github/workflows
+
+
 ## Progress tracker
 
 ### §1 — Packaging & discoverability
@@ -233,3 +239,6 @@ Other solutions could be using design patterns like the Strategy pattern (and ot
 
 ### §7 — Code readability & maintainability
 - [ ] 7.1 Explore partial classes / strategy pattern in Generator classes
+
+### §8 — CI/CD complete build
+- [ ] 8.1 Explore Riok.Mapperly benchmarks and workflows and apply the neccessary to our project (benchmarking updates, nuget publishing, testing, etc.)

@@ -56,6 +56,10 @@ public static class StringExtensions
     internal static string ToSnakeCase(this string value) =>
         SeparatedCase(value, '_');
 
+    /// <summary>Escapes backslashes and double-quotes so a string can be embedded in a C# string literal.</summary>
+    internal static string EscapeStringLiteral(this string value) =>
+        value.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
     private static string SeparatedCase(string value, char separator)
     {
         if (string.IsNullOrEmpty(value))

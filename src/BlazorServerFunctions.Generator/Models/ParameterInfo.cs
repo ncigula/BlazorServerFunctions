@@ -7,4 +7,5 @@ internal sealed record ParameterInfo
     public bool HasDefaultValue { get; set; }
     public string? DefaultValue { get; set; }
     public bool IsRouteParameter { get; set; }
+    public bool IsValueType { get; set; }
 }

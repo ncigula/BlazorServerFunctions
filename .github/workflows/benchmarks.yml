@@ -18,33 +18,29 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '10.x'
+          dotnet-version: "10.x"
 
       - name: Build benchmarks project
         run: dotnet build tests/BlazorServerFunctions.Benchmarks -c Release
 
       - name: Run benchmarks
-        run: |
-          echo "Running benchmarks..."
-          dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks --no-build -- \
-            --exporters json \
-            --artifacts ./benchmark-artifacts
+        run: dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks --no-build -- --exporters json --artifacts ./benchmark-artifacts
 
-      - name: Debug: Show working directory
+      - name: Debug: show working directory
         run: pwd
 
-      - name: Debug: List all files recursively
+      - name: Debug: list all files
         run: ls -R .
 
-      - name: Debug: Check benchmark-artifacts existence
+      - name: Debug: check benchmark-artifacts
         run: |
           if [ ! -d "./benchmark-artifacts" ]; then
-            echo "❌ benchmark-artifacts directory NOT FOUND"
+            echo "benchmark-artifacts directory NOT FOUND"
             exit 1
           fi
           echo "benchmark-artifacts directory exists"
 
-      - name: Debug: List benchmark-artifacts
+      - name: Debug: list benchmark-artifacts
         run: ls -R ./benchmark-artifacts
 
       - name: Store FullGenerationBenchmarks results
@@ -55,7 +51,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
           comment-on-alert: true
-          alert-threshold: '150%'
+          alert-threshold: "150%"
           fail-on-alert: true
 
       - name: Store IncrementalGenerationBenchmarks results
@@ -66,7 +62,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
           comment-on-alert: true
-          alert-threshold: '150%'
+          alert-threshold: "150%"
           fail-on-alert: true
 
       - name: Upload benchmark artifacts

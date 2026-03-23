@@ -26,8 +26,9 @@ jobs:
       - name: Run benchmarks
         run: |
           echo "Running benchmarks..."
-          dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks --no-build \
-            -- --exporters json --artifacts ./benchmark-artifacts
+          dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks --no-build -- \
+            --exporters json \
+            --artifacts ./benchmark-artifacts
 
       - name: Debug: Show working directory
         run: pwd

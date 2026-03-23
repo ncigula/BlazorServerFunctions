@@ -46,6 +46,7 @@ internal static class ClientRegistrationGenerator
         {
             sb.AppendLine("using Grpc.Net.Client;");
             sb.AppendLine("using Grpc.Net.Client.Web;");
+            sb.AppendLine("using System.Net.Http;");
         }
         sb.AppendLine("using Microsoft.Extensions.DependencyInjection;");
         if (hasGrpc)
@@ -72,7 +73,15 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine("    public static IServiceCollection AddServerFunctionClients(");
         sb.AppendLine("        this IServiceCollection services,");
         sb.AppendLine("        Uri? baseAddress = null,");
-        sb.AppendLine("        Action<IHttpClientBuilder>? configureClient = null)");
+        if (grpcInterfaces.Count > 0)
+        {
+            sb.AppendLine("        Action<IHttpClientBuilder>? configureClient = null,");
+            sb.AppendLine("        HttpMessageHandler? innerGrpcHttpHandler = null)");
+        }
+        else
+        {
+            sb.AppendLine("        Action<IHttpClientBuilder>? configureClient = null)");
+        }
         sb.AppendLine("    {");
 
         foreach (var restInterface in restInterfaces)
@@ -108,7 +117,7 @@ internal static class ClientRegistrationGenerator
         sb.AppendLine("        services.TryAddSingleton(sp => GrpcChannel.ForAddress(");
         sb.AppendLine("            baseAddress ?? throw new InvalidOperationException(");
         sb.AppendLine("                \"Provide baseAddress to AddServerFunctionClients() when gRPC services are registered.\"),");
-        sb.AppendLine("            new GrpcChannelOptions { HttpHandler = new GrpcWebHandler(new HttpClientHandler()) }));");
+        sb.AppendLine("            new GrpcChannelOptions { HttpHandler = new GrpcWebHandler(innerGrpcHttpHandler ?? new HttpClientHandler()) }));");
         sb.AppendLine();
         sb.AppendLine("        // gRPC client registrations");
         foreach (var ifaceName in grpcInterfaces.Select(i => i.Name))

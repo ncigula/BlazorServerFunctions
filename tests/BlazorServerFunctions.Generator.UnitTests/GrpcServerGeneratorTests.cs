@@ -260,6 +260,107 @@ public class GrpcServerGeneratorTests
         return result.VerifyNoDiagnostics();
     }
 
+    // ─── Auth tests (§6.5) ────────────────────────────────────────────────────
+
+    [Fact]
+    public Task Generate_MethodWithPolicy_AddsAuthorizeAttribute()
+    {
+        var source = """
+            using System.Threading.Tasks;
+            using BlazorServerFunctions.Abstractions;
+
+            namespace MyApp.Services;
+
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
+            public interface ISecretService
+            {
+                [ServerFunction(Policy = "AdminOnly")]
+                Task<string> GetSecretAsync();
+            }
+            """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_MethodWithRoles_AddsAuthorizeAttribute()
+    {
+        var source = """
+            using System.Threading.Tasks;
+            using BlazorServerFunctions.Abstractions;
+
+            namespace MyApp.Services;
+
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
+            public interface ISecretService
+            {
+                [ServerFunction(Roles = "Admin,Manager")]
+                Task<string> GetSecretAsync();
+            }
+            """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_MethodRequireAuth_AddsAuthorizeAttribute()
+    {
+        var source = """
+            using System.Threading.Tasks;
+            using BlazorServerFunctions.Abstractions;
+
+            namespace MyApp.Services;
+
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
+            public interface ISecretService
+            {
+                [ServerFunction(RequireAuthorization = true)]
+                Task<string> GetSecretAsync();
+            }
+            """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_InterfaceLevelRequireAuth_AddsClassAuthorizeAndRequireAuthorization()
+    {
+        var source = """
+            using System.Threading.Tasks;
+            using BlazorServerFunctions.Abstractions;
+
+            namespace MyApp.Services;
+
+            [ServerFunctionCollection(ApiType = ApiType.GRPC, RequireAuthorization = true)]
+            public interface ISecretService
+            {
+                [ServerFunction]
+                Task<string> GetSecretAsync();
+
+                [ServerFunction]
+                Task<string> GetOtherSecretAsync();
+            }
+            """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
     // ─── Diagnostic tests ─────────────────────────────────────────────────────
 
     [Fact]

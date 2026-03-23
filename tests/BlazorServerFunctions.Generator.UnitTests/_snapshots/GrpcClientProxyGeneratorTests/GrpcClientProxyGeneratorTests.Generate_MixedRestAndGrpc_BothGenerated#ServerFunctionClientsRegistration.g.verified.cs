@@ -5,6 +5,7 @@
 using System;
 using Grpc.Net.Client;
 using Grpc.Net.Client.Web;
+using System.Net.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using MyApp.Services;
@@ -16,7 +17,8 @@ public static class ServerFunctionClientsRegistration
     public static IServiceCollection AddServerFunctionClients(
         this IServiceCollection services,
         Uri? baseAddress = null,
-        Action<IHttpClientBuilder>? configureClient = null)
+        Action<IHttpClientBuilder>? configureClient = null,
+        HttpMessageHandler? innerGrpcHttpHandler = null)
     {
         Register(services.AddHttpClient<IRestService, RestServiceClient>()
             .ConfigureHttpClient(c => { if (baseAddress != null) c.BaseAddress = baseAddress; }));
@@ -25,7 +27,7 @@ public static class ServerFunctionClientsRegistration
         services.TryAddSingleton(sp => GrpcChannel.ForAddress(
             baseAddress ?? throw new InvalidOperationException(
                 "Provide baseAddress to AddServerFunctionClients() when gRPC services are registered."),
-            new GrpcChannelOptions { HttpHandler = new GrpcWebHandler(new HttpClientHandler()) }));
+            new GrpcChannelOptions { HttpHandler = new GrpcWebHandler(innerGrpcHttpHandler ?? new HttpClientHandler()) }));
 
         // gRPC client registrations
         services.AddTransient<IGrpcService, GrpcServiceGrpcClient>();

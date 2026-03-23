@@ -33,11 +33,27 @@
     </ul>
 }
 
+<h2>Auth-Protected Method (AdminOnly)</h2>
+<p>Calls <code>GetSecretAsync()</code>, which requires the <code>AdminOnly</code> policy. Log in as Admin via the <a href="/demos/admin/wasm">Admin demo page</a> first.</p>
+<div class="mb-3">
+    <button class="btn btn-danger mt-2" @onclick="GetSecret" disabled="@isBusy">Get Secret</button>
+</div>
+@if (secretResult is not null)
+{
+    <div class="alert alert-success">@secretResult</div>
+}
+@if (secretError is not null)
+{
+    <div class="alert alert-danger">@secretError</div>
+}
+
 @code {
     private string echoMessage = "Hello from gRPC!";
     private string? echoResult;
     private int countFrom = 5;
     private readonly List<string> countdownItems = [];
+    private string? secretResult;
+    private string? secretError;
     private bool isBusy;
 
     private async Task SendEcho()
@@ -65,6 +81,25 @@
                 countdownItems.Add(item);
                 StateHasChanged();
             }
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private async Task GetSecret()
+    {
+        isBusy = true;
+        secretResult = null;
+        secretError = null;
+        try
+        {
+            secretResult = await GrpcService.GetSecretAsync();
+        }
+        catch (Exception ex)
+        {
+            secretError = $"Error: {ex.Message}";
         }
         finally
         {

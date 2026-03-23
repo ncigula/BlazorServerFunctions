@@ -103,6 +103,8 @@ internal static class GrpcServerGenerator
         var contractInterface = "I" + serviceName + "GrpcContract";
         // The service class implements the contract interface (which carries [ServiceContract]).
         // This ensures protobuf-net.Grpc uses the same service name on client and server.
+        if (interfaceInfo.RequireAuthorization)
+            sb.AppendLine("[global::Microsoft.AspNetCore.Authorization.Authorize]");
         sb.Append("public sealed class ").Append(serviceClassName)
             .Append(" : ").AppendLine(contractInterface);
         sb.AppendLine("{");
@@ -114,7 +116,7 @@ internal static class GrpcServerGenerator
 
         foreach (var method in interfaceInfo.Methods)
         {
-            GenerateMethod(sb, serviceName, method);
+            GenerateMethod(sb, serviceName, method, interfaceInfo.RequireAuthorization);
         }
 
         sb.AppendLine("}");
@@ -152,10 +154,23 @@ internal static class GrpcServerGenerator
         sb.AppendLine("}");
     }
 
-    private static void GenerateMethod(StringBuilder sb, string serviceName, MethodInfo method)
+    private static void GenerateMethod(
+        StringBuilder sb, string serviceName, MethodInfo method, bool interfaceRequiresAuth = false)
     {
         var hasParams = method.Parameters.Count > 0;
         var requestTypeName = serviceName + method.Name + "GrpcRequest";
+
+        // ── Authorization attributes ─────────────────────────────────────────
+        if (method.Policy != null)
+            sb.Append("    [global::Microsoft.AspNetCore.Authorization.Authorize(Policy = \"")
+                .Append(EscapeStringLiteral(method.Policy))
+                .AppendLine("\")]");
+        if (method.Roles != null)
+            sb.Append("    [global::Microsoft.AspNetCore.Authorization.Authorize(Roles = \"")
+                .Append(EscapeStringLiteral(method.Roles))
+                .AppendLine("\")]");
+        if (method.RequireAuthorization && !interfaceRequiresAuth && method.Policy == null && method.Roles == null)
+            sb.AppendLine("    [global::Microsoft.AspNetCore.Authorization.Authorize]");
 
         // ── Build the parameter signature ────────────────────────────────────
         string paramSignature;
@@ -190,6 +205,9 @@ internal static class GrpcServerGenerator
             .AppendLine(");");
         sb.AppendLine();
     }
+
+    private static string EscapeStringLiteral(string value) =>
+        value.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
     /// <summary>
     /// Returns <c>true</c> when a property of the given type requires <c>= default!</c>

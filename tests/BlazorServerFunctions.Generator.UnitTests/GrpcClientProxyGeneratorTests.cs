@@ -257,4 +257,30 @@ public class GrpcClientProxyGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ─── Auth / HttpMessageHandler tests (§6.5) ───────────────────────────────
+
+    [Fact]
+    public Task Generate_GrpcInterface_RegistrationIncludesHttpHandlerParameter()
+    {
+        var source = """
+            using System.Threading.Tasks;
+            using BlazorServerFunctions.Abstractions;
+
+            namespace MyApp.Services;
+
+            [ServerFunctionCollection(ApiType = ApiType.GRPC)]
+            public interface ISecretService
+            {
+                [ServerFunction(Policy = "AdminOnly")]
+                Task<string> GetSecretAsync();
+            }
+            """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

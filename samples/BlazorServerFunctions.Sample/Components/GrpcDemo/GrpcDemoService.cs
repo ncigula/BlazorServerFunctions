@@ -18,4 +18,7 @@ internal sealed class GrpcDemoService : IGrpcDemoService
             await Task.Delay(200).ConfigureAwait(false);
         }
     }
+
+    public Task<string> GetSecretAsync() =>
+        Task.FromResult("The secret is: gRPC auth works!");
 }

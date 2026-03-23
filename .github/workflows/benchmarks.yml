@@ -6,7 +6,6 @@ on:
   workflow_dispatch:
 
 permissions:
-  # Required for github-action-benchmark to push results to gh-pages
   contents: write
 
 jobs:
@@ -30,11 +29,14 @@ jobs:
           dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks --no-build
           -- --exporters json --artifacts ./benchmark-artifacts
 
+      - name: List benchmark artifacts (debug)
+        run: ls -R ./benchmark-artifacts
+
       - name: Store FullGenerationBenchmarks results
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: benchmarkdotnet
-          output-file-path: ./benchmark-artifacts/results/BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks-report.json
+          output-file-path: ./benchmark-artifacts/FullGenerationBenchmarks/FullGenerationBenchmarks-report.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
           comment-on-alert: true
@@ -45,7 +47,7 @@ jobs:
         uses: benchmark-action/github-action-benchmark@v1
         with:
           tool: benchmarkdotnet
-          output-file-path: ./benchmark-artifacts/results/BlazorServerFunctions.Benchmarks.IncrementalGenerationBenchmarks-report.json
+          output-file-path: ./benchmark-artifacts/IncrementalGenerationBenchmarks/IncrementalGenerationBenchmarks-report.json
           github-token: ${{ secrets.GITHUB_TOKEN }}
           auto-push: true
           comment-on-alert: true
@@ -57,4 +59,4 @@ jobs:
         if: always()
         with:
           name: benchmark-results
-          path: benchmark-artifacts/results/
+          path: benchmark-artifacts/

@@ -16,6 +16,7 @@ namespace BlazorServerFunctions.Benchmarks;
 /// </para>
 /// </summary>
 [MemoryDiagnoser]
+[JsonExporter]
 public class IncrementalGenerationBenchmarks
 {
     private CSharpCompilation _editedCompilation = null!;

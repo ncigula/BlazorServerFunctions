@@ -11,6 +11,7 @@ namespace BlazorServerFunctions.Benchmarks;
 /// This shows whether generation time scales linearly with the number of interfaces.
 /// </summary>
 [MemoryDiagnoser]
+[JsonExporter]
 public class FullGenerationBenchmarks
 {
     /// <summary>

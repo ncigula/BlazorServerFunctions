@@ -1,5 +1,5 @@
 @page "/demos/crud/server"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 @inject ICrudService CrudService
 

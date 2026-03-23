@@ -1,5 +1,5 @@
 @page "/demos/echo/server"
-@rendermode InteractiveServer
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
 
 @inject IEchoService EchoService
 

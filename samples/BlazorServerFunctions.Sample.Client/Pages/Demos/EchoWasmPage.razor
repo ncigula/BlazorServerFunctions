@@ -1,5 +1,5 @@
 @page "/demos/echo/wasm"
-@rendermode InteractiveWebAssembly
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 
 @inject IEchoService EchoService
 

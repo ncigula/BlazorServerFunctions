@@ -1,5 +1,5 @@
 @page "/demos/weather/auto"
-@rendermode InteractiveAuto
+@rendermode @(new InteractiveAutoRenderMode(prerender: false))
 
 @inject IWeatherService WeatherService
 

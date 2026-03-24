@@ -2,8 +2,24 @@ name: CI
 
 on:
   push:
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '*.slnx'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
   pull_request:
     branches: [ master ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - '*.slnx'
+      - 'Directory.Build.props'
+      - 'Directory.Packages.props'
+
+env:
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_NOLOGO: true
 
 jobs:
   test:

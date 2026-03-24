@@ -10,7 +10,7 @@
 
     <PropertyGroup>
         <PackageId>BlazorServerFunctions</PackageId>
-        <PackageVersion>0.2.0</PackageVersion>
+        <PackageVersion>0.10.0</PackageVersion>
         <PackageDescription>Roslyn source generator that turns annotated C# interfaces into HTTP client proxies and ASP.NET Core minimal API endpoints — zero boilerplate for Blazor Server, WASM, and Auto.</PackageDescription>
         <PackageReleaseNotes>See CHANGELOG.md at https://github.com/ncigula/BlazorServerFunctions/blob/master/CHANGELOG.md</PackageReleaseNotes>
         <PackageTags>blazor;source-generator;roslyn;aspnetcore;minimal-api;http-client;code-generation</PackageTags>

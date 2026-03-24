@@ -7,7 +7,7 @@ generator execution time and memory allocations using [BenchmarkDotNet](https://
 
 | Benchmark | Description |
 |---|---|
-| `FullGenerationBenchmarks` | Cold-start pipeline time for 1 / 5 / 20 interfaces. Shows how generation time scales with interface count. |
+| `FullGenerationBenchmarks` | Cold-start pipeline time for 1 / 5 / 20 / 50 / 100 / 200 interfaces. Shows how generation time scales with interface count. |
 | `IncrementalGenerationBenchmarks` | Re-run time after an unrelated edit. Should be near-zero — proves the generator's incremental caching is working. |
 
 ## Running Locally
@@ -16,16 +16,16 @@ Benchmarks **must** be run in Release mode — Debug builds are not representati
 
 ```bash
 # Full run — takes several minutes, produces JSON/HTML/CSV artifacts
-dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks \
-  -- --exporters json --artifacts ./benchmark-artifacts
+dotnet run --configuration Release --project tests/BlazorServerFunctions.Benchmarks \
+  --filter '*' --exporters json --artifacts ./benchmark-artifacts
 
 # Quick smoke test — fast iterations, not statistically valid but useful for sanity checks
-dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks \
-  -- --job short --filter '*'
+dotnet run --configuration Release --project tests/BlazorServerFunctions.Benchmarks \
+  --filter '*' --job short
 
 # Run a specific benchmark class
-dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks \
-  -- --filter '*FullGeneration*'
+dotnet run --configuration Release --project tests/BlazorServerFunctions.Benchmarks \
+  --filter '*FullGeneration*' --exporters json --artifacts ./benchmark-artifacts
 ```
 
 Artifacts land in `./benchmark-artifacts/results/` (or `BenchmarkDotNet.Artifacts/results/` if
@@ -36,10 +36,13 @@ Artifacts land in `./benchmark-artifacts/results/` (or `BenchmarkDotNet.Artifact
 ```
 | Method         | InterfaceCount | Mean     | Allocated |
 |----------------|---------------|----------|-----------|
-| FullGeneration | 1             |  12.3 ms |   2.1 MB  |
-| FullGeneration | 5             |  48.7 ms |   8.6 MB  |
-| FullGeneration | 20            | 196.2 ms |  34.4 MB  |
-| IncrementalRun | ?             |   0.9 ms | 120.0 KB  |  ← near-zero = caching works
+| FullGeneration | 1             |  ~20 ms  |           |
+| FullGeneration | 5             |  ~22 ms  |           |
+| FullGeneration | 20            |  ~26 ms  |           |
+| FullGeneration | 50            |  ~30 ms  |           |
+| FullGeneration | 100           |  ~35 ms  |           |
+| FullGeneration | 200           |  ~40 ms  |           |
+| IncrementalRun | -             | ~207 µs  |           |  ← near-zero = caching works
 ```
 
 - **Mean** — average wall-clock time per call after JIT warmup
@@ -53,8 +56,8 @@ After adding a feature or making a performance-sensitive change, update the comm
 
 ```bash
 # Run benchmarks with JSON export
-dotnet run -c Release --project tests/BlazorServerFunctions.Benchmarks \
-  -- --exporters json --artifacts ./benchmark-artifacts
+dotnet run --configuration Release --project tests/BlazorServerFunctions.Benchmarks \
+  --filter '*' --exporters json --artifacts ./benchmark-artifacts
 
 # Copy the JSON files to the baselines folder
 cp benchmark-artifacts/results/*.json benchmarks/baselines/
@@ -73,7 +76,6 @@ The `.github/workflows/benchmarks.yml` workflow runs on every push to `master` a
 results via [`github-action-benchmark`](https://github.com/benchmark-action/github-action-benchmark).
 
 Historical trend charts are published to:
-`https://<owner>.github.io/<repo>/dev/bench/`
+**https://ncigula.github.io/BlazorServerFunctions/dev/bench/**
 
-To enable the charts, go to **Settings → Pages** in your GitHub repository and set the source
-to the `gh-pages` branch.
+The `gh-pages` branch is fully managed by the CI workflow — do not commit to it manually.

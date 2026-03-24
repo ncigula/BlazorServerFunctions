@@ -2,6 +2,7 @@
 
 [![NuGet](https://img.shields.io/nuget/v/BlazorServerFunctions.svg)](https://www.nuget.org/packages/BlazorServerFunctions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Benchmarks](https://img.shields.io/badge/benchmarks-live-blue)](https://ncigula.github.io/BlazorServerFunctions/dev/bench/)
 
 **Zero-boilerplate HTTP client proxies and ASP.NET Core minimal API endpoints — generated at compile time from a single C# interface.**
 

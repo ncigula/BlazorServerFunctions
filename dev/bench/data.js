@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774351477651,
+  "lastUpdate": 1774352578960,
   "repoUrl": "https://github.com/ncigula/BlazorServerFunctions",
   "entries": {
     "Benchmark": [
@@ -86,6 +86,36 @@ window.BENCHMARK_DATA = {
             "value": 40093859.884615384,
             "unit": "ns",
             "range": "± 294757.80315301195"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "committer": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "distinct": true,
+          "id": "ecdfa57f9d0e7bd9c5fff6bfdd0cc2c9c5588618",
+          "message": "bump: update package version to 0.10.0",
+          "timestamp": "2026-03-24T12:41:41+01:00",
+          "tree_id": "99a862b9c5b6261b73f8d62df55c3424ec7b7252",
+          "url": "https://github.com/ncigula/BlazorServerFunctions/commit/ecdfa57f9d0e7bd9c5fff6bfdd0cc2c9c5588618"
+        },
+        "date": 1774352578348,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "BlazorServerFunctions.Benchmarks.IncrementalGenerationBenchmarks.IncrementalRun",
+            "value": 199478.72166090744,
+            "unit": "ns",
+            "range": "± 1103.6583065086422"
           }
         ]
       }

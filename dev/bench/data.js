@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774352658861,
+  "lastUpdate": 1774445292566,
   "repoUrl": "https://github.com/ncigula/BlazorServerFunctions",
   "entries": {
     "Benchmark": [
@@ -176,6 +176,36 @@ window.BENCHMARK_DATA = {
             "value": 40304850.240963854,
             "unit": "ns",
             "range": "± 2092211.6647159525"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "committer": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "distinct": true,
+          "id": "9a5f900790b18a6e6454198d9ffa207a0ae31cc4",
+          "message": "chore: remove stale tests/tests.md planning document\n\nPre-implementation planning doc superseded by the actual test suite,\nCLAUDE.md testing patterns section, and per-release CHANGELOG entries.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-03-25T11:49:06+01:00",
+          "tree_id": "9be74f6a2c81c2edb95a43f5386dc5f539838c33",
+          "url": "https://github.com/ncigula/BlazorServerFunctions/commit/9a5f900790b18a6e6454198d9ffa207a0ae31cc4"
+        },
+        "date": 1774445291808,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "BlazorServerFunctions.Benchmarks.IncrementalGenerationBenchmarks.IncrementalRun",
+            "value": 215793.97745768228,
+            "unit": "ns",
+            "range": "± 265.94222478736026"
           }
         ]
       }

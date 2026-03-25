@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774445292566,
+  "lastUpdate": 1774445362839,
   "repoUrl": "https://github.com/ncigula/BlazorServerFunctions",
   "entries": {
     "Benchmark": [
@@ -206,6 +206,66 @@ window.BENCHMARK_DATA = {
             "value": 215793.97745768228,
             "unit": "ns",
             "range": "± 265.94222478736026"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "committer": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "distinct": true,
+          "id": "9a5f900790b18a6e6454198d9ffa207a0ae31cc4",
+          "message": "chore: remove stale tests/tests.md planning document\n\nPre-implementation planning doc superseded by the actual test suite,\nCLAUDE.md testing patterns section, and per-release CHANGELOG entries.\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-03-25T11:49:06+01:00",
+          "tree_id": "9be74f6a2c81c2edb95a43f5386dc5f539838c33",
+          "url": "https://github.com/ncigula/BlazorServerFunctions/commit/9a5f900790b18a6e6454198d9ffa207a0ae31cc4"
+        },
+        "date": 1774445361755,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 1)",
+            "value": 23447501.86923077,
+            "unit": "ns",
+            "range": "± 385242.8218365366"
+          },
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 5)",
+            "value": 20953395.21875,
+            "unit": "ns",
+            "range": "± 251286.58714166886"
+          },
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 20)",
+            "value": 25211506.285714284,
+            "unit": "ns",
+            "range": "± 356902.3638655937"
+          },
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 50)",
+            "value": 26173022.30952381,
+            "unit": "ns",
+            "range": "± 399383.959795759"
+          },
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 100)",
+            "value": 30683221.3125,
+            "unit": "ns",
+            "range": "± 1004282.3925660576"
+          },
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 200)",
+            "value": 39773636.26229508,
+            "unit": "ns",
+            "range": "± 1705664.9569743313"
           }
         ]
       }

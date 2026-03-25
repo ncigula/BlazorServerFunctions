@@ -193,7 +193,7 @@ Large generator classes (`RestClientProxyGenerator`, `RestServerEndpointGenerato
 
 ## Progress tracker
 
-- [ ] §1 — File upload (`Stream` / `IFormFile`)
+- [x] §1 — File upload (`Stream` / `IFormFile`)
 - [ ] §2 — Result\<T\> converter (`IServerFunctionResultConverter<T>`)
 - [ ] §3 — OpenAPI customization per method (`Summary`, `Description`, `Tags`, `ProducesStatusCodes`, `ExcludeFromOpenApi`)
 - [ ] §4 — `TypedResults` on server endpoints

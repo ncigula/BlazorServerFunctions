@@ -29,3 +29,6 @@ BSF022 | Usage | Error | DiagnosticDescriptors
 BSF023 | Usage | Error | DiagnosticDescriptors
 BSF024 | Usage | Warning | DiagnosticDescriptors
 BSF025 | Usage | Warning | DiagnosticDescriptors
+BSF026 | Usage | Error | DiagnosticDescriptors
+BSF027 | Usage | Error | DiagnosticDescriptors
+BSF028 | Usage | Error | DiagnosticDescriptors

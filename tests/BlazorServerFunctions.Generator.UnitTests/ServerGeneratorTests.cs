@@ -2229,4 +2229,107 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ── File upload ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public Task Generate_StreamParameter_EmitsIFormFileWithOpenReadStream()
+    {
+        var source = """
+                     using System.IO;
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IFileService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<long> UploadAsync(Stream file);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_FormFileParameter_EmitsDirectIFormFileBinding()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+                     using Microsoft.AspNetCore.Http;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IFileService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<long> UploadAsync(IFormFile file);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_MixedFileAndRegularParameters_EmitsFromFormOnRegularParams()
+    {
+        var source = """
+                     using System.IO;
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IFileService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<long> UploadAsync(Stream file, string fileName, int categoryId);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_FileUploadMethod_EmitsDisableAntiforgery()
+    {
+        var source = """
+                     using System.IO;
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+                     using Microsoft.AspNetCore.Http;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IFileService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<long> UploadAsync(IFormFileCollection files);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

@@ -108,15 +108,33 @@ internal sealed class RestClientProxyGenerator
 
         var nonRouteParams = methodInfo.Parameters.Where(static p => !p.IsRouteParameter).ToList();
         var hasNonRouteParams = nonRouteParams.Count > 0;
+        var fileParams = nonRouteParams.Where(static p => p.FileKind != FileKind.None).ToList();
+        var hasFileParams = fileParams.Count > 0;
 
-        if (hasNonRouteParams && methodInfo.HttpMethod is HttpMethod.Post or HttpMethod.Put or HttpMethod.Patch)
+        if (hasFileParams)
+        {
+            var regularParams = nonRouteParams.Where(static p => p.FileKind == FileKind.None).ToList();
+            BuildMultipartContent(fileParams, regularParams);
+        }
+        else if (hasNonRouteParams && methodInfo.HttpMethod is HttpMethod.Post or HttpMethod.Put or HttpMethod.Patch)
+        {
             BuildRequestObject(parameters: nonRouteParams);
+        }
 
         GenerateHttpRequest(
             method: methodInfo,
             nonRouteParams: nonRouteParams,
-            routeNaming: routeNaming);
+            routeNaming: routeNaming,
+            hasFileParams: hasFileParams);
 
+        GenerateResponseHandling(methodInfo);
+
+        _stringBuilder.AppendLine("    }");
+        _stringBuilder.AppendLine();
+    }
+
+    private void GenerateResponseHandling(MethodInfo methodInfo)
+    {
         _stringBuilder.AppendLine();
         _stringBuilder.AppendLine("        if (!response.IsSuccessStatusCode)");
         _stringBuilder.AppendLine("        {");
@@ -147,8 +165,35 @@ internal sealed class RestClientProxyGenerator
                 .AppendLine();
             _stringBuilder.AppendLine("            ?? throw new InvalidOperationException(\"Response deserialization returned null\");");
         }
+    }
 
-        _stringBuilder.AppendLine("    }");
+    private void BuildMultipartContent(List<ParameterInfo> fileParams, List<ParameterInfo> regularParams)
+    {
+        _stringBuilder.AppendLine("        var form = new MultipartFormDataContent();");
+
+        foreach (var p in fileParams)
+        {
+            switch (p.FileKind)
+            {
+                case FileKind.Stream:
+                    _stringBuilder.AppendLine($"        form.Add(new StreamContent({p.Name}), \"{p.Name}\", \"{p.Name}\");");
+                    break;
+                case FileKind.FormFile:
+                    _stringBuilder.AppendLine($"        form.Add(new StreamContent({p.Name}.OpenReadStream()), \"{p.Name}\", {p.Name}.FileName);");
+                    break;
+                case FileKind.FormFileCollection:
+                    _stringBuilder.AppendLine($"        foreach (var __file in {p.Name})");
+                    _stringBuilder.AppendLine($"            form.Add(new StreamContent(__file.OpenReadStream()), \"{p.Name}\", __file.FileName);");
+                    break;
+            }
+        }
+
+        foreach (var p in regularParams)
+        {
+            var nullableOp = p.Type.EndsWith("?", StringComparison.Ordinal) ? "?" : string.Empty;
+            _stringBuilder.AppendLine($"        form.Add(new StringContent({p.Name}{nullableOp}.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? string.Empty), \"{p.Name}\");");
+        }
+
         _stringBuilder.AppendLine();
     }
 
@@ -220,7 +265,7 @@ internal sealed class RestClientProxyGenerator
         _stringBuilder.AppendLine(")");
     }
 
-    private void GenerateHttpRequest(MethodInfo method, List<ParameterInfo> nonRouteParams, RouteNaming routeNaming)
+    private void GenerateHttpRequest(MethodInfo method, List<ParameterInfo> nonRouteParams, RouteNaming routeNaming, bool hasFileParams = false)
     {
         // When the user specified an explicit Route, use it verbatim (stripping constraints for C# interpolation).
         // ApplyRouteNaming is only applied to auto-derived method names.
@@ -233,7 +278,10 @@ internal sealed class RestClientProxyGenerator
         switch (method.HttpMethod)
         {
             case HttpMethod.Post:
-                GeneratePostRequest(urlSegment, hasNonRouteParams, method.AsyncType, method.HasCancellationToken);
+                if (hasFileParams)
+                    GenerateMultipartPostRequest(urlSegment, method.AsyncType, method.HasCancellationToken);
+                else
+                    GeneratePostRequest(urlSegment, hasNonRouteParams, method.AsyncType, method.HasCancellationToken);
                 break;
 
             case HttpMethod.Get:
@@ -242,7 +290,10 @@ internal sealed class RestClientProxyGenerator
                 break;
 
             default:
-                GenerateOtherRequest(urlSegment, method.HttpMethod, hasNonRouteParams, method.AsyncType, method.HasCancellationToken);
+                if (hasFileParams)
+                    GenerateMultipartOtherRequest(urlSegment, method.HttpMethod, method.AsyncType, method.HasCancellationToken);
+                else
+                    GenerateOtherRequest(urlSegment, method.HttpMethod, hasNonRouteParams, method.AsyncType, method.HasCancellationToken);
                 break;
         }
     }
@@ -280,6 +331,42 @@ internal sealed class RestClientProxyGenerator
                 _stringBuilder.AppendLine($"            null){resultSuffix};");
             }
         }
+    }
+
+    private void GenerateMultipartPostRequest(string urlSegment, AsyncType asyncType, bool hasCancellationToken)
+    {
+        var awaitKeyword = GetAwaitKeyword(asyncType);
+        var resultSuffix = GetResultSuffix(asyncType);
+
+        _stringBuilder.AppendLine($"        var response = {awaitKeyword}_httpClient.PostAsync(");
+        _stringBuilder.Append("            $\"{BaseRoute}/").Append(urlSegment).AppendLine("\",");
+        if (hasCancellationToken)
+        {
+            _stringBuilder.AppendLine("            form,");
+            _stringBuilder.AppendLine($"            cancellationToken){resultSuffix};");
+        }
+        else
+        {
+            _stringBuilder.AppendLine($"            form){resultSuffix};");
+        }
+    }
+
+    private void GenerateMultipartOtherRequest(string urlSegment, HttpMethod httpMethod, AsyncType asyncType, bool hasCancellationToken)
+    {
+        var awaitKeyword = GetAwaitKeyword(asyncType);
+        var resultSuffix = GetResultSuffix(asyncType);
+
+        _stringBuilder.AppendLine("        var requestMessage = new HttpRequestMessage");
+        _stringBuilder.AppendLine("        {");
+        _stringBuilder.AppendLine($"            Method = HttpMethod.{httpMethod},");
+        _stringBuilder.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{urlSegment}\", UriKind.Relative),");
+        _stringBuilder.AppendLine("            Content = form");
+        _stringBuilder.AppendLine("        };");
+
+        if (hasCancellationToken)
+            _stringBuilder.AppendLine($"        var response = {awaitKeyword}_httpClient.SendAsync(requestMessage, cancellationToken){resultSuffix};");
+        else
+            _stringBuilder.AppendLine($"        var response = {awaitKeyword}_httpClient.SendAsync(requestMessage){resultSuffix};");
     }
 
     private void GenerateQueryStringRequest(

@@ -57,6 +57,8 @@ public static GeneratorDriverRunResult RunGeneratorAsClient(
             case ProjectType.Server:
                 var routing = typeof(Microsoft.AspNetCore.Routing.IEndpointRouteBuilder).Assembly;
                 references.Add(MetadataReference.CreateFromFile(routing.Location));
+                var httpAbstractions = typeof(Microsoft.AspNetCore.Http.IFormFile).Assembly;
+                references.Add(MetadataReference.CreateFromFile(httpAbstractions.Location));
                 break;
 
             case ProjectType.Client:

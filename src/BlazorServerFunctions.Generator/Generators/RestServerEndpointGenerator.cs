@@ -200,6 +200,13 @@ internal sealed class RestServerEndpointGenerator
         foreach (var filter in method.Filters)
             chain.Add($".AddEndpointFilter<{filter}>()");
 
+        // File upload endpoints must opt out of anti-forgery validation (which is enforced automatically
+        // when UseAntiforgery() middleware is active). Users who explicitly need anti-forgery on an upload
+        // endpoint can set RequireAntiForgery = true, which adds RequireAntiforgeryTokenAttribute instead.
+        bool hasFileParams = method.Parameters.Any(static p => p.FileKind != FileKind.None);
+        if (hasFileParams && !method.RequireAntiForgery)
+            chain.Add(".DisableAntiforgery()");
+
         for (int i = 0; i < chain.Count; i++)
         {
             _stringBuilder.Append("            ").Append(chain[i]);
@@ -223,9 +230,28 @@ internal sealed class RestServerEndpointGenerator
             _stringBuilder.Append(rp.Type).Append(' ').Append(rp.Name).Append(", ");
         }
 
-        // Non-route params are bundled into a DTO (if any exist)
-        if (nonRouteParams.Count > 0)
+        bool hasFileParams = nonRouteParams.Any(static p => p.FileKind != FileKind.None);
+
+        if (hasFileParams)
         {
+            // File upload methods: list all non-route params inline with per-param binding attributes.
+            // IFormFile / IFormFileCollection auto-bind from multipart form (no attribute needed).
+            // Regular params need [FromForm] to bind from form fields instead of query/body.
+            foreach (var p in nonRouteParams)
+            {
+                var (paramType, attribute) = p.FileKind switch
+                {
+                    FileKind.Stream => ("IFormFile", string.Empty),
+                    FileKind.FormFile => ("IFormFile", string.Empty),
+                    FileKind.FormFileCollection => ("IFormFileCollection", string.Empty),
+                    _ => (p.Type, "[FromForm] "),
+                };
+                _stringBuilder.Append(attribute).Append(paramType).Append(' ').Append(p.Name).Append(", ");
+            }
+        }
+        else if (nonRouteParams.Count > 0)
+        {
+            // Regular methods: bundle non-route params into a DTO
             var bindingAttribute = method.HttpMethod is HttpMethod.Get or HttpMethod.Delete
                 ? "[AsParameters]"
                 : "[FromBody]";
@@ -263,10 +289,23 @@ internal sealed class RestServerEndpointGenerator
 
         if (method.Parameters.Count > 0)
         {
-            var paramList = method.Parameters
-                .Select(p => p.IsRouteParameter
-                    ? p.Name
-                    : $"request.{p.Name.ToPascalCase()}");
+            bool hasFileParams = method.Parameters.Any(static p => p.FileKind != FileKind.None);
+
+            var paramList = method.Parameters.Select(p =>
+            {
+                if (p.IsRouteParameter)
+                    return p.Name;
+
+                if (!hasFileParams)
+                    return $"request.{p.Name.ToPascalCase()}";
+
+                // File upload method: params are bound inline, not via request DTO.
+                // Stream params are received as IFormFile on the server — extract via OpenReadStream().
+                return p.FileKind == FileKind.Stream
+                    ? $"{p.Name}.OpenReadStream()"
+                    : p.Name;
+            });
+
             _stringBuilder.Append(string.Join(", ", paramList));
 
             if (method.HasCancellationToken)
@@ -297,7 +336,9 @@ internal sealed class RestServerEndpointGenerator
         foreach (var method in _interfaceInfo.Methods)
         {
             var nonRouteParams = method.Parameters.Where(static p => !p.IsRouteParameter).ToList();
-            if (nonRouteParams.Count > 0)
+            // File upload methods use inline lambda parameters — no DTO record needed.
+            bool hasFileParams = nonRouteParams.Any(static p => p.FileKind != FileKind.None);
+            if (nonRouteParams.Count > 0 && !hasFileParams)
             {
                 GenerateRequestDto(method, nonRouteParams);
             }

@@ -1,0 +1,115 @@
+@page "/demos/fileupload/server"
+@rendermode @(new InteractiveServerRenderMode(prerender: false))
+
+@inject IFileUploadService FileUploadService
+
+<PageTitle>File Upload — Server</PageTitle>
+
+<div class="demo-header">
+    <span class="badge bg-primary">🖥 Interactive Server</span>
+    <span class="badge bg-secondary ms-2">IFileUploadService → FileUploadService (direct, no HTTP)</span>
+</div>
+
+<h2 class="mt-3">File Upload</h2>
+<p>
+    Calls made directly from server DI — no HTTP request is sent.
+    The file stream is read server-side and its byte count is returned.
+</p>
+
+<div class="mb-3">
+    <label class="form-label">Pick a file</label>
+    <InputFile class="form-control" OnChange="OnFileSelected" />
+</div>
+
+@if (_selectedFile is not null)
+{
+    <p class="text-muted">Selected: <strong>@_selectedFile.Name</strong> (@_selectedFile.Size.ToString("N0") bytes)</p>
+
+    <div class="d-flex gap-2 mb-3">
+        <button class="btn btn-outline-primary" @onclick="UploadAsync" disabled="@_uploading">
+            @(_uploading ? "Uploading…" : "Upload (UploadAsync)")
+        </button>
+        <button class="btn btn-outline-secondary" @onclick="UploadStreamOnlyAsync" disabled="@_uploading">
+            @(_uploading ? "Uploading…" : "Upload (UploadStreamOnlyAsync)")
+        </button>
+    </div>
+}
+
+@if (_result is not null)
+{
+    <div class="alert alert-success">
+        <strong>Server received:</strong> <code>@_result?.ToString("N0") bytes</code>
+    </div>
+    @if (_selectedFile is not null && _result == _selectedFile.Size)
+    {
+        <div class="alert alert-info">
+            ✅ Byte count matches — file was transferred without loss.
+        </div>
+    }
+}
+
+@if (_error is not null)
+{
+    <div class="alert alert-danger">
+        <strong>Error:</strong> @_error
+    </div>
+}
+
+@code {
+    // 50 MB cap — sufficient for a demo; S5693 suppressed in .csproj.
+    private const long MaxUploadBytes = 50 * 1024 * 1024;
+
+    private IBrowserFile? _selectedFile;
+    private long? _result;
+    private string? _error;
+    private bool _uploading;
+
+    private void OnFileSelected(InputFileChangeEventArgs e)
+    {
+        _selectedFile = e.File;
+        _result = null;
+        _error = null;
+    }
+
+    private async Task UploadAsync()
+    {
+        if (_selectedFile is null) return;
+        _uploading = true;
+        _result = null;
+        _error = null;
+        try
+        {
+            await using var stream = _selectedFile.OpenReadStream(maxAllowedSize: MaxUploadBytes);
+            _result = await FileUploadService.UploadAsync(stream, _selectedFile.Name);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+
+    private async Task UploadStreamOnlyAsync()
+    {
+        if (_selectedFile is null) return;
+        _uploading = true;
+        _result = null;
+        _error = null;
+        try
+        {
+            await using var stream = _selectedFile.OpenReadStream(maxAllowedSize: MaxUploadBytes);
+            _result = await FileUploadService.UploadStreamOnlyAsync(stream);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _uploading = false;
+        }
+    }
+}

@@ -76,50 +76,20 @@ GitHub Actions: `ci.yml` (build + test on push/PR), `benchmarks.yml` (matrix per
 
 ---
 
-### §1 — Missing registration analyzer  `BSF103`
-**Size:** 🟡 &nbsp; **Value:** 🔥 High (developer experience)
-
-When BSF interfaces exist in a project but the generated registration calls are absent from the application startup, the app silently has no routes or no registered clients. There is no compile-time signal today.
-
-**What to build:**
-- New `IIncrementalGenerator` (or additional pipeline step) that checks for the presence of `MapServerFunctionEndpoints()` and `AddServerFunctionClients()` calls in the compilation
-- BSF103 (warning): "`IUserService` has generated endpoints but `MapServerFunctionEndpoints()` was not found in the compilation. Endpoints will not be reachable."
-- BSF104 (warning): "`IUserService` has a generated client but `AddServerFunctionClients()` was not found. The client will not be injected."
-- Only emitted on Server/Client project types respectively (not Library)
-- Suppressed if the user calls the method anywhere in the compilation (not just `Program.cs`)
-
----
-
-### §2 — File upload  `[ServerFunction]` with `Stream` / `IFormFile`
+### §1 — File upload  `[ServerFunction]` with `Stream` / `IFormFile` ✅
 **Size:** 🟡 &nbsp; **Value:** 🔥 High
 
-`Stream` and `IFormFile` parameters are currently unsupported — BSF009-style error is emitted. File upload is a fundamental HTTP feature and a common gap complaint for proxy generators.
+`Stream`, `IFormFile`, and `IFormFileCollection` parameters are fully supported. Client proxies build `MultipartFormDataContent`; server endpoints bind via `IFormFile` / `[FromForm]` inline parameters. Diagnostics BSF026/027/028 guard invalid combinations.
 
-**What to build:**
-- **Client side:** Generate `MultipartFormDataContent`; add each file parameter as a `StreamContent` part; send via `PostAsync`
-- **Server side:** Emit `[FromForm]` on endpoint parameters of type `IFormFile` / `IFormFileCollection` / `Stream`; bind via `HttpContext.Request.Form`
-- **New diagnostics:**
-  - BSF026 (error): `IFormFile` / `Stream` parameter on a GET method — form data requires POST/PUT/PATCH
-  - BSF027 (error): `IFormFile` combined with `IAsyncEnumerable<T>` return — streaming response and multipart upload cannot be combined
-- **New snapshots** for all combinations: single file, multiple files, mixed file + regular parameters
+**Delivered:**
+- **Client side:** `MultipartFormDataContent` with `StreamContent` per file; regular params as `StringContent` form fields
+- **Server side:** Inline lambda parameters (`IFormFile`/`IFormFileCollection`/`[FromForm]`); no DTO record; `.DisableAntiforgery()` on file upload endpoints
+- **New diagnostics:** BSF026 (file param on GET/DELETE), BSF027 (file + streaming return), BSF028 (file on gRPC)
+- **Tests:** 8 unit snapshot tests, 4 integration diagnostic tests, 4 E2E round-trip tests
 
 ---
 
-### §3 — API versioning
-**Size:** 🟡 &nbsp; **Value:** 🔥 High
-
-No way to version interfaces today. Adding a `v2` requires a duplicate interface with a different `BaseRoute`. Should integrate cleanly with `Asp.Versioning`.
-
-**What to build:**
-- New `Version` property on `ServerFunctionConfiguration`: `public string? Version { get; init; } = null`
-- When set, prefixes the route group: `BaseRoute = "api/functions"` + `Version = "v2"` → route group prefix `/api/v2/functions`
-- **Optional integration with `Asp.Versioning`:** if `Asp.Versioning.Http` is referenced in the compilation, emit `.WithApiVersionSet(...)` and `.MapToApiVersion(...)` on the route group
-- No change to the interface or `[ServerFunction]` attribute — versioning is a collection-level concern
-- New diagnostic BSF028 (warning): version string contains path separators or invalid URL characters
-
----
-
-### §4 — Result\<T\> converter
+### §2 — Result\<T\> converter
 **Size:** 🟡 &nbsp; **Value:** 🔸 Medium
 
 Service methods returning `Result<T, TError>`, `OneOf<T1, T2>`, or custom discriminated unions cannot be unwrapped into `IResult` today. The endpoint just returns the raw service result as JSON.
@@ -135,7 +105,7 @@ Service methods returning `Result<T, TError>`, `OneOf<T1, T2>`, or custom discri
 
 ---
 
-### §5 — OpenAPI customization per method
+### §3 — OpenAPI customization per method
 **Size:** 🟡 &nbsp; **Value:** 🔸 Medium
 
 `.WithTags()`, `.Produces<T>()`, and `.ProducesProblem(500)` are always auto-generated but cannot be customised. No way to add a summary, description, extra response codes, or opt out of `.WithOpenApi()`.
@@ -152,7 +122,7 @@ Service methods returning `Result<T, TError>`, `OneOf<T1, T2>`, or custom discri
 
 ---
 
-### §6 — `TypedResults` on server endpoints
+### §4 — `TypedResults` on server endpoints
 **Size:** 🟡 &nbsp; **Value:** 🔸 Medium
 
 Server endpoints currently return `IResult`. ASP.NET Core 7+ recommends `TypedResults` (e.g. `TypedResults.Ok<T>()`) because it lets Swagger/OpenAPI infer response schemas without explicit `.Produces<T>()` declarations. This is a code-generation quality improvement with no user-visible API changes.
@@ -166,7 +136,7 @@ Server endpoints currently return `IResult`. ASP.NET Core 7+ recommends `TypedRe
 
 ---
 
-### §7 — Explicit parameter binding
+### §5 — Explicit parameter binding
 **Size:** 🟢 &nbsp; **Value:** 🔸 Medium
 
 Binding is currently fully inferred (route → `{param}` match, GET → query string, POST/PUT/PATCH → JSON body). No escape hatch for unusual cases like a header-sourced parameter or a POST method with a query string parameter.
@@ -182,7 +152,7 @@ Binding is currently fully inferred (route → `{param}` match, GET → query st
 
 ---
 
-### §8 — `[Obsolete]` propagation
+### §6 — `[Obsolete]` propagation
 **Size:** 🟢 &nbsp; **Value:** 🔹 Low–Medium
 
 If a service method is marked `[Obsolete]`, the generated client proxy method silently drops the annotation. Consumers of the generated client get no deprecation warning at the call site.
@@ -196,7 +166,7 @@ If a service method is marked `[Obsolete]`, the generated client proxy method si
 
 ---
 
-### §9 — gRPC HTTP/2 enforcement
+### §7 — gRPC HTTP/2 enforcement
 **Size:** 🟢 &nbsp; **Value:** 🔹 Low (safety/correctness)
 
 The generated `GrpcChannel` singleton does not enforce HTTP/2. In misconfigured environments (reverse proxy stripping HTTP/2, or HTTP/1.1 fallback enabled), gRPC calls fail at runtime with an opaque `RpcException`. The generator should make this a compile-time non-issue.
@@ -208,7 +178,7 @@ The generated `GrpcChannel` singleton does not enforce HTTP/2. In misconfigured 
 
 ---
 
-### §10 — Code readability & maintainability
+### §8 — Code readability & maintainability
 **Size:** 🔴 &nbsp; **Value:** 🔹 Internal (maintainability)
 
 Large generator classes (`RestClientProxyGenerator`, `RestServerEndpointGenerator`, gRPC equivalents) are 500–600 lines each. The REST and gRPC generators share significant logic that is currently duplicated.
@@ -223,13 +193,11 @@ Large generator classes (`RestClientProxyGenerator`, `RestServerEndpointGenerato
 
 ## Progress tracker
 
-- [ ] §1 — Missing registration analyzer (BSF103/BSF104)
-- [ ] §2 — File upload (`Stream` / `IFormFile`)
-- [ ] §3 — API versioning (`Version` in config)
-- [ ] §4 — Result\<T\> converter (`IServerFunctionResultConverter<T>`)
-- [ ] §5 — OpenAPI customization per method (`Summary`, `Description`, `Tags`, `ProducesStatusCodes`, `ExcludeFromOpenApi`)
-- [ ] §6 — `TypedResults` on server endpoints
-- [ ] §7 — Explicit parameter binding (`[ServerFunctionParameter(From = ...)]`)
-- [ ] §8 — `[Obsolete]` propagation to generated client + OpenAPI
-- [ ] §9 — gRPC HTTP/2 enforcement
-- [ ] §10 — Code readability & maintainability (partial classes, shared helpers)
+- [ ] §1 — File upload (`Stream` / `IFormFile`)
+- [ ] §2 — Result\<T\> converter (`IServerFunctionResultConverter<T>`)
+- [ ] §3 — OpenAPI customization per method (`Summary`, `Description`, `Tags`, `ProducesStatusCodes`, `ExcludeFromOpenApi`)
+- [ ] §4 — `TypedResults` on server endpoints
+- [ ] §5 — Explicit parameter binding (`[ServerFunctionParameter(From = ...)]`)
+- [ ] §6 — `[Obsolete]` propagation to generated client + OpenAPI
+- [ ] §7 — gRPC HTTP/2 enforcement
+- [ ] §8 — Code readability & maintainability (partial classes, shared helpers)

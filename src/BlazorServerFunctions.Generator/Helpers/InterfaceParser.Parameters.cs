@@ -19,9 +19,18 @@ internal sealed partial class InterfaceParser
                     ? Convert.ToString(parameter.ExplicitDefaultValue, System.Globalization.CultureInfo.InvariantCulture)
                     : null,
                 IsValueType = parameter.Type.IsValueType,
+                FileKind = DetectFileKind(parameter.Type.ToDisplayString()),
             })
             .ToList();
     }
+
+    private static FileKind DetectFileKind(string typeName) => typeName switch
+    {
+        "System.IO.Stream" => FileKind.Stream,
+        "Microsoft.AspNetCore.Http.IFormFile" => FileKind.FormFile,
+        "Microsoft.AspNetCore.Http.IFormFileCollection" => FileKind.FormFileCollection,
+        _ => FileKind.None,
+    };
 
     /// <summary>
     /// Validates route parameters in CustomRoute against method parameters.

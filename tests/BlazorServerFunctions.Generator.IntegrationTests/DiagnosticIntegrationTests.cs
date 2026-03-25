@@ -704,4 +704,111 @@ public class DiagnosticIntegrationTests
         // Warning doesn't block generation — files should still be created
         project.AssertHasClientProxyFiles("IUserService");
     }
+
+    // ── BSF026: File upload on GET/DELETE ─────────────────────────────────────
+
+    [Fact]
+    public void FileUpload_StreamOnGetMethod_EmitsBSF026()
+    {
+        var scenario = new ProjectBuilder()
+            .AddSharedProject("MyApp.Shared", """
+                using System.IO;
+                using System.Threading.Tasks;
+                using BlazorServerFunctions.Abstractions;
+
+                namespace MyApp.Shared;
+
+                [ServerFunctionCollection]
+                public interface IFileService
+                {
+                    [ServerFunction(HttpMethod = "GET")]
+                    Task<long> DownloadAsync(Stream file);
+                }
+                """)
+            .Build();
+
+        var project = scenario.GetProject("MyApp.Shared");
+        project.AssertHasDiagnostic("BSF026");
+    }
+
+    [Fact]
+    public void FileUpload_IFormFileOnDeleteMethod_EmitsBSF026()
+    {
+        var scenario = new ProjectBuilder()
+            .AddSharedProject("MyApp.Shared", """
+                using System.Threading.Tasks;
+                using BlazorServerFunctions.Abstractions;
+                using Microsoft.AspNetCore.Http;
+
+                namespace MyApp.Shared;
+
+                [ServerFunctionCollection]
+                public interface IFileService
+                {
+                    [ServerFunction(HttpMethod = "DELETE")]
+                    Task DeleteAsync(IFormFile file);
+                }
+                """)
+            .Build();
+
+        var project = scenario.GetProject("MyApp.Shared");
+        project.AssertHasDiagnostic("BSF026");
+    }
+
+    // ── BSF027: File upload with IAsyncEnumerable return ─────────────────────
+
+    [Fact]
+    public void FileUpload_WithAsyncEnumerableReturn_EmitsBSF027()
+    {
+        var scenario = new ProjectBuilder()
+            .AddSharedProject("MyApp.Shared", """
+                using System.IO;
+                using System.Collections.Generic;
+                using System.Threading.Tasks;
+                using BlazorServerFunctions.Abstractions;
+
+                namespace MyApp.Shared;
+
+                [ServerFunctionCollection]
+                public interface IFileService
+                {
+                    [ServerFunction(HttpMethod = "POST")]
+                    IAsyncEnumerable<string> ProcessAndStreamAsync(Stream file);
+                }
+                """)
+            .Build();
+
+        var project = scenario.GetProject("MyApp.Shared");
+        project.AssertHasDiagnostic("BSF027");
+    }
+
+    // ── BSF028: File upload on gRPC interface ────────────────────────────────
+
+    [Fact]
+    public void FileUpload_OnGrpcInterface_EmitsBSF028()
+    {
+        var scenario = new ProjectBuilder()
+            .AddSharedProject("MyApp.Shared", """
+                using System.IO;
+                using System.Threading.Tasks;
+                using BlazorServerFunctions.Abstractions;
+
+                namespace MyApp.Shared;
+
+                public class GrpcConfig : ServerFunctionConfiguration
+                {
+                    public GrpcConfig() { ApiType = ApiType.GRPC; }
+                }
+
+                [ServerFunctionCollection(Configuration = typeof(GrpcConfig))]
+                public interface IFileService
+                {
+                    Task<long> UploadAsync(Stream file);
+                }
+                """)
+            .Build();
+
+        var project = scenario.GetProject("MyApp.Shared");
+        project.AssertHasDiagnostic("BSF028");
+    }
 }

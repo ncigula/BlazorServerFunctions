@@ -977,4 +977,106 @@ public class ClientGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ── File upload ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public Task Generate_StreamParameter_BuildsMultipartRequest()
+    {
+        var source = """
+                     using System.IO;
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IFileService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<long> UploadAsync(Stream file);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_FormFileParameter_BuildsMultipartRequest()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+                     using Microsoft.AspNetCore.Http;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IFileService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<long> UploadAsync(IFormFile file);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_FormFileCollectionParameter_BuildsMultipartRequest()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+                     using Microsoft.AspNetCore.Http;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IFileService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<long> UploadManyAsync(IFormFileCollection files);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_MixedFileAndRegularParameters_BuildsMultipartWithStringContent()
+    {
+        var source = """
+                     using System.IO;
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IFileService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<long> UploadAsync(Stream file, string fileName, int categoryId);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

@@ -69,6 +69,8 @@ internal sealed partial class InterfaceParser
         if (interfaceInfo.Configuration.ApiType == ApiType.GRPC)
             ValidateGrpcConstraints(methodSymbol, methodInfo);
 
+        ValidateFileParameters(methodSymbol, methodInfo, interfaceInfo.Configuration.ApiType);
+
         return methodInfo;
     }
 
@@ -308,6 +310,53 @@ internal sealed partial class InterfaceParser
             _context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.CacheSecondsIgnoredForGrpc,
                 methodSymbol.Locations.First(), methodInfo.Name));
             methodInfo.CacheSeconds = 0;
+        }
+    }
+
+    /// <summary>
+    /// BSF026: File upload on GET/DELETE.
+    /// BSF027: File upload with IAsyncEnumerable return.
+    /// BSF028: File upload on gRPC interface.
+    /// Must be called after both HttpMethod, AsyncType, and ApiType are resolved.
+    /// </summary>
+    private void ValidateFileParameters(IMethodSymbol methodSymbol, MethodInfo methodInfo, ApiType apiType)
+    {
+        var fileParams = methodInfo.Parameters
+            .Where(static p => p.FileKind != FileKind.None)
+            .ToList();
+
+        if (fileParams.Count == 0)
+            return;
+
+        var httpMethodStr = methodInfo.HttpMethod.ToString().ToUpperInvariant();
+
+        foreach (var fileParamName in fileParams.Select(static p => p.Name))
+        {
+            if (apiType == ApiType.GRPC)
+            {
+                _context.ReportDiagnostic(Diagnostic.Create(
+                    DiagnosticDescriptors.FileUploadNotSupportedForGrpc,
+                    methodSymbol.Locations.First(),
+                    methodInfo.Name,
+                    fileParamName));
+            }
+            else if (methodInfo.HttpMethod is HttpMethod.Get or HttpMethod.Delete)
+            {
+                _context.ReportDiagnostic(Diagnostic.Create(
+                    DiagnosticDescriptors.FileUploadOnGetOrDelete,
+                    methodSymbol.Locations.First(),
+                    methodInfo.Name,
+                    fileParamName,
+                    httpMethodStr));
+            }
+        }
+
+        if (apiType != ApiType.GRPC && methodInfo.AsyncType is AsyncType.AsyncEnumerable)
+        {
+            _context.ReportDiagnostic(Diagnostic.Create(
+                DiagnosticDescriptors.FileUploadWithStreamingReturn,
+                methodSymbol.Locations.First(),
+                methodInfo.Name));
         }
     }
 

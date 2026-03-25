@@ -29,6 +29,10 @@ public static class CompilationHelper
         // Abstractions
         yield return MetadataReference.CreateFromFile(typeof(ServerFunctionCollectionAttribute).Assembly.Location);
 
+        // IFormFile / IFormFileCollection — lives in Http.Features in .NET 10 (not a project-type marker)
+        yield return MetadataReference.CreateFromFile(
+            Assembly.Load("Microsoft.AspNetCore.Http.Features").Location);
+
         // Generated client proxy and registration code dependencies
         yield return MetadataReference.CreateFromFile(typeof(System.Uri).Assembly.Location);
         yield return MetadataReference.CreateFromFile(typeof(System.Net.Http.HttpClient).Assembly.Location);

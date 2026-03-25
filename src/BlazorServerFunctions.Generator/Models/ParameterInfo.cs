@@ -8,4 +8,5 @@ internal sealed record ParameterInfo
     public string? DefaultValue { get; set; }
     public bool IsRouteParameter { get; set; }
     public bool IsValueType { get; set; }
+    public FileKind FileKind { get; set; } = FileKind.None;
 }

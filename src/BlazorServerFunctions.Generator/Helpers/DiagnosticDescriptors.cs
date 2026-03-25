@@ -334,4 +334,37 @@ internal static class DiagnosticDescriptors
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF026: File upload parameter on a GET or DELETE method
+    /// </summary>
+    public static readonly DiagnosticDescriptor FileUploadOnGetOrDelete = new(
+        id: "BSF026",
+        title: "File upload parameter not valid on GET or DELETE",
+        messageFormat: "Method '{0}' has a file upload parameter '{1}' but uses HTTP {2}. File upload (Stream/IFormFile) requires POST, PUT, or PATCH.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF027: File upload parameter combined with IAsyncEnumerable return type
+    /// </summary>
+    public static readonly DiagnosticDescriptor FileUploadWithStreamingReturn = new(
+        id: "BSF027",
+        title: "File upload parameter incompatible with streaming return",
+        messageFormat: "Method '{0}' has a file upload parameter but returns IAsyncEnumerable<T>. Multipart upload and streaming response cannot be combined.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF028: File upload parameter on a gRPC interface method
+    /// </summary>
+    public static readonly DiagnosticDescriptor FileUploadNotSupportedForGrpc = new(
+        id: "BSF028",
+        title: "File upload parameters not supported on gRPC interfaces",
+        messageFormat: "Method '{0}' has a file upload parameter '{1}' but is on a gRPC interface. File upload (Stream/IFormFile) is only supported for REST interfaces.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

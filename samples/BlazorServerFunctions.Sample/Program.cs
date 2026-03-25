@@ -14,6 +14,7 @@ using BlazorServerFunctions.Sample.Components.Crud;
 using BlazorServerFunctions.Sample.Components.RateLimiting;
 using BlazorServerFunctions.Sample.Components.Echo;
 using BlazorServerFunctions.Sample.Components.RouteParams;
+using BlazorServerFunctions.Sample.Components.FileUpload;
 using BlazorServerFunctions.Sample.Components.GrpcDemo;
 using BlazorServerFunctions.Sample.Components.Streaming;
 using ProtoBuf.Grpc.Server;
@@ -116,6 +117,7 @@ builder.Services.AddSingleton<ICacheableService, CacheableService>();
 builder.Services.AddSingleton<IRateLimitedService, RateLimitedService>();
 builder.Services.AddScoped<IAntiForgeryService, AntiForgeryService>();
 builder.Services.AddScoped<IFilteredEchoService, FilteredEchoService>();
+builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 
 builder.Services.AddServerFunctionHealthChecks();
 

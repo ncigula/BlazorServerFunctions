@@ -57,6 +57,14 @@ BlazorServerFunctions.Generator/
 | **BSF015** | Error | Method '{0}' has invalid route format '{1}' | Method | Low |
 | **BSF016** | Error | Failed to parse referenced interface '{0}' in assembly '{1}' | Interface | Low |
 
+#### File upload diagnostics (BSF026-BSF028)
+
+| Code | Severity | Message | Location |
+|------|----------|---------|----------|
+| **BSF026** | Error | Method '{0}' has a file upload parameter '{1}' but uses HTTP {2}. File upload (Stream/IFormFile) requires POST, PUT, or PATCH | Method |
+| **BSF027** | Error | Method '{0}' has a file upload parameter but returns IAsyncEnumerable\<T\>. Multipart upload and streaming response cannot be combined | Method |
+| **BSF028** | Error | Method '{0}' has a file upload parameter '{1}' but is on a gRPC interface. File upload (Stream/IFormFile) is only supported for REST interfaces | Method |
+
 #### Warnings (BSF101+)
 
 | Code | Severity | Message | Location |

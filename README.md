@@ -266,6 +266,45 @@ The generator binds route parameters from the URL on the server and interpolates
 
 ---
 
+## File Upload
+
+Pass `Stream`, `IFormFile`, or `IFormFileCollection` parameters to upload files through a generated endpoint.
+
+```csharp
+[ServerFunctionCollection(RoutePrefix = "api/files")]
+public interface IFileService
+{
+    // Stream — works in WASM and Blazor Server alike
+    [ServerFunction(HttpMethod = "POST")]
+    Task<string> UploadAsync(Stream file, string fileName);
+
+    // IFormFile — when the caller is server-side only
+    [ServerFunction(HttpMethod = "POST")]
+    Task<string> UploadFormFileAsync(IFormFile document);
+
+    // Multiple files at once
+    [ServerFunction(HttpMethod = "POST")]
+    Task<int> UploadManyAsync(IFormFileCollection attachments);
+}
+```
+
+**Client proxy** — builds `MultipartFormDataContent` automatically:
+- `Stream` parameters → `StreamContent` part (name = parameter name)
+- `IFormFile` parameters → `StreamContent` wrapping `.OpenReadStream()`, with `FileName` preserved
+- `IFormFileCollection` parameters → one `StreamContent` part per file in the collection
+- Regular parameters alongside files → `StringContent` form fields
+
+**Server endpoint** — binds via inline `IFormFile`/`[FromForm]` parameters (no DTO record). `.DisableAntiforgery()` is added automatically so global `UseAntiforgery()` middleware does not silently reject multipart requests.
+
+**Restrictions** (compile-time diagnostics):
+- **BSF026** (error) — file parameter on a GET or DELETE method; use POST, PUT, or PATCH
+- **BSF027** (error) — file parameter combined with `IAsyncEnumerable<T>` return; multipart and streaming cannot be combined
+- **BSF028** (error) — file parameter on a gRPC interface; file upload is REST-only
+
+> **WASM note:** `Stream` is the recommended type for interfaces declared in a shared library — `IFormFile` is an ASP.NET Core type that may not be available in WASM projects. The server endpoint always binds an `IFormFile` internally and calls `.OpenReadStream()` when the interface declared `Stream`.
+
+---
+
 ## Streaming (`IAsyncEnumerable<T>`)
 
 Return `IAsyncEnumerable<T>` for chunked server-sent streaming:

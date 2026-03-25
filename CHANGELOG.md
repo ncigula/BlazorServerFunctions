@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-03-25
+
+### Added
+
+- **§1 File upload — `Stream` / `IFormFile` / `IFormFileCollection` parameter support**
+  - **Client proxy** — generates `MultipartFormDataContent` automatically: `Stream` parameters become a named `StreamContent` part; `IFormFile` parameters wrap `.OpenReadStream()` with `FileName` preserved; `IFormFileCollection` emits one part per file; regular parameters alongside files are serialised as `StringContent` form fields
+  - **Server endpoint** — binds via inline per-parameter `IFormFile` / `[FromForm]` declarations (no generated DTO record); `.DisableAntiforgery()` is added automatically so global `UseAntiforgery()` middleware does not silently reject multipart requests
+  - **New `FileKind` enum** (`None` / `Stream` / `FormFile` / `FormFileCollection`) — internal discriminated type that drives both client and server code-generation paths
+  - **New diagnostics:**
+    - **BSF026** (error) — file parameter on a GET or DELETE method; multipart form data requires POST, PUT, or PATCH
+    - **BSF027** (error) — file parameter combined with `IAsyncEnumerable<T>` return; multipart upload and streaming response cannot be combined
+    - **BSF028** (error) — file parameter on a gRPC interface; file upload is REST-only
+  - **Sample** — `IFileUploadService` with `UploadAsync(Stream file, string fileName)` and `UploadStreamOnlyAsync(Stream file)`; Blazor Server and WASM demo pages added; nav entries wired
+
+### Tests
+
+- 8 new unit snapshot tests (4 client, 4 server) covering `Stream`, `IFormFile`, `IFormFileCollection`, and mixed file + regular parameter combinations
+- 4 new integration diagnostic tests for BSF026, BSF027, and BSF028
+- 4 new E2E round-trip tests: byte-count verification, empty stream, stream-only endpoint, 100 KB payload
+
+---
+
 ## [0.10.0] - 2026-03-23
 
 ### Added

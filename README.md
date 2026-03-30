@@ -305,6 +305,286 @@ public interface IFileService
 
 ---
 
+## Using with MediatR
+
+BlazorServerFunctions works naturally alongside the Mediator pattern. The generated interface is a thin adapter — each method sends a query or command and unwraps the result:
+
+```csharp
+// Shared interface (drives generation)
+[ServerFunctionCollection(RoutePrefix = "api/users")]
+public interface IUserService
+{
+    [ServerFunction(HttpMethod = "GET", Route = "users/{id}")]
+    Task<UserDto> GetUserAsync(Guid id);
+
+    [ServerFunction(HttpMethod = "POST")]
+    Task<UserDto> CreateUserAsync(CreateUserRequest request);
+}
+```
+
+```csharp
+// Server implementation — one line per method
+public class UserService(IMediator mediator) : IUserService
+{
+    public async Task<UserDto> GetUserAsync(Guid id)
+    {
+        var result = await mediator.Send(new GetUserQuery(id));
+        return result.IsSuccess ? result.Value : throw new NotFoundException(result.Error);
+    }
+
+    public async Task<UserDto> CreateUserAsync(CreateUserRequest request)
+    {
+        var result = await mediator.Send(new CreateUserCommand(request));
+        return result.IsSuccess ? result.Value : throw new ValidationException(result.Error);
+    }
+}
+```
+
+**Failure handling** — throw a typed exception and map it to a `ProblemDetails` response once, centrally, using ASP.NET Core's built-in exception handler:
+
+```csharp
+// Program.cs — registered once, applies to every endpoint
+builder.Services.AddExceptionHandler<DomainExceptionHandler>();
+builder.Services.AddProblemDetails();
+```
+
+```csharp
+public class DomainExceptionHandler : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext context, Exception exception, CancellationToken ct)
+    {
+        var (status, title) = exception switch
+        {
+            NotFoundException e  => (404, e.Message),
+            ValidationException e => (422, e.Message),
+            _ => (0, null)
+        };
+
+        if (status == 0) return false;
+
+        await Results.Problem(title: title, statusCode: status).ExecuteAsync(context);
+        return true;
+    }
+}
+```
+
+The generated client proxy already converts non-success HTTP responses into `HttpRequestException` with the `ProblemDetails.detail` field as the message — so callers in Blazor components get a clean exception with the original error message.
+
+> **Query/command object shape** — parameter names in the interface do not need to match the MediatR request constructor. The wrapper service is the mapping layer; use it to translate freely.
+
+---
+
+## Result Mapper
+
+When service methods return a result wrapper type (`Result<T>`, `Result<T, TError>`, `OneOf<T1, T2>`, etc.), configure a `ResultMapper` on the collection and the generator handles the unwrapping on both sides automatically.
+
+### Complete example
+
+The following steps show everything needed to add result-typed methods from scratch.
+
+**Step 1 — Define your `Result<T>` type in the shared project**
+
+You can use any third-party library (ErrorOr, FluentResults, OneOf, etc.) or roll your own:
+
+```csharp
+// MyApp.Shared/Result.cs
+public sealed class Result<T>
+{
+    private Result(bool isSuccess, T? value, string? errorCode, string? message, int status)
+    {
+        IsSuccess = isSuccess; Value = value;
+        ErrorCode = errorCode; ErrorMessage = message; Status = status;
+    }
+
+    public bool IsSuccess   { get; }
+    public T?   Value       { get; }
+    public string? ErrorCode    { get; }
+    public string? ErrorMessage { get; }
+    public int     Status       { get; }   // HTTP status intended for error responses
+
+    public static Result<T> Ok(T value)            => new(true,  value,   null,          null,    200);
+    public static Result<T> NotFound(string msg)   => new(false, default, "NOT_FOUND",   msg,     404);
+    public static Result<T> Conflict(string msg)   => new(false, default, "CONFLICT",    msg,     409);
+    public static Result<T> Invalid(string msg)    => new(false, default, "VALIDATION",  msg,     400);
+    public static Result<T> Failure(string msg)    => new(false, default, "FAILURE",     msg,     500);
+}
+```
+
+**Step 2 — Implement `IServerFunctionResultMapper<TResult, TValue>` once**
+
+```csharp
+// MyApp.Shared/ResultMapper.cs
+public sealed class ResultMapper<T> : IServerFunctionResultMapper<Result<T>, T>
+    where T : notnull
+{
+    // ── Server side: unwrap the result into an HTTP response ──────────────────
+
+    public bool IsSuccess(Result<T> r) => r.IsSuccess;
+    public T GetValue(Result<T> r)     => r.Value!;
+
+    public ServerFunctionError GetError(Result<T> r) => new()
+    {
+        Status = r.Status,        // drives the HTTP status code (404, 409, 400…)
+        Title  = r.ErrorCode,     // ProblemDetails "title" field
+        Detail = r.ErrorMessage,  // ProblemDetails "detail" field
+    };
+
+    // ── Client side: reconstruct Result<T> from the HTTP response ─────────────
+
+    public Result<T> WrapValue(T value) => Result<T>.Ok(value);
+
+    public Result<T> WrapFailure(ServerFunctionError e) => e.Status switch
+    {
+        404 => Result<T>.NotFound(e.Detail ?? "Not found"),
+        409 => Result<T>.Conflict(e.Detail ?? "Conflict"),
+        400 => Result<T>.Invalid(e.Detail ?? "Validation error"),
+        _   => Result<T>.Failure(e.Detail ?? "An error occurred"),
+    };
+}
+```
+
+`ServerFunctionError` is defined in `BlazorServerFunctions.Abstractions` — it has no ASP.NET Core dependency and works in both server and Blazor WASM projects.
+
+**Step 3 — Annotate the interface**
+
+```csharp
+// MyApp.Shared/IProductService.cs
+[ServerFunctionCollection(
+    Configuration = typeof(ApiConfig),
+    ResultMapper  = typeof(ResultMapper<>))]   // open generic — BSF closes it per method
+public interface IProductService
+{
+    [ServerFunction(HttpMethod = "GET", Route = "{id}")]
+    Task<Result<ProductDto>> GetProductAsync(int id, CancellationToken ct = default);
+
+    [ServerFunction(HttpMethod = "POST")]
+    Task<Result<ProductDto>> CreateProductAsync(string name, decimal price, CancellationToken ct = default);
+
+    [ServerFunction(HttpMethod = "DELETE", Route = "{id}")]
+    Task<Result<ProductDto>> DeleteProductAsync(int id, CancellationToken ct = default);
+}
+```
+
+**Step 4 — Implement the service (server project)**
+
+```csharp
+// MyApp.Server/ProductService.cs
+public sealed class ProductService : IProductService
+{
+    public async Task<Result<ProductDto>> GetProductAsync(int id, CancellationToken ct)
+    {
+        var product = await _repository.FindAsync(id, ct);
+        return product is null
+            ? Result<ProductDto>.NotFound($"Product #{id} was not found.")
+            : Result<ProductDto>.Ok(product.ToDto());
+    }
+
+    public async Task<Result<ProductDto>> CreateProductAsync(string name, decimal price, CancellationToken ct)
+    {
+        if (await _repository.ExistsAsync(name, ct))
+            return Result<ProductDto>.Conflict($"A product named '{name}' already exists.");
+
+        var created = await _repository.AddAsync(new Product(name, price), ct);
+        return Result<ProductDto>.Ok(created.ToDto());
+    }
+
+    // …
+}
+```
+
+**Step 5 — Use it in a Blazor component**
+
+```razor
+@* MyApp.Client/Pages/Products.razor *@
+@inject IProductService ProductService
+
+@if (_product is not null)
+{
+    <p>@_product.Name — @_product.Price.ToString("C")</p>
+}
+else if (_error is not null)
+{
+    <p class="text-danger">@_error</p>
+}
+
+@code {
+    private ProductDto? _product;
+    private string?     _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var result = await ProductService.GetProductAsync(id: 42);
+        if (result.IsSuccess)
+            _product = result.Value;
+        else
+            _error = result.ErrorMessage;   // populated from ProblemDetails.detail
+    }
+}
+```
+
+The Blazor component calls `IProductService` exactly as if it were a local service. The generated `ProductServiceClient` proxy handles all HTTP communication, mapper invocation, and error deserialization automatically.
+
+### What gets generated
+
+**Server endpoint** — calls the mapper to produce the HTTP response:
+
+```csharp
+// generated: IProductServiceServerExtensions.g.cs
+group.MapGet("/{id}", async (int id, IProductService service) =>
+{
+    var result = await service.GetProductAsync(id);
+    var __mapper = new ResultMapper<ProductDto>();
+    if (__mapper.IsSuccess(result))
+        return Results.Ok(__mapper.GetValue(result));
+    var __error = __mapper.GetError(result);
+    return Results.Problem(__error.Detail, statusCode: __error.Status,
+                           title: __error.Title, type: __error.Type);
+})
+.Produces<ProductDto>(StatusCodes.Status200OK)
+.ProducesProblem(StatusCodes.Status500InternalServerError);
+```
+
+**Client proxy** — deserialises the inner value type on 2xx, parses ProblemDetails on error:
+
+```csharp
+// generated: ProductServiceClient.g.cs
+// On 4xx/5xx → calls WrapFailure(ServerFunctionError) → Result<T>.NotFound / Conflict / …
+// On 2xx     → calls WrapValue(dto)                  → Result<T>.Ok(dto)
+```
+
+### Works with two-type-arg results
+
+Pass the two-type-arg open generic and provide a matching mapper overload:
+
+```csharp
+[ServerFunctionCollection(ResultMapper = typeof(ResultMapper<,>))]
+public interface IUserService
+{
+    [ServerFunction(HttpMethod = "GET")]
+    Task<Result<UserDto, ValidationError>> GetUserAsync(int id);
+}
+
+public sealed class ResultMapper<T, TError> : IServerFunctionResultMapper<Result<T, TError>, T>
+    where T : notnull
+{
+    public bool IsSuccess(Result<T, TError> r)              => r.IsSuccess;
+    public T GetValue(Result<T, TError> r)                   => r.Value!;
+    public ServerFunctionError GetError(Result<T, TError> r) => new() { Status = 400, Detail = r.Error?.ToString() };
+    public Result<T, TError> WrapValue(T v)                  => Result<T, TError>.Ok(v);
+    public Result<T, TError> WrapFailure(ServerFunctionError e) => Result<T, TError>.Fail(e.Detail);
+}
+```
+
+### Restrictions (compile-time diagnostics)
+
+- **BSF029** (error) — `ResultMapper` on a gRPC interface; result mapping is REST-only.
+- **BSF030** (warning) — a method's return type is non-generic when `ResultMapper` is set (e.g. `Task<string>`); the mapper cannot be applied and the method falls back to `Results.Ok(result)` / direct deserialisation.
+
+> **`void` and streaming methods** are silently excluded from mapper wrapping — `void` emits `Results.Ok()` and `IAsyncEnumerable<T>` passes through unchanged. No diagnostic is emitted for these cases.
+
+---
+
 ## Streaming (`IAsyncEnumerable<T>`)
 
 Return `IAsyncEnumerable<T>` for chunked server-sent streaming:

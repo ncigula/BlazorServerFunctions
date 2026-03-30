@@ -89,19 +89,15 @@ GitHub Actions: `ci.yml` (build + test on push/PR), `benchmarks.yml` (matrix per
 
 ---
 
-### §2 — Result\<T\> converter
-**Size:** 🟡 &nbsp; **Value:** 🔸 Medium
+### §2 — Result\<T\> converter ~~cancelled~~
+**Size:** 🟡 &nbsp; **Value:** 🔸 Medium → ~~Won't implement~~
 
-Service methods returning `Result<T, TError>`, `OneOf<T1, T2>`, or custom discriminated unions cannot be unwrapped into `IResult` today. The endpoint just returns the raw service result as JSON.
+The problem this was meant to solve (MediatR / discriminated union results returning HTTP errors) is already solved cleanly without any generator changes:
 
-**What to build:**
-- New interface in Abstractions: `IServerFunctionResultConverter<TResult>` with `IResult Convert(TResult result)`
-- New attribute property: `[ServerFunction(ResultConverter = typeof(MyConverter))]`
-- Collection-level: `ServerFunctionConfiguration.ResultConverter` (applies to all methods)
-- Generator reads converter type via Roslyn `ITypeSymbol`, emits: `return myConverter.Convert(await service.DoThingAsync(...));`
-- Converter is resolved from DI: `var myConverter = context.RequestServices.GetRequiredService<MyConverter>()`
-- New diagnostic BSF029 (error): converter type does not implement `IServerFunctionResultConverter<T>` where `T` matches the method's return type
-- New diagnostic BSF030 (error): converter specified on a streaming (`IAsyncEnumerable<T>`) method — not supported
+1. The `IXxxService` interface is a thin adapter — implement it on the server, call `mediator.Send(...)`, unwrap the result, and throw a typed domain exception on failure (2–3 lines per method).
+2. A single `IExceptionHandler` registered in `Program.cs` maps domain exceptions to `ProblemDetails` responses centrally, once, for all endpoints.
+
+Adding `IServerFunctionResultConverter<T>` + `[ServerFunction(ResultConverter = ...)]` + BSF029/030 diagnostics would impose generator complexity and a new abstraction to learn for a problem that the existing ASP.NET Core exception-handling pipeline already solves. The thin service wrapper is the right boundary; the generator has no business knowing about result types. **Documented in README under "Using with MediatR".**
 
 ---
 
@@ -194,7 +190,7 @@ Large generator classes (`RestClientProxyGenerator`, `RestServerEndpointGenerato
 ## Progress tracker
 
 - [x] §1 — File upload (`Stream` / `IFormFile`)
-- [ ] §2 — Result\<T\> converter (`IServerFunctionResultConverter<T>`)
+- [~] §2 — Result\<T\> converter — cancelled (thin service wrapper + `IExceptionHandler` is the right pattern; documented in README)
 - [ ] §3 — OpenAPI customization per method (`Summary`, `Description`, `Tags`, `ProducesStatusCodes`, `ExcludeFromOpenApi`)
 - [ ] §4 — `TypedResults` on server endpoints
 - [ ] §5 — Explicit parameter binding (`[ServerFunctionParameter(From = ...)]`)

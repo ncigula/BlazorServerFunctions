@@ -88,6 +88,10 @@ public sealed class E2EFixture : IDisposable
             .ConfigurePrimaryHttpMessageHandler(() => factory.Server.CreateHandler())
             .ConfigureHttpClient((_, c) => c.BaseAddress = factory.Server.BaseAddress);
 
+        services.AddHttpClient<IResultDemoService, ResultDemoServiceClient>()
+            .ConfigurePrimaryHttpMessageHandler(() => factory.Server.CreateHandler())
+            .ConfigureHttpClient((_, c) => c.BaseAddress = factory.Server.BaseAddress);
+
         var grpcChannel = GrpcChannel.ForAddress(
             factory.Server.BaseAddress,
             new GrpcChannelOptions { HttpHandler = factory.Server.CreateHandler() });

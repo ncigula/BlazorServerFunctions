@@ -169,9 +169,7 @@ internal sealed class RestServerEndpointGenerator
 
         if (method.AsyncType is not AsyncType.AsyncEnumerable)
         {
-            chain.Add(string.Equals(method.ReturnType, "void", StringComparison.Ordinal)
-                ? ".Produces(StatusCodes.Status200OK)"
-                : $".Produces<{method.ReturnType}>(StatusCodes.Status200OK)");
+            chain.Add(BuildProducesAnnotation(method.ReturnType));
 
             if (config.GenerateProblemDetails)
                 chain.Add(".ProducesProblem(StatusCodes.Status500InternalServerError)");
@@ -212,6 +210,27 @@ internal sealed class RestServerEndpointGenerator
             _stringBuilder.Append("            ").Append(chain[i]);
             _stringBuilder.AppendLine(i == chain.Count - 1 ? ";" : "");
         }
+    }
+
+    /// <summary>
+    /// Builds the <c>.Produces&lt;T&gt;(200)</c> fluent annotation string.
+    /// When a <see cref="InterfaceInfo.ResultMapperTypeName"/> is active, the advertised type is
+    /// the first generic type argument of the return type (the success value type), not the wrapper.
+    /// E.g. <c>Result&lt;UserDto&gt;</c> → <c>.Produces&lt;UserDto&gt;(StatusCodes.Status200OK)</c>.
+    /// </summary>
+    private string BuildProducesAnnotation(string returnType)
+    {
+        if (string.Equals(returnType, "void", StringComparison.Ordinal))
+            return ".Produces(StatusCodes.Status200OK)";
+
+        if (_interfaceInfo.ResultMapperTypeName is not null)
+        {
+            var innerArgs = returnType.ExtractGenericTypeArgs();
+            var producesType = innerArgs.Length > 0 ? innerArgs[0] : returnType;
+            return $".Produces<{producesType}>(StatusCodes.Status200OK)";
+        }
+
+        return $".Produces<{returnType}>(StatusCodes.Status200OK)";
     }
 
     private static string DeriveTag(string interfaceName) =>
@@ -321,14 +340,35 @@ internal sealed class RestServerEndpointGenerator
 
     private void GenerateResultReturn(string returnType)
     {
-        if (!string.Equals(returnType, "void", StringComparison.Ordinal))
-        {
-            _stringBuilder.AppendLine("                return Results.Ok(result);");
-        }
-        else
+        if (string.Equals(returnType, "void", StringComparison.Ordinal))
         {
             _stringBuilder.AppendLine("                return Results.Ok();");
+            return;
         }
+
+        // When no ResultMapper is configured, or the return type has no generic args
+        // (e.g. plain string / int), fall back to the default Results.Ok(result) path.
+        // BSF030 warns about the non-generic case at parse time.
+        var mapperTypeName = _interfaceInfo.ResultMapperTypeName;
+        var typeArgs = returnType.ExtractGenericTypeArgs();
+
+        if (mapperTypeName is null || typeArgs.Length == 0)
+        {
+            _stringBuilder.AppendLine("                return Results.Ok(result);");
+            return;
+        }
+
+        var mapperInstantiation = $"new {mapperTypeName}<{string.Join(", ", typeArgs)}>()";
+
+        _stringBuilder.AppendLine($"                var __mapper = {mapperInstantiation};");
+        _stringBuilder.AppendLine("                if (__mapper.IsSuccess(result))");
+        _stringBuilder.AppendLine("                    return Results.Ok(__mapper.GetValue(result));");
+        _stringBuilder.AppendLine("                var __error = __mapper.GetError(result);");
+        _stringBuilder.AppendLine("                return Results.Problem(");
+        _stringBuilder.AppendLine("                    __error.Detail,");
+        _stringBuilder.AppendLine("                    statusCode: __error.Status,");
+        _stringBuilder.AppendLine("                    title: __error.Title,");
+        _stringBuilder.AppendLine("                    type: __error.Type);");
     }
 
     private void GenerateRequestDtos()

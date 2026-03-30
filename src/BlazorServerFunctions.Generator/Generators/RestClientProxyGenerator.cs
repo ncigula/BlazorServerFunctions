@@ -28,7 +28,8 @@ internal sealed class RestClientProxyGenerator
 
         var hasCancellationToken = _interfaceInfo.Methods.Any(m => m.HasCancellationToken);
         var hasStreaming = _interfaceInfo.Methods.Any(m => m.AsyncType is AsyncType.AsyncEnumerable);
-        AddUsingDirectives(hasCancellationToken: hasCancellationToken, hasStreaming: hasStreaming);
+        var hasResultMapper = _interfaceInfo.ResultMapperTypeName is not null;
+        AddUsingDirectives(hasCancellationToken: hasCancellationToken, hasStreaming: hasStreaming, hasResultMapper: hasResultMapper);
 
         _stringBuilder.Append("namespace ").Append(_interfaceInfo.Namespace).Append(';').AppendLine();
         _stringBuilder.AppendLine();
@@ -60,12 +61,14 @@ internal sealed class RestClientProxyGenerator
         _stringBuilder.AppendLine("    }");
     }
 
-    private void AddUsingDirectives(bool hasCancellationToken, bool hasStreaming)
+    private void AddUsingDirectives(bool hasCancellationToken, bool hasStreaming, bool hasResultMapper)
     {
         _stringBuilder.AppendLine("using System;");
         _stringBuilder.AppendLine("using System.Net;");
         _stringBuilder.AppendLine("using System.Net.Http;");
         _stringBuilder.AppendLine("using System.Net.Http.Json;");
+        if (hasResultMapper)
+            _stringBuilder.AppendLine("using System.Text.Json;");
         if (hasStreaming)
         {
             _stringBuilder.AppendLine("using System.Collections.Generic;");
@@ -136,6 +139,82 @@ internal sealed class RestClientProxyGenerator
     private void GenerateResponseHandling(MethodInfo methodInfo)
     {
         _stringBuilder.AppendLine();
+
+        var mapperTypeName = _interfaceInfo.ResultMapperTypeName;
+        var typeArgs = methodInfo.ReturnType.ExtractGenericTypeArgs();
+        bool useMapper = mapperTypeName is not null
+            && typeArgs.Length > 0
+            && !string.Equals(methodInfo.ReturnType, "void", StringComparison.OrdinalIgnoreCase);
+
+        if (useMapper)
+            GenerateMapperResponseHandling(methodInfo, mapperTypeName!, typeArgs);
+        else
+            GenerateDefaultResponseHandling(methodInfo);
+    }
+
+    /// <summary>
+    /// ResultMapper path: deserialises the inner value type on 2xx, parses the problem body on
+    /// error, and wraps both through the mapper to reconstruct the result wrapper type.
+    /// Uses <see cref="System.Text.Json.JsonDocument"/> directly (no
+    /// <c>Microsoft.AspNetCore.Mvc.ProblemDetails</c> reference) so this works in WASM projects.
+    /// </summary>
+    private void GenerateMapperResponseHandling(MethodInfo methodInfo, string mapperTypeName, string[] typeArgs)
+    {
+        var mapperInstantiation = $"new {mapperTypeName}<{string.Join(", ", typeArgs)}>()";
+        var valueType = typeArgs[0]; // first arg is always the success value type
+        var awaitKw = GetAwaitKeyword(methodInfo.AsyncType);
+        var suffix = GetResultSuffix(methodInfo.AsyncType);
+        var ct = methodInfo.HasCancellationToken ? "cancellationToken" : string.Empty;
+
+        _stringBuilder.AppendLine("        if (!response.IsSuccessStatusCode)");
+        _stringBuilder.AppendLine("        {");
+        _stringBuilder.Append("            var __body = ").Append(awaitKw)
+            .Append("response.Content.ReadAsStringAsync(")
+            .Append(ct).Append(')').Append(suffix).AppendLine(";");
+        _stringBuilder.AppendLine("            var __err = new global::BlazorServerFunctions.Abstractions.ServerFunctionError");
+        _stringBuilder.AppendLine("            {");
+        _stringBuilder.AppendLine("                Status = (int)response.StatusCode,");
+        _stringBuilder.AppendLine("            };");
+        GenerateMapperErrorBodyParsing();
+        _stringBuilder.AppendLine($"            return {mapperInstantiation}.WrapFailure(__err);");
+        _stringBuilder.AppendLine("        }");
+        _stringBuilder.AppendLine();
+
+        var nullableValueType = valueType.EndsWith("?", StringComparison.Ordinal)
+            ? valueType
+            : valueType + "?";
+
+        _stringBuilder.Append("        var __value = ").Append(awaitKw)
+            .Append("response.Content.ReadFromJsonAsync<")
+            .Append(nullableValueType).Append(">(")
+            .Append(ct).Append(')').Append(suffix).AppendLine();
+        _stringBuilder.AppendLine("            ?? throw new InvalidOperationException(\"Response deserialization returned null\");");
+        _stringBuilder.AppendLine($"        return {mapperInstantiation}.WrapValue(__value);");
+    }
+
+    private void GenerateMapperErrorBodyParsing()
+    {
+        _stringBuilder.AppendLine("            if (!string.IsNullOrWhiteSpace(__body))");
+        _stringBuilder.AppendLine("            {");
+        _stringBuilder.AppendLine("                try");
+        _stringBuilder.AppendLine("                {");
+        _stringBuilder.AppendLine("                    using var __doc = JsonDocument.Parse(__body);");
+        _stringBuilder.AppendLine("                    var __root = __doc.RootElement;");
+        _stringBuilder.AppendLine("                    if (__root.TryGetProperty(\"status\", out var __s) && __s.TryGetInt32(out var __sc))");
+        _stringBuilder.AppendLine("                        __err.Status = __sc;");
+        _stringBuilder.AppendLine("                    if (__root.TryGetProperty(\"title\", out var __t))");
+        _stringBuilder.AppendLine("                        __err.Title = __t.GetString();");
+        _stringBuilder.AppendLine("                    if (__root.TryGetProperty(\"detail\", out var __d))");
+        _stringBuilder.AppendLine("                        __err.Detail = __d.GetString();");
+        _stringBuilder.AppendLine("                    if (__root.TryGetProperty(\"type\", out var __tp))");
+        _stringBuilder.AppendLine("                        __err.Type = __tp.GetString();");
+        _stringBuilder.AppendLine("                }");
+        _stringBuilder.AppendLine("                catch (JsonException) { __err.Detail = __body; }");
+        _stringBuilder.AppendLine("            }");
+    }
+
+    private void GenerateDefaultResponseHandling(MethodInfo methodInfo)
+    {
         _stringBuilder.AppendLine("        if (!response.IsSuccessStatusCode)");
         _stringBuilder.AppendLine("        {");
         _stringBuilder.Append("            var errorBody = ")

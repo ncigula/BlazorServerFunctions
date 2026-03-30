@@ -30,4 +30,40 @@ public sealed class ServerFunctionCollectionAttribute : Attribute
     /// </summary>
     /// <example><c>Configuration = typeof(MyApiConfig)</c></example>
     public Type? Configuration { get; set; }
+
+    /// <summary>
+    /// Open-generic type that implements
+    /// <see cref="IServerFunctionResultMapper{TResult,TValue}"/> for the result wrapper
+    /// types used by methods in this collection.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// Pass the open generic definition, e.g. <c>typeof(MyResultMapper&lt;&gt;)</c>.
+    /// The generator closes it with the type arguments of each method's return type.
+    /// </para>
+    /// <para>
+    /// When set, the generated server endpoint calls
+    /// <c>mapper.IsSuccess / mapper.GetValue / mapper.GetProblem</c>
+    /// instead of emitting a plain <c>Results.Ok(result)</c>.
+    /// The generated client proxy calls <c>mapper.WrapValue / mapper.WrapProblem</c>
+    /// instead of directly deserialising the return type.
+    /// </para>
+    /// <para>
+    /// Methods that return <c>void</c>, or whose return type is not generic
+    /// (no type arguments to extract the value type from), fall back to the
+    /// default <c>Results.Ok(result)</c> / direct-deserialise behaviour and
+    /// emit a BSF030 warning.
+    /// </para>
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// [ServerFunctionCollection(ResultMapper = typeof(ResultMapper&lt;&gt;))]
+    /// public interface IOrderService
+    /// {
+    ///     [ServerFunction(HttpMethod = "GET")]
+    ///     Task&lt;Result&lt;OrderDto&gt;&gt; GetOrderAsync(Guid id);
+    /// }
+    /// </code>
+    /// </example>
+    public Type? ResultMapper { get; set; }
 }

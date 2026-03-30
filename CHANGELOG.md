@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-03-25
+
+### Added
+
+- **Result Mapper — library-agnostic `Result<T>` / discriminated union support**
+  - **New `IServerFunctionResultMapper<TResult, TValue>` interface** (in `BlazorServerFunctions.Abstractions`, targets `netstandard2.0`) — implement once for any result wrapper type (`Result<T>`, `Result<T, TError>`, `OneOf<A, B>`, custom types) to teach the generator how to unwrap success values and convert failures to HTTP error responses:
+    - `bool IsSuccess(TResult result)` — decides which branch to take
+    - `TValue GetValue(TResult result)` — extracts the success payload (called only when `IsSuccess` is true)
+    - `ServerFunctionError GetError(TResult result)` — extracts error details for the ProblemDetails response
+    - `TResult WrapValue(TValue value)` — re-wraps a success value (used on the client proxy side)
+    - `TResult WrapFailure(ServerFunctionError error)` — re-wraps a failure from the HTTP error response (used on the client proxy side)
+  - **New `ServerFunctionError` DTO** (in `BlazorServerFunctions.Abstractions`) — lightweight RFC 9457–shaped error type with `Status` (int), `Title`, `Detail`, and `Type` string properties; no ASP.NET Core or `Microsoft.AspNetCore.Mvc` dependency, fully usable from Blazor WASM
+  - **`ResultMapper` property on `[ServerFunctionCollection]`** — accepts an open-generic mapper type (e.g. `typeof(ResultMapper<>)` or `typeof(ResultMapper<,>)`); the generator closes the type arguments from each method's return type at code-generation time
+  - **Server endpoint code-generation** — when `ResultMapper` is set, the generated lambda instantiates `new MapperType<T>()` and calls `IsSuccess` / `GetValue` / `GetError` to emit either `Results.Ok(value)` or `Results.Problem(...)` without any server-specific base class or helper method; `.Produces<TValue>()` annotation uses the inner value type, not the wrapper
+  - **Client proxy code-generation** — on 2xx responses the proxy calls `new MapperType<T>().WrapValue(value)` (deserialising the inner type from JSON); on 4xx/5xx it reads the response body as a string, uses `System.Text.Json.JsonDocument` to parse the ProblemDetails fields, and calls `new MapperType<T>().WrapFailure(error)` — no `Microsoft.AspNetCore.Mvc` reference required in WASM projects
+  - **Void / streaming exclusions** — methods with `void` / `Task` return types silently skip the mapper and emit `Results.Ok()` as before; `IAsyncEnumerable<T>` streaming methods also skip the mapper without a diagnostic
+  - **New diagnostics:**
+    - **BSF029** (error) — `ResultMapper` set on a gRPC interface; result mapping is REST-only
+    - **BSF030** (warning) — a method in a `ResultMapper` collection has a non-generic return type; the mapper cannot be applied and falls back to `Results.Ok(result)`, which will likely serialize the wrapper object rather than its inner value
+  - **Sample** — `Result<T>`, `ResultMapper<T>`, and `IResultDemoService` added to `BlazorServerFunctions.Sample.Shared`; in-memory `ResultDemoService` (server) demonstrates 404-not-found and 409-conflict scenarios; Blazor Server (`/demos/result-mapper/server`) and WASM (`/demos/result-mapper/wasm`) demo pages added; nav entries wired
+
+### Tests
+
+- 8 new unit snapshot tests in `ResultMapperGeneratorTests.cs`: single type-arg client/server, two type-arg client/server, void method skip, streaming method skip, mixed methods, and a combined test
+- 2 new unit diagnostic tests: `BSF029` on gRPC interface, `BSF030` on non-generic return type
+
+---
+
 ## [0.11.0] - 2026-03-25
 
 ### Added

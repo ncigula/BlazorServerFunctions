@@ -60,6 +60,42 @@ public static class StringExtensions
     internal static string EscapeStringLiteral(this string value) =>
         value.Replace("\\", "\\\\").Replace("\"", "\\\"");
 
+    /// <summary>
+    /// Extracts the generic type arguments from a Roslyn display-string type name such as
+    /// <c>Result&lt;UserDto&gt;</c> or <c>Result&lt;UserDto, ValidationError&gt;</c>.
+    /// Returns an empty array for non-generic types.
+    /// Handles arbitrarily nested generics, e.g.
+    /// <c>Result&lt;List&lt;UserDto&gt;, Error&gt;</c> → <c>["List&lt;UserDto&gt;", "Error"]</c>.
+    /// </summary>
+    internal static string[] ExtractGenericTypeArgs(this string typeString)
+    {
+        var ltIdx = typeString.IndexOf('<');
+        if (ltIdx < 0)
+            return [];
+
+        // Strip the outer < … > to get the inner argument list.
+        var inner = typeString.AsSpan(ltIdx + 1, typeString.Length - ltIdx - 2).ToString();
+
+        var args = new List<string>();
+        int depth = 0;
+        int start = 0;
+
+        for (int i = 0; i < inner.Length; i++)
+        {
+            var c = inner[i];
+            if (c == '<') depth++;
+            else if (c == '>') depth--;
+            else if (c == ',' && depth == 0)
+            {
+                args.Add(inner.AsSpan(start, i - start).Trim().ToString());
+                start = i + 1;
+            }
+        }
+
+        args.Add(inner.Substring(start).Trim());
+        return [.. args];
+    }
+
     private static string SeparatedCase(string value, char separator)
     {
         if (string.IsNullOrEmpty(value))

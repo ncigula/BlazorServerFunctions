@@ -367,4 +367,26 @@ internal static class DiagnosticDescriptors
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF029: ResultMapper set on a gRPC interface — result mapping is REST-only
+    /// </summary>
+    public static readonly DiagnosticDescriptor ResultMapperNotSupportedForGrpc = new(
+        id: "BSF029",
+        title: "ResultMapper not supported on gRPC interfaces",
+        messageFormat: "Interface '{0}' has ResultMapper set but uses gRPC transport. Result mapping is only supported for REST interfaces.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF030: ResultMapper set but a method's return type is non-generic — the mapper cannot be applied
+    /// </summary>
+    public static readonly DiagnosticDescriptor ResultMapperReturnTypeNotGeneric = new(
+        id: "BSF030",
+        title: "ResultMapper cannot be applied to non-generic return type",
+        messageFormat: "Method '{0}' has a non-generic return type '{1}'. ResultMapper requires generic return types (e.g. Result<T>) so the inner value type can be extracted. This method will fall back to Results.Ok(result) / direct deserialisation.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Warning,
+        isEnabledByDefault: true);
 }

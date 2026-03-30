@@ -5,6 +5,16 @@ namespace BlazorServerFunctions.Generator.Helpers;
 
 internal sealed partial class InterfaceParser
 {
+    /// <summary>
+    /// <see cref="SymbolDisplayFormat"/> that produces a fully-qualified type name
+    /// with the <c>global::</c> prefix but without any generic type parameters.
+    /// Used to store result mapper type names in the equatable model records.
+    /// </summary>
+    private static readonly SymbolDisplayFormat ResultMapperTypeNameFormat = new(
+        globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Included,
+        typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
+        genericsOptions: SymbolDisplayGenericsOptions.None);
+
     /// <summary>Validates BSF003-BSF006. Returns false if fatal (should abort parsing).</summary>
     private bool ValidateInterfaceDeclaration(INamedTypeSymbol interfaceSymbol)
     {
@@ -34,38 +44,12 @@ internal sealed partial class InterfaceParser
         return true;
     }
 
-    private (string RoutePrefix, bool RequireAuth, ConfigurationInfo Configuration, string? CorsPolicy) ParseCollectionAttributeArgs(
+    private (string RoutePrefix, bool RequireAuth, ConfigurationInfo Configuration, string? CorsPolicy, string? ResultMapperTypeName) ParseCollectionAttributeArgs(
         AttributeData? attribute,
         INamedTypeSymbol interfaceSymbol)
     {
-        string? routePrefix = null;
-        bool requireAuth = false;
-        var configuration = ConfigurationInfo.Default;
-        string? rawCorsPolicy = null;
-        INamedTypeSymbol? configType = null;
-
-        foreach (var namedArg in attribute?.NamedArguments ?? [])
-        {
-            switch (namedArg.Key)
-            {
-                case "RoutePrefix":
-                    routePrefix = namedArg.Value.Value?.ToString();
-                    break;
-                case "RequireAuthorization":
-                    requireAuth = namedArg.Value.Value is true;
-                    break;
-                case "Configuration":
-                    if (namedArg.Value.Value is INamedTypeSymbol configSymbol)
-                    {
-                        configType = configSymbol;
-                        configuration = ConfigurationReader.ReadConfiguration(configSymbol, interfaceSymbol, _compilation);
-                    }
-                    break;
-                case "CorsPolicy":
-                    rawCorsPolicy = namedArg.Value.Value?.ToString();
-                    break;
-            }
-        }
+        var (routePrefix, requireAuth, configType, rawCorsPolicy, configuration, resultMapperTypeName)
+            = ReadCollectionNamedArgs(attribute, interfaceSymbol);
 
         // If no Configuration type was specified, read ApiType directly from the attribute
         if (configType == null)
@@ -88,8 +72,62 @@ internal sealed partial class InterfaceParser
             rawCorsPolicy = null;
         }
 
+        // BSF029: ResultMapper on a gRPC interface is not supported.
+        if (resultMapperTypeName is not null && configuration.ApiType == ApiType.GRPC)
+        {
+            _context.ReportDiagnostic(Diagnostic.Create(DiagnosticDescriptors.ResultMapperNotSupportedForGrpc,
+                interfaceSymbol.Locations.FirstOrDefault(), interfaceSymbol.Name));
+            resultMapperTypeName = null; // suppress, don't attempt to emit mapper code
+        }
+
         var corsPolicy = rawCorsPolicy ?? configuration.CorsPolicy;
 
-        return (routePrefix, requireAuth, configuration, corsPolicy);
+        return (routePrefix, requireAuth, configuration, corsPolicy, resultMapperTypeName);
+    }
+
+    private (string? RoutePrefix, bool RequireAuth, INamedTypeSymbol? ConfigType, string? RawCorsPolicy,
+             ConfigurationInfo Configuration, string? ResultMapperTypeName)
+        ReadCollectionNamedArgs(AttributeData? attribute, INamedTypeSymbol interfaceSymbol)
+    {
+        string? routePrefix = null;
+        bool requireAuth = false;
+        var configuration = ConfigurationInfo.Default;
+        string? rawCorsPolicy = null;
+        INamedTypeSymbol? configType = null;
+        string? resultMapperTypeName = null;
+
+        foreach (var namedArg in attribute?.NamedArguments ?? [])
+        {
+            switch (namedArg.Key)
+            {
+                case "RoutePrefix":
+                    routePrefix = namedArg.Value.Value?.ToString();
+                    break;
+                case "RequireAuthorization":
+                    requireAuth = namedArg.Value.Value is true;
+                    break;
+                case "Configuration":
+                    if (namedArg.Value.Value is INamedTypeSymbol configSymbol)
+                    {
+                        configType = configSymbol;
+                        configuration = ConfigurationReader.ReadConfiguration(configSymbol, interfaceSymbol, _compilation);
+                    }
+                    break;
+                case "CorsPolicy":
+                    rawCorsPolicy = namedArg.Value.Value?.ToString();
+                    break;
+                case "ResultMapper":
+                    if (namedArg.Value.Value is INamedTypeSymbol mapperSymbol)
+                    {
+                        // Store as fully-qualified name without type parameters so the
+                        // model stays equatable (no ITypeSymbol in records).
+                        resultMapperTypeName = mapperSymbol.OriginalDefinition
+                            .ToDisplayString(ResultMapperTypeNameFormat);
+                    }
+                    break;
+            }
+        }
+
+        return (routePrefix, requireAuth, configType, rawCorsPolicy, configuration, resultMapperTypeName);
     }
 }

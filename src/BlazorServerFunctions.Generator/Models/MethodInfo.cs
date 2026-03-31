@@ -34,4 +34,22 @@ internal sealed record MethodInfo
     /// <c>.AddEndpointFilter&lt;T&gt;()</c> calls. Empty = no filters.
     /// </summary>
     public List<string> Filters { get; set; } = [];
+
+    /// <summary>OpenAPI operation summary, or <c>null</c> for none.</summary>
+    public string? Summary { get; set; }
+
+    /// <summary>OpenAPI operation description, or <c>null</c> for none.</summary>
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Tags override list. <c>null</c> = use auto-generated interface-name tag;
+    /// non-null (even empty) = use exactly these tags.
+    /// </summary>
+    public string[]? Tags { get; set; }
+
+    /// <summary>Additional status codes to document, or <c>null</c> for none.</summary>
+    public int[]? ProducesStatusCodes { get; set; }
+
+    /// <summary>When <c>true</c>, emits <c>.ExcludeFromDescription()</c> instead of <c>.WithOpenApi()</c>.</summary>
+    public bool ExcludeFromOpenApi { get; set; }
 }

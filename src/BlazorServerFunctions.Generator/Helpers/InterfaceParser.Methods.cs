@@ -70,6 +70,7 @@ internal sealed partial class InterfaceParser
             ValidateGrpcConstraints(methodSymbol, methodInfo);
 
         ValidateFileParameters(methodSymbol, methodInfo, interfaceInfo.Configuration.ApiType);
+        ParseOpenApiAttributes(serverFunctionAttribute, methodInfo);
 
         return methodInfo;
     }
@@ -357,6 +358,37 @@ internal sealed partial class InterfaceParser
                 DiagnosticDescriptors.FileUploadWithStreamingReturn,
                 methodSymbol.Locations.First(),
                 methodInfo.Name));
+        }
+    }
+
+    /// <summary>
+    /// Reads the five OpenAPI customization named arguments from <c>[ServerFunction]</c>:
+    /// <c>Summary</c>, <c>Description</c>, <c>Tags</c>, <c>ProducesStatusCodes</c>, <c>ExcludeFromOpenApi</c>.
+    /// </summary>
+    private static void ParseOpenApiAttributes(AttributeData? serverFunctionAttribute, MethodInfo methodInfo)
+    {
+        foreach (var attribute in serverFunctionAttribute?.NamedArguments ?? [])
+        {
+            switch (attribute.Key)
+            {
+                case "Summary":
+                    methodInfo.Summary = attribute.Value.Value?.ToString();
+                    break;
+                case "Description":
+                    methodInfo.Description = attribute.Value.Value?.ToString();
+                    break;
+                case "Tags":
+                    methodInfo.Tags = attribute.Value.IsNull ? null
+                        : [.. attribute.Value.Values.Select(v => v.Value?.ToString() ?? "")];
+                    break;
+                case "ProducesStatusCodes":
+                    methodInfo.ProducesStatusCodes = attribute.Value.IsNull ? null
+                        : [.. attribute.Value.Values.Select(v => v.Value is int i ? i : 0)];
+                    break;
+                case "ExcludeFromOpenApi":
+                    methodInfo.ExcludeFromOpenApi = attribute.Value.Value is true;
+                    break;
+            }
         }
     }
 

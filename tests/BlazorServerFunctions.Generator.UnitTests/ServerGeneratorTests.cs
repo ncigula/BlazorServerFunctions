@@ -2332,4 +2332,205 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ── §3 OpenAPI Customization ───────────────────────────────────────────────
+
+    [Fact]
+    public Task Generate_OpenApi_WithSummary_EmitsWithSummary()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IProductService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Summary = "Get a product by ID")]
+                         Task<string> GetProductAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_OpenApi_WithDescription_EmitsWithDescription()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IProductService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Description = "Returns the full product record including pricing and stock levels.")]
+                         Task<string> GetProductAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_OpenApi_WithTagsOverride_EmitsCustomTags()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IProductService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Tags = new[] { "Catalog" })]
+                         Task<string> GetProductAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_OpenApi_WithTagsOverride_MultipleTagsFormatted()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IProductService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Tags = new[] { "Products", "Catalog" })]
+                         Task<string> GetProductAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_OpenApi_ProducesStatusCodes_EmitsExtraProduces()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IProductService
+                     {
+                         [ServerFunction(HttpMethod = "GET", ProducesStatusCodes = new[] { 404, 409 })]
+                         Task<string> GetProductAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_OpenApi_ExcludeFromOpenApi_EmitsExcludeFromDescription()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IProductService
+                     {
+                         [ServerFunction(HttpMethod = "GET", ExcludeFromOpenApi = true)]
+                         Task<string> GetProductAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_OpenApi_ExcludeFromOpenApi_SkipsWithOpenApi()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IProductService
+                     {
+                         [ServerFunction(HttpMethod = "GET", ExcludeFromOpenApi = true)]
+                         Task<string> GetProductAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator(),
+            OpenApiReference);
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_OpenApi_AllProperties_EmitsFullChain()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection]
+                     public interface IProductService
+                     {
+                         [ServerFunction(
+                             HttpMethod = "GET",
+                             Summary = "Get product",
+                             Description = "Returns a product by its identifier.",
+                             Tags = new[] { "Products", "Catalog" },
+                             ProducesStatusCodes = new[] { 404 })]
+                         Task<string> GetProductAsync(int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator(),
+            OpenApiReference);
+
+        return result.VerifyNoDiagnostics();
+    }
 }

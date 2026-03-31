@@ -101,20 +101,16 @@ Adding `IServerFunctionResultConverter<T>` + `[ServerFunction(ResultConverter = 
 
 ---
 
-### §3 — OpenAPI customization per method
+### §3 — OpenAPI customization per method ✅
 **Size:** 🟡 &nbsp; **Value:** 🔸 Medium
 
-`.WithTags()`, `.Produces<T>()`, and `.ProducesProblem(500)` are always auto-generated but cannot be customised. No way to add a summary, description, extra response codes, or opt out of `.WithOpenApi()`.
-
-**What to build:**
-- New `[ServerFunction]` properties:
-  - `Summary` (`string?`) → `.WithSummary("...")`
-  - `Description` (`string?`) → `.WithDescription("...")`
-  - `Tags` (`string[]?`) → overrides auto-generated `.WithTags(interfaceName)`
-  - `ProducesStatusCodes` (`int[]?`) → emits additional `.Produces(404)` etc. alongside the existing `.Produces<T>(200)`
-  - `ExcludeFromOpenApi` (`bool`) → emits `.ExcludeFromDescription()` instead of `.WithOpenApi()`
-- All properties are optional with sensible defaults (current behaviour unchanged when omitted)
-- No new diagnostics needed — all values are validated at design time by the IDE
+**Delivered:**
+- `Summary` (`string?`) → `.WithSummary("...")` — short Swagger UI label
+- `Description` (`string?`) → `.WithDescription("...")` — long description, supports Markdown
+- `Tags` (`string[]?`) → overrides auto-generated `.WithTags(interfaceName)`
+- `ProducesStatusCodes` (`int[]?`) → additional `.Produces(404)` etc. alongside `.Produces<T>(200)`
+- `ExcludeFromOpenApi` (`bool`) → `.ExcludeFromDescription()` instead of `.WithOpenApi()`
+- 8 unit snapshot tests
 
 ---
 
@@ -191,7 +187,7 @@ Large generator classes (`RestClientProxyGenerator`, `RestServerEndpointGenerato
 
 - [x] §1 — File upload (`Stream` / `IFormFile`)
 - [~] §2 — Result\<T\> converter — cancelled (thin service wrapper + `IExceptionHandler` is the right pattern; documented in README)
-- [ ] §3 — OpenAPI customization per method (`Summary`, `Description`, `Tags`, `ProducesStatusCodes`, `ExcludeFromOpenApi`)
+- [x] §3 — OpenAPI customization per method (`Summary`, `Description`, `Tags`, `ProducesStatusCodes`, `ExcludeFromOpenApi`)
 - [ ] §4 — `TypedResults` on server endpoints
 - [ ] §5 — Explicit parameter binding (`[ServerFunctionParameter(From = ...)]`)
 - [ ] §6 — `[Obsolete]` propagation to generated client + OpenAPI

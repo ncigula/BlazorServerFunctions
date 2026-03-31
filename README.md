@@ -752,6 +752,47 @@ The generator emits `.RequireRateLimiting("api")` in the fluent endpoint chain. 
 
 ---
 
+## OpenAPI Customization
+
+Five optional properties on `[ServerFunction]` control per-endpoint OpenAPI metadata. All are optional — omitting them preserves the existing auto-generated behaviour.
+
+```csharp
+[ServerFunctionCollection(RoutePrefix = "api/products")]
+public interface IProductService
+{
+    // Summary and description appear in Swagger UI
+    [ServerFunction(
+        HttpMethod = "GET",
+        Summary = "Get a product",
+        Description = "Returns the full product record including pricing and stock levels.")]
+    Task<ProductDto> GetProductAsync(int id);
+
+    // Override the auto-generated tag (defaults to interface name without the "I" prefix)
+    [ServerFunction(HttpMethod = "POST", Tags = new[] { "Products", "Catalog" })]
+    Task<ProductDto> CreateProductAsync(ProductDto product);
+
+    // Document additional response codes alongside the default 200
+    [ServerFunction(HttpMethod = "DELETE", ProducesStatusCodes = new[] { 404 })]
+    Task DeleteProductAsync(int id);
+
+    // Hide an endpoint from the OpenAPI documentation entirely
+    [ServerFunction(HttpMethod = "GET", ExcludeFromOpenApi = true)]
+    Task<string> GetInternalKeyAsync();
+}
+```
+
+The generator emits the corresponding fluent calls:
+
+| Property | Generated call |
+|---|---|
+| `Summary = "..."` | `.WithSummary("...")` |
+| `Description = "..."` | `.WithDescription("...")` |
+| `Tags = new[] { "A", "B" }` | `.WithTags("A", "B")` |
+| `ProducesStatusCodes = new[] { 404, 409 }` | `.Produces(404)` `.Produces(409)` |
+| `ExcludeFromOpenApi = true` | `.ExcludeFromDescription()` (instead of `.WithOpenApi()`) |
+
+---
+
 ## Authorization Policies
 
 Reference any named authorization policy you've already registered:

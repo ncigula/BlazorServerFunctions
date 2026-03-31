@@ -60,4 +60,37 @@ public sealed class ServerFunctionAttribute : Attribute
     /// Example: <c>Filters = new[] { typeof(MyFilter) }</c>
     /// </summary>
     public Type[]? Filters { get; set; }
+
+    /// <summary>
+    /// OpenAPI operation summary — the short label shown in Swagger UI next to the operation.
+    /// Maps to <c>.WithSummary("...")</c> on the generated endpoint.
+    /// </summary>
+    public string? Summary { get; set; }
+
+    /// <summary>
+    /// OpenAPI operation description — a longer explanation that supports Markdown.
+    /// Maps to <c>.WithDescription("...")</c> on the generated endpoint.
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
+    /// Tag(s) that override the auto-generated tag (interface name with the leading "I" stripped).
+    /// When set, replaces the default <c>.WithTags(interfaceName)</c> call.
+    /// Example: <c>Tags = new[] { "Products", "Catalog" }</c>
+    /// </summary>
+    public string[]? Tags { get; set; }
+
+    /// <summary>
+    /// Additional HTTP status codes to document via <c>.Produces(statusCode)</c>.
+    /// Emitted alongside the existing <c>.Produces&lt;T&gt;(200)</c> annotation.
+    /// Use for documenting 404, 409, etc.
+    /// Example: <c>ProducesStatusCodes = new[] { 404, 409 }</c>
+    /// </summary>
+    public int[]? ProducesStatusCodes { get; set; }
+
+    /// <summary>
+    /// When <c>true</c>, emits <c>.ExcludeFromDescription()</c> on the generated endpoint
+    /// instead of <c>.WithOpenApi()</c>, hiding this endpoint from the OpenAPI documentation.
+    /// </summary>
+    public bool ExcludeFromOpenApi { get; set; }
 }

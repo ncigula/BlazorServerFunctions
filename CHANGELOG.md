@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-03-31
+
+### Added
+
+- **OpenAPI customization per method** — five new optional properties on `[ServerFunction]` for per-endpoint OpenAPI metadata:
+  - `Summary` (`string?`) — emits `.WithSummary("...")` on the generated endpoint; the short label shown in Swagger UI
+  - `Description` (`string?`) — emits `.WithDescription("...")` on the generated endpoint; supports Markdown
+  - `Tags` (`string[]?`) — overrides the auto-generated `.WithTags(interfaceName)` call; use to assign one or more custom tag groups
+  - `ProducesStatusCodes` (`int[]?`) — emits additional `.Produces(statusCode)` calls alongside the existing `.Produces<T>(200)` annotation; use to document 404, 409, etc.
+  - `ExcludeFromOpenApi` (`bool`) — emits `.ExcludeFromDescription()` instead of `.WithOpenApi()`, hiding the endpoint from OpenAPI documentation
+- All new properties are optional; omitting them leaves existing behaviour unchanged
+
+### Tests
+
+- 8 new unit snapshot tests in `ServerGeneratorTests.cs` covering all 5 properties individually and in combination
+
+---
+
 ## [0.12.0] - 2026-03-25
 
 ### Added

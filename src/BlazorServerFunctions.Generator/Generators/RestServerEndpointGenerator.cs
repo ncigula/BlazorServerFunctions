@@ -161,22 +161,9 @@ internal sealed class RestServerEndpointGenerator
         var interfaceRequiresAuth = _interfaceInfo.RequireAuthorization;
         var interfaceName = _interfaceInfo.Name;
 
-        var chain = new List<string>
-        {
-            $".WithName(\"{interfaceName}_{method.Name}\")",
-            $".WithTags(\"{DeriveTag(interfaceName)}\")"
-        };
-
-        if (method.AsyncType is not AsyncType.AsyncEnumerable)
-        {
-            chain.Add(BuildProducesAnnotation(method.ReturnType));
-
-            if (config.GenerateProblemDetails)
-                chain.Add(".ProducesProblem(StatusCodes.Status500InternalServerError)");
-        }
-
-        if (_hasOpenApiPackage)
-            chain.Add(".WithOpenApi()");
+        var chain = new List<string>();
+        chain.Add($".WithName(\"{interfaceName}_{method.Name}\")");
+        AddOpenApiChainEntries(method, interfaceName, config, chain);
 
         if (method.CacheSeconds > 0)
             chain.Add($".CacheOutput(p => p.Expire(System.TimeSpan.FromSeconds({method.CacheSeconds})))");
@@ -210,6 +197,45 @@ internal sealed class RestServerEndpointGenerator
             _stringBuilder.Append("            ").Append(chain[i]);
             _stringBuilder.AppendLine(i == chain.Count - 1 ? ";" : "");
         }
+    }
+
+    /// <summary>
+    /// Populates <paramref name="chain"/> with all OpenAPI-related fluent calls:
+    /// WithTags, WithSummary, WithDescription, Produces, ProducesProblem, extra status codes,
+    /// ExcludeFromDescription / WithOpenApi.
+    /// </summary>
+    private void AddOpenApiChainEntries(
+        MethodInfo method,
+        string interfaceName,
+        ConfigurationInfo config,
+        List<string> chain)
+    {
+        var tagsCall = method.Tags is { Length: > 0 }
+            ? $".WithTags({string.Join(", ", method.Tags.Select(t => $"\"{t.EscapeStringLiteral()}\""))})"
+            : $".WithTags(\"{DeriveTag(interfaceName)}\")";
+        chain.Add(tagsCall);
+
+        if (method.Summary is not null)
+            chain.Add($".WithSummary(\"{method.Summary.EscapeStringLiteral()}\")");
+        if (method.Description is not null)
+            chain.Add($".WithDescription(\"{method.Description.EscapeStringLiteral()}\")");
+
+        if (method.AsyncType is not AsyncType.AsyncEnumerable)
+        {
+            chain.Add(BuildProducesAnnotation(method.ReturnType));
+
+            if (config.GenerateProblemDetails)
+                chain.Add(".ProducesProblem(StatusCodes.Status500InternalServerError)");
+
+            if (method.ProducesStatusCodes is { Length: > 0 })
+                foreach (var sc in method.ProducesStatusCodes)
+                    chain.Add($".Produces({sc})");
+        }
+
+        if (method.ExcludeFromOpenApi)
+            chain.Add(".ExcludeFromDescription()");
+        else if (_hasOpenApiPackage)
+            chain.Add(".WithOpenApi()");
     }
 
     /// <summary>

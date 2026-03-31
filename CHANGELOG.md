@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-03-31
+
+### Changed
+
+- **TypedResults on server endpoints** — generated endpoint handler delegates now use `TypedResults` instead of the untyped `Results` static class, and the lambda return type is explicitly annotated:
+  - `return Results.Ok(result)` → `return TypedResults.Ok(result)` (full type: `Ok<T>`)
+  - `return Results.Ok()` → `return TypedResults.Ok()` (full type: `Ok`)
+  - `return Results.Problem(...)` → `return TypedResults.Problem(...)` (full type: `ProblemHttpResult`)
+  - Lambda signatures now carry an explicit return type annotation, e.g. `async Task<Results<Ok<T>, ProblemHttpResult>> ([AsParameters] ...) =>`
+  - This enables ASP.NET Core OpenAPI to infer response schemas directly from the lambda return type without explicit `.Produces<T>()` declarations
+
+### Removed
+
+- `.Produces<T>(StatusCodes.Status200OK)` from generated fluent chains — now inferred from the typed lambda return annotation
+- `.ProducesProblem(StatusCodes.Status500InternalServerError)` from generated fluent chains — now inferred from `ProblemHttpResult` in the return type union
+
+> **Note:** User-specified extra status codes (`[ServerFunction(ProducesStatusCodes = new[] { 404 })]`) are still emitted as explicit `.Produces(statusCode)` calls — TypedResults covers the success and internal-error contract, but domain-level status codes like 404 still require explicit documentation.
+
+---
+
 ## [0.13.0] - 2026-03-31
 
 ### Added

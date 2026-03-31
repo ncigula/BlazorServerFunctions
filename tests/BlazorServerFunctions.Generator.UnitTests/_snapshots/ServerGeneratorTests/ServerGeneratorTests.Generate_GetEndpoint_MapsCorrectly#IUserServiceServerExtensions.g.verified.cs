@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IUserServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/users");
 
         group.MapGet("/GetAllAsync",
-            async (IUserService service) =>
+            async Task<Results<Ok<System.Collections.Generic.List<User>>, ProblemHttpResult>> (IUserService service) =>
             {
                 var result = await service.GetAllAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IUserService_GetAllAsync")
-            .WithTags("UserService")
-            .Produces<System.Collections.Generic.List<User>>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("UserService");
 
         return endpoints;
     }

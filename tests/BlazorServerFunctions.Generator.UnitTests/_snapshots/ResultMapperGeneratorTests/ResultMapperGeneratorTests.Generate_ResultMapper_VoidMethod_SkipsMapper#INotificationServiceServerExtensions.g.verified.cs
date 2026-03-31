@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class INotificationServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/notifications");
 
         group.MapPost("/NotifyAsync",
-            async ([FromBody] NotifyAsyncRequest request, INotificationService service) =>
+            async Task<Results<Ok, ProblemHttpResult>> ([FromBody] NotifyAsyncRequest request, INotificationService service) =>
             {
                 await service.NotifyAsync(request.Message);
-                return Results.Ok();
+                return TypedResults.Ok();
             })
             .WithName("INotificationService_NotifyAsync")
-            .WithTags("NotificationService")
-            .Produces(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("NotificationService");
 
         return endpoints;
     }

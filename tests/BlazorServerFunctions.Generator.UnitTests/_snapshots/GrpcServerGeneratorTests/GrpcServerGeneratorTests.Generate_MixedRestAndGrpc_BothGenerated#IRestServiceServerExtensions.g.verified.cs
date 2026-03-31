@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IRestServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/restservice");
 
         group.MapGet("/GetAsync",
-            async ([AsParameters] GetAsyncRequest request, IRestService service) =>
+            async Task<Results<Ok<string>, ProblemHttpResult>> ([AsParameters] GetAsyncRequest request, IRestService service) =>
             {
                 var result = await service.GetAsync(request.Id);
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IRestService_GetAsync")
-            .WithTags("RestService")
-            .Produces<string>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("RestService");
 
         return endpoints;
     }

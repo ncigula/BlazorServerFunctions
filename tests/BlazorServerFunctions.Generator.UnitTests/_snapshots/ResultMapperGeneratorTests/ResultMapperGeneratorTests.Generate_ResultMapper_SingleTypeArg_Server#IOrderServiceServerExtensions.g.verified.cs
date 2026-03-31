@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,42 +21,38 @@ internal static class IOrderServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/orders");
 
         group.MapGet("/GetOrderAsync",
-            async ([AsParameters] GetOrderAsyncRequest request, IOrderService service) =>
+            async Task<Results<Ok<MyApp.Services.OrderDto>, ProblemHttpResult>> ([AsParameters] GetOrderAsyncRequest request, IOrderService service) =>
             {
                 var result = await service.GetOrderAsync(request.Id);
                 var __mapper = new global::ResultMapper<MyApp.Services.OrderDto>();
                 if (__mapper.IsSuccess(result))
-                    return Results.Ok(__mapper.GetValue(result));
+                    return TypedResults.Ok(__mapper.GetValue(result));
                 var __error = __mapper.GetError(result);
-                return Results.Problem(
+                return TypedResults.Problem(
                     __error.Detail,
                     statusCode: __error.Status,
                     title: __error.Title,
                     type: __error.Type);
             })
             .WithName("IOrderService_GetOrderAsync")
-            .WithTags("OrderService")
-            .Produces<MyApp.Services.OrderDto>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("OrderService");
 
         group.MapPost("/CreateOrderAsync",
-            async ([FromBody] CreateOrderAsyncRequest request, IOrderService service) =>
+            async Task<Results<Ok<MyApp.Services.OrderDto>, ProblemHttpResult>> ([FromBody] CreateOrderAsyncRequest request, IOrderService service) =>
             {
                 var result = await service.CreateOrderAsync(request.Name);
                 var __mapper = new global::ResultMapper<MyApp.Services.OrderDto>();
                 if (__mapper.IsSuccess(result))
-                    return Results.Ok(__mapper.GetValue(result));
+                    return TypedResults.Ok(__mapper.GetValue(result));
                 var __error = __mapper.GetError(result);
-                return Results.Problem(
+                return TypedResults.Problem(
                     __error.Detail,
                     statusCode: __error.Status,
                     title: __error.Title,
                     type: __error.Type);
             })
             .WithName("IOrderService_CreateOrderAsync")
-            .WithTags("OrderService")
-            .Produces<MyApp.Services.OrderDto>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("OrderService");
 
         return endpoints;
     }

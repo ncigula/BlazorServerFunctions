@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IItemServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/items");
 
         group.MapGet("/GetItemAsync",
-            async (IItemService service) =>
+            async Task<Results<Ok<string>, ProblemHttpResult>> (IItemService service) =>
             {
                 var result = await service.GetItemAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IItemService_GetItemAsync")
-            .WithTags("ItemService")
-            .Produces<string>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("ItemService");
 
         return endpoints;
     }

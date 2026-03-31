@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IUserPostServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/users");
 
         group.MapGet("/users/{id}/posts",
-            async (int id, [AsParameters] GetUserPostsAsyncRequest request, IUserPostService service) =>
+            async Task<Results<Ok<string>, ProblemHttpResult>> (int id, [AsParameters] GetUserPostsAsyncRequest request, IUserPostService service) =>
             {
                 var result = await service.GetUserPostsAsync(id, request.Page);
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IUserPostService_GetUserPostsAsync")
-            .WithTags("UserPostService")
-            .Produces<string>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("UserPostService");
 
         return endpoints;
     }

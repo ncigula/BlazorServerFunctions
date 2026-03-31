@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class ICalculatorServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/calculator");
 
         group.MapPost("/AddAsync",
-            async ([FromBody] AddAsyncRequest request, ICalculatorService service) =>
+            async Task<Results<Ok<int>, ProblemHttpResult>> ([FromBody] AddAsyncRequest request, ICalculatorService service) =>
             {
                 var result = await service.AddAsync(request.FirstNumber, request.SecondNumber);
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("ICalculatorService_AddAsync")
-            .WithTags("CalculatorService")
-            .Produces<int>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("CalculatorService");
 
         return endpoints;
     }

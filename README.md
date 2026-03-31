@@ -531,18 +531,17 @@ The Blazor component calls `IProductService` exactly as if it were a local servi
 
 ```csharp
 // generated: IProductServiceServerExtensions.g.cs
-group.MapGet("/{id}", async (int id, IProductService service) =>
+group.MapGet("/{id}", async Task<Results<Ok<ProductDto>, ProblemHttpResult>> (int id, IProductService service) =>
 {
     var result = await service.GetProductAsync(id);
     var __mapper = new ResultMapper<ProductDto>();
     if (__mapper.IsSuccess(result))
-        return Results.Ok(__mapper.GetValue(result));
+        return TypedResults.Ok(__mapper.GetValue(result));
     var __error = __mapper.GetError(result);
-    return Results.Problem(__error.Detail, statusCode: __error.Status,
-                           title: __error.Title, type: __error.Type);
-})
-.Produces<ProductDto>(StatusCodes.Status200OK)
-.ProducesProblem(StatusCodes.Status500InternalServerError);
+    return TypedResults.Problem(__error.Detail, statusCode: __error.Status,
+                                title: __error.Title, type: __error.Type);
+});
+// .Produces<T> and .ProducesProblem are omitted — inferred from the typed lambda return
 ```
 
 **Client proxy** — deserialises the inner value type on 2xx, parses ProblemDetails on error:
@@ -579,9 +578,9 @@ public sealed class ResultMapper<T, TError> : IServerFunctionResultMapper<Result
 ### Restrictions (compile-time diagnostics)
 
 - **BSF029** (error) — `ResultMapper` on a gRPC interface; result mapping is REST-only.
-- **BSF030** (warning) — a method's return type is non-generic when `ResultMapper` is set (e.g. `Task<string>`); the mapper cannot be applied and the method falls back to `Results.Ok(result)` / direct deserialisation.
+- **BSF030** (warning) — a method's return type is non-generic when `ResultMapper` is set (e.g. `Task<string>`); the mapper cannot be applied and the method falls back to `TypedResults.Ok(result)` / direct deserialisation.
 
-> **`void` and streaming methods** are silently excluded from mapper wrapping — `void` emits `Results.Ok()` and `IAsyncEnumerable<T>` passes through unchanged. No diagnostic is emitted for these cases.
+> **`void` and streaming methods** are silently excluded from mapper wrapping — `void` emits `TypedResults.Ok()` and `IAsyncEnumerable<T>` passes through unchanged. No diagnostic is emitted for these cases.
 
 ---
 

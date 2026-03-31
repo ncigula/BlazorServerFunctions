@@ -81,8 +81,10 @@ internal sealed class RestServerEndpointGenerator
             _stringBuilder.AppendLine("using Microsoft.AspNetCore.RateLimiting;");
         _stringBuilder.AppendLine("using Microsoft.AspNetCore.Routing;");
         _stringBuilder.AppendLine("using Microsoft.AspNetCore.Http;");
+        _stringBuilder.AppendLine("using Microsoft.AspNetCore.Http.HttpResults;");
         _stringBuilder.AppendLine("using Microsoft.AspNetCore.Mvc;");
         _stringBuilder.AppendLine("using System.Text.Json;");
+        _stringBuilder.AppendLine("using System.Threading.Tasks;");
         if (hasCancellationToken)
             _stringBuilder.AppendLine("using System.Threading;");
         if (!string.IsNullOrEmpty(additionalNamespace))
@@ -136,7 +138,9 @@ internal sealed class RestServerEndpointGenerator
         _stringBuilder.Append("        group.Map").Append(httpMethod).Append("(\"/").Append(routeSegment).AppendLine("\",");
 
         var asyncKeyword = method.AsyncType is AsyncType.Task or AsyncType.ValueTask ? "async " : string.Empty;
-        _stringBuilder.Append($"            {asyncKeyword}(");
+        var returnTypeAnnotation = BuildHandlerReturnType(method);
+        var returnTypeSuffix = string.IsNullOrEmpty(returnTypeAnnotation) ? string.Empty : $"{returnTypeAnnotation} ";
+        _stringBuilder.Append($"            {asyncKeyword}{returnTypeSuffix}(");
 
         GenerateLambdaParameters(method, routeParams, nonRouteParams);
 
@@ -157,13 +161,12 @@ internal sealed class RestServerEndpointGenerator
 
     private void GenerateFluentChain(MethodInfo method)
     {
-        var config = _interfaceInfo.Configuration;
         var interfaceRequiresAuth = _interfaceInfo.RequireAuthorization;
         var interfaceName = _interfaceInfo.Name;
 
         var chain = new List<string>();
         chain.Add($".WithName(\"{interfaceName}_{method.Name}\")");
-        AddOpenApiChainEntries(method, interfaceName, config, chain);
+        AddOpenApiChainEntries(method, interfaceName, chain);
 
         if (method.CacheSeconds > 0)
             chain.Add($".CacheOutput(p => p.Expire(System.TimeSpan.FromSeconds({method.CacheSeconds})))");
@@ -201,13 +204,17 @@ internal sealed class RestServerEndpointGenerator
 
     /// <summary>
     /// Populates <paramref name="chain"/> with all OpenAPI-related fluent calls:
-    /// WithTags, WithSummary, WithDescription, Produces, ProducesProblem, extra status codes,
+    /// WithTags, WithSummary, WithDescription, extra status codes,
     /// ExcludeFromDescription / WithOpenApi.
+    /// <para>
+    /// <c>.Produces&lt;T&gt;(200)</c> and <c>.ProducesProblem(500)</c> are intentionally omitted —
+    /// they are now inferred by ASP.NET Core OpenAPI from the typed lambda return annotation
+    /// (<c>Results&lt;Ok&lt;T&gt;, ProblemHttpResult&gt;</c>).
+    /// </para>
     /// </summary>
     private void AddOpenApiChainEntries(
         MethodInfo method,
         string interfaceName,
-        ConfigurationInfo config,
         List<string> chain)
     {
         var tagsCall = method.Tags is { Length: > 0 }
@@ -220,17 +227,12 @@ internal sealed class RestServerEndpointGenerator
         if (method.Description is not null)
             chain.Add($".WithDescription(\"{method.Description.EscapeStringLiteral()}\")");
 
-        if (method.AsyncType is not AsyncType.AsyncEnumerable)
-        {
-            chain.Add(BuildProducesAnnotation(method.ReturnType));
-
-            if (config.GenerateProblemDetails)
-                chain.Add(".ProducesProblem(StatusCodes.Status500InternalServerError)");
-
-            if (method.ProducesStatusCodes is { Length: > 0 })
-                foreach (var sc in method.ProducesStatusCodes)
-                    chain.Add($".Produces({sc})");
-        }
+        // TypedResults fully describes the response schema via the lambda return type;
+        // .Produces<T>() and .ProducesProblem() are no longer emitted.
+        // Extra user-specified status codes (404, 409, etc.) are still documented explicitly.
+        if (method.AsyncType is not AsyncType.AsyncEnumerable && method.ProducesStatusCodes is { Length: > 0 })
+            foreach (var sc in method.ProducesStatusCodes)
+                chain.Add($".Produces({sc})");
 
         if (method.ExcludeFromOpenApi)
             chain.Add(".ExcludeFromDescription()");
@@ -238,31 +240,56 @@ internal sealed class RestServerEndpointGenerator
             chain.Add(".WithOpenApi()");
     }
 
-    /// <summary>
-    /// Builds the <c>.Produces&lt;T&gt;(200)</c> fluent annotation string.
-    /// When a <see cref="InterfaceInfo.ResultMapperTypeName"/> is active, the advertised type is
-    /// the first generic type argument of the return type (the success value type), not the wrapper.
-    /// E.g. <c>Result&lt;UserDto&gt;</c> → <c>.Produces&lt;UserDto&gt;(StatusCodes.Status200OK)</c>.
-    /// </summary>
-    private string BuildProducesAnnotation(string returnType)
-    {
-        if (string.Equals(returnType, "void", StringComparison.Ordinal))
-            return ".Produces(StatusCodes.Status200OK)";
-
-        if (_interfaceInfo.ResultMapperTypeName is not null)
-        {
-            var innerArgs = returnType.ExtractGenericTypeArgs();
-            var producesType = innerArgs.Length > 0 ? innerArgs[0] : returnType;
-            return $".Produces<{producesType}>(StatusCodes.Status200OK)";
-        }
-
-        return $".Produces<{returnType}>(StatusCodes.Status200OK)";
-    }
-
     private static string DeriveTag(string interfaceName) =>
         interfaceName.Length > 1 && interfaceName[0] == 'I' && char.IsUpper(interfaceName[1])
             ? interfaceName.Substring(1)
             : interfaceName;
+
+    /// <summary>
+    /// Returns the lambda return type annotation string to insert before the parameter list,
+    /// e.g. <c>Task&lt;Results&lt;Ok&lt;User&gt;, ProblemHttpResult&gt;&gt;</c>.
+    /// Returns <see cref="string.Empty"/> for streaming methods (<see cref="AsyncType.AsyncEnumerable"/>),
+    /// which return <c>IAsyncEnumerable&lt;T&gt;</c> directly and need no annotation.
+    /// </summary>
+    private string BuildHandlerReturnType(MethodInfo method)
+    {
+        if (method.AsyncType is AsyncType.AsyncEnumerable)
+            return string.Empty;
+
+        var resultUnion = BuildResultUnionType(method);
+
+        return method.AsyncType is AsyncType.Task or AsyncType.ValueTask
+            ? $"Task<{resultUnion}>"
+            : resultUnion;
+    }
+
+    /// <summary>
+    /// Computes the inner result union type for the handler return annotation:
+    /// <c>Results&lt;Ok&lt;T&gt;, ProblemHttpResult&gt;</c> when <c>GenerateProblemDetails</c> is true,
+    /// or <c>Ok&lt;T&gt;</c> when false.
+    /// </summary>
+    private string BuildResultUnionType(MethodInfo method)
+    {
+        bool generateProblemDetails = _interfaceInfo.Configuration.GenerateProblemDetails;
+
+        if (string.Equals(method.ReturnType, "void", StringComparison.Ordinal))
+            return generateProblemDetails ? "Results<Ok, ProblemHttpResult>" : "Ok";
+
+        string successType;
+        if (_interfaceInfo.ResultMapperTypeName is not null)
+        {
+            var typeArgs = method.ReturnType.ExtractGenericTypeArgs();
+            successType = typeArgs.Length > 0 ? typeArgs[0] : method.ReturnType;
+        }
+        else
+        {
+            successType = method.ReturnType;
+        }
+
+        return generateProblemDetails
+            ? $"Results<Ok<{successType}>, ProblemHttpResult>"
+            : $"Ok<{successType}>";
+    }
 
     private void GenerateLambdaParameters(
         MethodInfo method,
@@ -368,19 +395,19 @@ internal sealed class RestServerEndpointGenerator
     {
         if (string.Equals(returnType, "void", StringComparison.Ordinal))
         {
-            _stringBuilder.AppendLine("                return Results.Ok();");
+            _stringBuilder.AppendLine("                return TypedResults.Ok();");
             return;
         }
 
         // When no ResultMapper is configured, or the return type has no generic args
-        // (e.g. plain string / int), fall back to the default Results.Ok(result) path.
+        // (e.g. plain string / int), fall back to the default TypedResults.Ok(result) path.
         // BSF030 warns about the non-generic case at parse time.
         var mapperTypeName = _interfaceInfo.ResultMapperTypeName;
         var typeArgs = returnType.ExtractGenericTypeArgs();
 
         if (mapperTypeName is null || typeArgs.Length == 0)
         {
-            _stringBuilder.AppendLine("                return Results.Ok(result);");
+            _stringBuilder.AppendLine("                return TypedResults.Ok(result);");
             return;
         }
 
@@ -388,9 +415,9 @@ internal sealed class RestServerEndpointGenerator
 
         _stringBuilder.AppendLine($"                var __mapper = {mapperInstantiation};");
         _stringBuilder.AppendLine("                if (__mapper.IsSuccess(result))");
-        _stringBuilder.AppendLine("                    return Results.Ok(__mapper.GetValue(result));");
+        _stringBuilder.AppendLine("                    return TypedResults.Ok(__mapper.GetValue(result));");
         _stringBuilder.AppendLine("                var __error = __mapper.GetError(result);");
-        _stringBuilder.AppendLine("                return Results.Problem(");
+        _stringBuilder.AppendLine("                return TypedResults.Problem(");
         _stringBuilder.AppendLine("                    __error.Detail,");
         _stringBuilder.AppendLine("                    statusCode: __error.Status,");
         _stringBuilder.AppendLine("                    title: __error.Title,");

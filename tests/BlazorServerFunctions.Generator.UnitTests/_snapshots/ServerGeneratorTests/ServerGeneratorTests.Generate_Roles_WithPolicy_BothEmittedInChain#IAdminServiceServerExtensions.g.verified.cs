@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -20,15 +22,13 @@ internal static class IAdminServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/admin");
 
         group.MapGet("/GetStatsAsync",
-            async (IAdminService service) =>
+            async Task<Results<Ok<string>, ProblemHttpResult>> (IAdminService service) =>
             {
                 var result = await service.GetStatsAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IAdminService_GetStatsAsync")
             .WithTags("AdminService")
-            .Produces<string>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError)
             .RequireAuthorization("AdminOnly")
             .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" });
 

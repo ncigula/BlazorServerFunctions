@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class ICounterServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/counter");
 
         group.MapGet("/GetCountAsync",
-            async (ICounterService service) =>
+            async Task<Results<Ok<int>, ProblemHttpResult>> (ICounterService service) =>
             {
                 var result = await service.GetCountAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("ICounterService_GetCountAsync")
-            .WithTags("CounterService")
-            .Produces<int>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("CounterService");
 
         return endpoints;
     }

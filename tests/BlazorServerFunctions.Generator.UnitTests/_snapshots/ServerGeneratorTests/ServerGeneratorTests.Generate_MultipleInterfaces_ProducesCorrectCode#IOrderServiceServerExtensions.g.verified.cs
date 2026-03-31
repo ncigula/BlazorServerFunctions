@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IOrderServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/orders");
 
         group.MapPost("/CreateOrderAsync",
-            async ([FromBody] CreateOrderAsyncRequest request, IOrderService service) =>
+            async Task<Results<Ok<Order>, ProblemHttpResult>> ([FromBody] CreateOrderAsyncRequest request, IOrderService service) =>
             {
                 var result = await service.CreateOrderAsync(request.UserId, request.ProductId);
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IOrderService_CreateOrderAsync")
-            .WithTags("OrderService")
-            .Produces<Order>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("OrderService");
 
         return endpoints;
     }

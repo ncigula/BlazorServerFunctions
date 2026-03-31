@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IItemServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/items");
 
         group.MapDelete("/{id}",
-            async (int id, IItemService service) =>
+            async Task<Results<Ok, ProblemHttpResult>> (int id, IItemService service) =>
             {
                 await service.DeleteAsync(id);
-                return Results.Ok();
+                return TypedResults.Ok();
             })
             .WithName("IItemService_DeleteAsync")
-            .WithTags("ItemService")
-            .Produces(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("ItemService");
 
         return endpoints;
     }

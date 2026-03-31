@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class ISpecialServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/special");
 
         group.MapGet("/SpecialMethodAsync",
-            async (ISpecialService service) =>
+            async Task<Results<Ok<Result>, ProblemHttpResult>> (ISpecialService service) =>
             {
                 var result = await service.SpecialMethodAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("ISpecialService_SpecialMethodAsync")
-            .WithTags("SpecialService")
-            .Produces<Result>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("SpecialService");
 
         return endpoints;
     }

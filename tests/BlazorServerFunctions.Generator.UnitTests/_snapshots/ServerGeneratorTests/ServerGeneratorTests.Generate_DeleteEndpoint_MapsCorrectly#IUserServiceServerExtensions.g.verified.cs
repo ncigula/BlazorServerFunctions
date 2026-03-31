@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IUserServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/users");
 
         group.MapDelete("/DeleteAsync",
-            async ([AsParameters] DeleteAsyncRequest request, IUserService service) =>
+            async Task<Results<Ok, ProblemHttpResult>> ([AsParameters] DeleteAsyncRequest request, IUserService service) =>
             {
                 await service.DeleteAsync(request.Id);
-                return Results.Ok();
+                return TypedResults.Ok();
             })
             .WithName("IUserService_DeleteAsync")
-            .WithTags("UserService")
-            .Produces(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("UserService");
 
         return endpoints;
     }

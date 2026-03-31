@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IMessageServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/messages");
 
         group.MapGet("/GetAllMessagesAsync",
-            async (IMessageService service) =>
+            async Task<Results<Ok<System.Collections.Generic.List<Message>>, ProblemHttpResult>> (IMessageService service) =>
             {
                 var result = await service.GetAllMessagesAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IMessageService_GetAllMessagesAsync")
-            .WithTags("MessageService")
-            .Produces<System.Collections.Generic.List<Message>>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("MessageService");
 
         return endpoints;
     }

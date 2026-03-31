@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,37 +21,31 @@ internal static class ITestServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/test");
 
         group.MapGet("/GetAllMessagesAsync",
-            async (ITestService service) =>
+            async Task<Results<Ok<System.Collections.Generic.List<Message>>, ProblemHttpResult>> (ITestService service) =>
             {
                 var result = await service.GetAllMessagesAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("ITestService_GetAllMessagesAsync")
-            .WithTags("TestService")
-            .Produces<System.Collections.Generic.List<Message>>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("TestService");
 
         group.MapPost("/CreateAsync",
-            async ([FromBody] CreateAsyncRequest request, ITestService service) =>
+            async Task<Results<Ok<User>, ProblemHttpResult>> ([FromBody] CreateAsyncRequest request, ITestService service) =>
             {
                 var result = await service.CreateAsync(request.Id, request.Name);
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("ITestService_CreateAsync")
-            .WithTags("TestService")
-            .Produces<User>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("TestService");
 
         group.MapPost("/AnotherMethodAsync",
-            async (ITestService service) =>
+            async Task<Results<Ok, ProblemHttpResult>> (ITestService service) =>
             {
                 await service.AnotherMethodAsync();
-                return Results.Ok();
+                return TypedResults.Ok();
             })
             .WithName("ITestService_AnotherMethodAsync")
-            .WithTags("TestService")
-            .Produces(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("TestService");
 
         return endpoints;
     }

@@ -114,17 +114,15 @@ Adding `IServerFunctionResultConverter<T>` + `[ServerFunction(ResultConverter = 
 
 ---
 
-### §4 — `TypedResults` on server endpoints
+### §4 — `TypedResults` on server endpoints ✅
 **Size:** 🟡 &nbsp; **Value:** 🔸 Medium
 
-Server endpoints currently return `IResult`. ASP.NET Core 7+ recommends `TypedResults` (e.g. `TypedResults.Ok<T>()`) because it lets Swagger/OpenAPI infer response schemas without explicit `.Produces<T>()` declarations. This is a code-generation quality improvement with no user-visible API changes.
-
-**What to build:**
-- Change `Results.Ok(value)` → `TypedResults.Ok(value)` in `RestServerEndpointGenerator`
-- Change return type annotation on the endpoint handler delegate from `IResult` to `Results<Ok<T>, ProblemHttpResult>` (requires importing `Microsoft.AspNetCore.Http.HttpResults`)
-- Remove now-redundant `.Produces<T>(200)` and `.ProducesProblem(500)` calls when `TypedResults` fully describes the contract
-- Requires snapshot updates across all server endpoint tests
-- Verify compatibility with `Microsoft.AspNetCore.OpenApi` integration tests
+**Delivered:**
+- `Results.Ok(value)` / `Results.Ok()` / `Results.Problem(...)` → `TypedResults.Ok(value)` / `TypedResults.Ok()` / `TypedResults.Problem(...)` in `RestServerEndpointGenerator`
+- Lambda return types explicitly annotated: `async Task<Results<Ok<T>, ProblemHttpResult>> (...) =>` (or `Ok<T>` when `GenerateProblemDetails = false`); `using System.Threading.Tasks;` and `using Microsoft.AspNetCore.Http.HttpResults;` added to generated files
+- `.Produces<T>(200)` and `.ProducesProblem(500)` removed from fluent chains — now inferred by ASP.NET Core OpenAPI from the typed return annotation
+- User-specified extra status codes (`ProducesStatusCodes`) still emitted as explicit `.Produces(statusCode)` calls
+- 99 unit snapshot files updated across four snapshot folders
 
 ---
 
@@ -188,7 +186,7 @@ Large generator classes (`RestClientProxyGenerator`, `RestServerEndpointGenerato
 - [x] §1 — File upload (`Stream` / `IFormFile`)
 - [~] §2 — Result\<T\> converter — cancelled (thin service wrapper + `IExceptionHandler` is the right pattern; documented in README)
 - [x] §3 — OpenAPI customization per method (`Summary`, `Description`, `Tags`, `ProducesStatusCodes`, `ExcludeFromOpenApi`)
-- [ ] §4 — `TypedResults` on server endpoints
+- [x] §4 — `TypedResults` on server endpoints (`TypedResults.Ok<T>()`, explicit lambda return annotation, removed `.Produces<T>()` / `.ProducesProblem()`)
 - [ ] §5 — Explicit parameter binding (`[ServerFunctionParameter(From = ...)]`)
 - [ ] §6 — `[Obsolete]` propagation to generated client + OpenAPI
 - [ ] §7 — gRPC HTTP/2 enforcement

@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IValueTaskServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/valuetasks");
 
         group.MapPost("/ProcessAsync",
-            async (IValueTaskService service) =>
+            async Task<Results<Ok<Result>, ProblemHttpResult>> (IValueTaskService service) =>
             {
                 var result = await service.ProcessAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IValueTaskService_ProcessAsync")
-            .WithTags("ValueTaskService")
-            .Produces<Result>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("ValueTaskService");
 
         return endpoints;
     }

@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -20,26 +22,22 @@ internal static class IItemServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/items");
 
         group.MapGet("/GetAllAsync",
-            async (IItemService service) =>
+            async Task<Results<Ok<string>, ProblemHttpResult>> (IItemService service) =>
             {
                 var result = await service.GetAllAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IItemService_GetAllAsync")
-            .WithTags("ItemService")
-            .Produces<string>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("ItemService");
 
         group.MapDelete("/DeleteAsync",
-            async ([AsParameters] DeleteAsyncRequest request, IItemService service) =>
+            async Task<Results<Ok, ProblemHttpResult>> ([AsParameters] DeleteAsyncRequest request, IItemService service) =>
             {
                 await service.DeleteAsync(request.Id);
-                return Results.Ok();
+                return TypedResults.Ok();
             })
             .WithName("IItemService_DeleteAsync")
             .WithTags("ItemService")
-            .Produces(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError)
             .RequireAuthorization(new AuthorizeAttribute { Roles = "Admin" });
 
         return endpoints;

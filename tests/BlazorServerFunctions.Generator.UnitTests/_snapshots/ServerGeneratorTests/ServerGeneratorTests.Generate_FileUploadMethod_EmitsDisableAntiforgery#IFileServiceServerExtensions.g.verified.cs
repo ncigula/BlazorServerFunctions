@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IFileServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/fileservice");
 
         group.MapPost("/UploadAsync",
-            async (IFormFileCollection files, IFileService service) =>
+            async Task<Results<Ok<long>, ProblemHttpResult>> (IFormFileCollection files, IFileService service) =>
             {
                 var result = await service.UploadAsync(files);
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IFileService_UploadAsync")
             .WithTags("FileService")
-            .Produces<long>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError)
             .DisableAntiforgery();
 
         return endpoints;

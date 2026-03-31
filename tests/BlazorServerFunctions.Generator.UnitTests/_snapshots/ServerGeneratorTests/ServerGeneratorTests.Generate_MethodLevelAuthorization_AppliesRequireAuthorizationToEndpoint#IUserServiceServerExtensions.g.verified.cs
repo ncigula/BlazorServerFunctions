@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -20,26 +22,22 @@ internal static class IUserServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/users");
 
         group.MapGet("/GetUserAsync",
-            async ([AsParameters] GetUserAsyncRequest request, IUserService service) =>
+            async Task<Results<Ok<User>, ProblemHttpResult>> ([AsParameters] GetUserAsyncRequest request, IUserService service) =>
             {
                 var result = await service.GetUserAsync(request.Id);
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IUserService_GetUserAsync")
-            .WithTags("UserService")
-            .Produces<User>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("UserService");
 
         group.MapDelete("/DeleteUserAsync",
-            async ([AsParameters] DeleteUserAsyncRequest request, IUserService service) =>
+            async Task<Results<Ok, ProblemHttpResult>> ([AsParameters] DeleteUserAsyncRequest request, IUserService service) =>
             {
                 await service.DeleteUserAsync(request.Id);
-                return Results.Ok();
+                return TypedResults.Ok();
             })
             .WithName("IUserService_DeleteUserAsync")
             .WithTags("UserService")
-            .Produces(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError)
             .RequireAuthorization();
 
         return endpoints;

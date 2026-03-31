@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,34 +21,30 @@ internal static class IProductServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/products");
 
         group.MapGet("/GetProductAsync",
-            async ([AsParameters] GetProductAsyncRequest request, IProductService service) =>
+            async Task<Results<Ok<MyApp.Services.ProductDto>, ProblemHttpResult>> ([AsParameters] GetProductAsyncRequest request, IProductService service) =>
             {
                 var result = await service.GetProductAsync(request.Id);
                 var __mapper = new global::ResultMapper<MyApp.Services.ProductDto>();
                 if (__mapper.IsSuccess(result))
-                    return Results.Ok(__mapper.GetValue(result));
+                    return TypedResults.Ok(__mapper.GetValue(result));
                 var __error = __mapper.GetError(result);
-                return Results.Problem(
+                return TypedResults.Problem(
                     __error.Detail,
                     statusCode: __error.Status,
                     title: __error.Title,
                     type: __error.Type);
             })
             .WithName("IProductService_GetProductAsync")
-            .WithTags("ProductService")
-            .Produces<MyApp.Services.ProductDto>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("ProductService");
 
         group.MapDelete("/DeleteProductAsync",
-            async ([AsParameters] DeleteProductAsyncRequest request, IProductService service) =>
+            async Task<Results<Ok, ProblemHttpResult>> ([AsParameters] DeleteProductAsyncRequest request, IProductService service) =>
             {
                 await service.DeleteProductAsync(request.Id);
-                return Results.Ok();
+                return TypedResults.Ok();
             })
             .WithName("IProductService_DeleteProductAsync")
-            .WithTags("ProductService")
-            .Produces(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("ProductService");
 
         return endpoints;
     }

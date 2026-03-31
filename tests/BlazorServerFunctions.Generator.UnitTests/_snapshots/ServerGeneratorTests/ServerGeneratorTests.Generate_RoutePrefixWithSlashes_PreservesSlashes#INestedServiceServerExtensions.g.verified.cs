@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class INestedServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/api/v2/nested/service");
 
         group.MapGet("/GetAsync",
-            async (INestedService service) =>
+            async Task<Results<Ok<string>, ProblemHttpResult>> (INestedService service) =>
             {
                 var result = await service.GetAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("INestedService_GetAsync")
-            .WithTags("NestedService")
-            .Produces<string>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("NestedService");
 
         return endpoints;
     }

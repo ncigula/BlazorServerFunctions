@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,16 +21,14 @@ internal static class IProductServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/productservice");
 
         group.MapGet("/GetProductAsync",
-            async ([AsParameters] GetProductAsyncRequest request, IProductService service) =>
+            async Task<Results<Ok<string>, ProblemHttpResult>> ([AsParameters] GetProductAsyncRequest request, IProductService service) =>
             {
                 var result = await service.GetProductAsync(request.Id);
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IProductService_GetProductAsync")
             .WithTags("ProductService")
-            .WithSummary("Get a product by ID")
-            .Produces<string>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithSummary("Get a product by ID");
 
         return endpoints;
     }

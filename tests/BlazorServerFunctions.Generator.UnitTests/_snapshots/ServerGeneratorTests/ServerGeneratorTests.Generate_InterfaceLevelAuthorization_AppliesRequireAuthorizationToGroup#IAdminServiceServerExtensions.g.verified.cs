@@ -6,8 +6,10 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -21,26 +23,22 @@ internal static class IAdminServiceServerExtensions
         group.RequireAuthorization();
 
         group.MapGet("/GetSecretAsync",
-            async (IAdminService service) =>
+            async Task<Results<Ok<string>, ProblemHttpResult>> (IAdminService service) =>
             {
                 var result = await service.GetSecretAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IAdminService_GetSecretAsync")
-            .WithTags("AdminService")
-            .Produces<string>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("AdminService");
 
         group.MapPost("/DoActionAsync",
-            async ([FromBody] DoActionAsyncRequest request, IAdminService service) =>
+            async Task<Results<Ok, ProblemHttpResult>> ([FromBody] DoActionAsyncRequest request, IAdminService service) =>
             {
                 await service.DoActionAsync(request.Command);
-                return Results.Ok();
+                return TypedResults.Ok();
             })
             .WithName("IAdminService_DoActionAsync")
-            .WithTags("AdminService")
-            .Produces(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("AdminService");
 
         return endpoints;
     }

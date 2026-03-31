@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IDataServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/data");
 
         group.MapPost("/ProcessAsync",
-            async ([FromBody] ProcessAsyncRequest request, IDataService service) =>
+            async Task<Results<Ok<Result>, ProblemHttpResult>> ([FromBody] ProcessAsyncRequest request, IDataService service) =>
             {
                 var result = await service.ProcessAsync(request.Id, request.Timestamp, request.Numbers, request.Metadata);
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("IDataService_ProcessAsync")
-            .WithTags("DataService")
-            .Produces<Result>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("DataService");
 
         return endpoints;
     }

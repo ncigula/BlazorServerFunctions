@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class ITaskServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/tasks");
 
         group.MapPost("/ProcessAsync",
-            async (ITaskService service) =>
+            async Task<Results<Ok<Result>, ProblemHttpResult>> (ITaskService service) =>
             {
                 var result = await service.ProcessAsync();
-                return Results.Ok(result);
+                return TypedResults.Ok(result);
             })
             .WithName("ITaskService_ProcessAsync")
-            .WithTags("TaskService")
-            .Produces<Result>(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("TaskService");
 
         return endpoints;
     }

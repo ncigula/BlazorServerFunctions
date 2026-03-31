@@ -5,8 +5,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 using System.Text.Json;
+using System.Threading.Tasks;
 using MyApp.Services;
 
 namespace Tests;
@@ -19,15 +21,13 @@ internal static class IBetaServiceServerExtensions
         var group = endpoints.MapGroup("/api/functions/betaservice");
 
         group.MapPost("/CreateAsync",
-            async ([FromBody] CreateAsyncRequest request, IBetaService service) =>
+            async Task<Results<Ok, ProblemHttpResult>> ([FromBody] CreateAsyncRequest request, IBetaService service) =>
             {
                 await service.CreateAsync(request.Name);
-                return Results.Ok();
+                return TypedResults.Ok();
             })
             .WithName("IBetaService_CreateAsync")
-            .WithTags("BetaService")
-            .Produces(StatusCodes.Status200OK)
-            .ProducesProblem(StatusCodes.Status500InternalServerError);
+            .WithTags("BetaService");
 
         return endpoints;
     }

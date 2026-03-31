@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774890272383,
+  "lastUpdate": 1774965277997,
   "repoUrl": "https://github.com/ncigula/BlazorServerFunctions",
   "entries": {
     "Benchmark": [
@@ -356,6 +356,36 @@ window.BENCHMARK_DATA = {
             "value": 37121343.80120482,
             "unit": "ns",
             "range": "± 1977513.4553613802"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "committer": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "distinct": true,
+          "id": "b29fb116e2397d13ab058961c0078514f74c661d",
+          "message": "feat: TypedResults on server endpoints — typed lambda return annotations, remove redundant .Produces/.ProducesProblem (§4)\n\n- Replace Results.Ok/Results.Problem with TypedResults.Ok/TypedResults.Problem in all generated endpoint handlers\n- Annotate lambda return types explicitly: async Task<Results<Ok<T>, ProblemHttpResult>> (...) =>\n  (or Ok<T> when GenerateProblemDetails = false; Results<Ok, ProblemHttpResult> for void)\n- Remove .Produces<T>(200) and .ProducesProblem(500) from fluent chains — now inferred by\n  ASP.NET Core OpenAPI from the typed lambda return annotation\n- Add using System.Threading.Tasks; and using Microsoft.AspNetCore.Http.HttpResults; to generated files\n- User-specified ProducesStatusCodes still emitted as explicit .Produces(statusCode) calls\n- 99 snapshot files updated across ServerGeneratorTests, ConfigurationTests,\n  GrpcServerGeneratorTests, and ResultMapperGeneratorTests\n\nCo-Authored-By: Claude Sonnet 4.6 <noreply@anthropic.com>",
+          "timestamp": "2026-03-31T12:01:48+02:00",
+          "tree_id": "aa8dfd50710ccdb36e4deec121ab0a1750d7a2f6",
+          "url": "https://github.com/ncigula/BlazorServerFunctions/commit/b29fb116e2397d13ab058961c0078514f74c661d"
+        },
+        "date": 1774965277541,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "BlazorServerFunctions.Benchmarks.IncrementalGenerationBenchmarks.IncrementalRun",
+            "value": 205244.1594426082,
+            "unit": "ns",
+            "range": "± 639.8532787695191"
           }
         ]
       }

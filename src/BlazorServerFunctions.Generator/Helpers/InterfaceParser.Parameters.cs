@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using BlazorServerFunctions.Generator.Models;
 using Microsoft.CodeAnalysis;
+using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
 
 namespace BlazorServerFunctions.Generator.Helpers;
 
@@ -10,18 +11,50 @@ internal sealed partial class InterfaceParser
     {
         return methodSymbol.Parameters
             .Where(p => !string.Equals(p.Type.ToDisplayString(), "System.Threading.CancellationToken", StringComparison.Ordinal))
-            .Select(parameter => new ParameterInfo
+            .Select(static parameter =>
             {
-                Name = parameter.Name,
-                Type = parameter.Type.ToDisplayString(),
-                HasDefaultValue = parameter.HasExplicitDefaultValue,
-                DefaultValue = parameter.HasExplicitDefaultValue && parameter.ExplicitDefaultValue is not null
-                    ? Convert.ToString(parameter.ExplicitDefaultValue, System.Globalization.CultureInfo.InvariantCulture)
-                    : null,
-                IsValueType = parameter.Type.IsValueType,
-                FileKind = DetectFileKind(parameter.Type.ToDisplayString()),
+                var info = new ParameterInfo
+                {
+                    Name = parameter.Name,
+                    Type = parameter.Type.ToDisplayString(),
+                    HasDefaultValue = parameter.HasExplicitDefaultValue,
+                    DefaultValue = parameter.HasExplicitDefaultValue && parameter.ExplicitDefaultValue is not null
+                        ? Convert.ToString(parameter.ExplicitDefaultValue, System.Globalization.CultureInfo.InvariantCulture)
+                        : null,
+                    IsValueType = parameter.Type.IsValueType,
+                    FileKind = DetectFileKind(parameter.Type.ToDisplayString()),
+                };
+
+                ParseServerFunctionParameterAttribute(parameter, info);
+                return info;
             })
             .ToList();
+    }
+
+    private static void ParseServerFunctionParameterAttribute(IParameterSymbol parameter, ParameterInfo info)
+    {
+        var sfpAttr = parameter.GetAttributes()
+            .FirstOrDefault(a => string.Equals(
+                a.AttributeClass?.Name, "ServerFunctionParameterAttribute",
+                StringComparison.Ordinal));
+
+        if (sfpAttr is null)
+            return;
+
+        foreach (var arg in sfpAttr.NamedArguments)
+        {
+            switch (arg.Key)
+            {
+                case "From":
+                    if (arg.Value.Value is int enumVal
+                        && Enum.IsDefined(typeof(ParameterSource), enumVal))
+                        info.ExplicitSource = (ParameterSource)enumVal;
+                    break;
+                case "Name":
+                    info.ExplicitName = arg.Value.Value?.ToString();
+                    break;
+            }
+        }
     }
 
     private static FileKind DetectFileKind(string typeName) => typeName switch
@@ -98,4 +131,28 @@ internal sealed partial class InterfaceParser
         "float", "double", "decimal", "bool", "char", "string",
         "Guid", "DateTime", "DateTimeOffset", "DateOnly", "TimeOnly", "TimeSpan",
     };
+
+    /// <summary>
+    /// Validates explicit <see cref="ParameterSource"/> annotations after all other parsing is complete.
+    /// BSF031: <see cref="ParameterSource.Route"/> specified but <c>{paramName}</c> not in route template.
+    /// BSF032: <see cref="ParameterSource.Body"/> on GET or DELETE.
+    /// </summary>
+    private void ValidateExplicitParameterBindings(IMethodSymbol methodSymbol, MethodInfo methodInfo)
+    {
+        foreach (var param in methodInfo.Parameters)
+        {
+            if (param.ExplicitSource == ParameterSource.Route && !param.IsRouteParameter)
+                _context.ReportDiagnostic(Diagnostic.Create(
+                    DiagnosticDescriptors.ExplicitRouteParameterMissingFromTemplate,
+                    methodSymbol.Locations.First(),
+                    param.Name, methodInfo.Name));
+
+            if (param.ExplicitSource == ParameterSource.Body
+                && methodInfo.HttpMethod is HttpMethod.Get or HttpMethod.Delete)
+                _context.ReportDiagnostic(Diagnostic.Create(
+                    DiagnosticDescriptors.BodyParameterOnGetOrDelete,
+                    methodSymbol.Locations.First(),
+                    param.Name, methodInfo.Name));
+        }
+    }
 }

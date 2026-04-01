@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-03-31
+
+### Added
+
+- `ParameterSource` enum (`Auto`, `Route`, `Query`, `Body`, `Header`) in `BlazorServerFunctions.Abstractions`
+- `[ServerFunctionParameter(From = ParameterSource.Header, Name = "X-Tenant-Id")]` attribute for per-parameter binding control
+- **Server endpoints:** header params → `[FromHeader(Name="...")]`; explicit query params on POST → individual `[FromQuery]`; remaining auto params still bundled in the DTO
+- **Client proxies:** header params → `requestMessage.Headers.Add("...", value)`; explicit query on POST → URL query string; uses `HttpRequestMessage`+`SendAsync` when explicit bindings are present
+- `BSF031` (error): `ParameterSource.Route` specified but `{paramName}` not present in the route template
+- `BSF032` (error): `ParameterSource.Body` on a GET or DELETE method — browsers forbid a request body on GET/DELETE (Fetch API restriction), making the endpoint unreachable from WebAssembly clients
+
+---
+
 ## [0.14.0] - 2026-03-31
 
 ### Changed

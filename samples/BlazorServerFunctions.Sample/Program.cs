@@ -14,6 +14,7 @@ using BlazorServerFunctions.Sample.Components.Crud;
 using BlazorServerFunctions.Sample.Components.RateLimiting;
 using BlazorServerFunctions.Sample.Components.Echo;
 using BlazorServerFunctions.Sample.Components.RouteParams;
+using BlazorServerFunctions.Sample.Components.ExplicitBinding;
 using BlazorServerFunctions.Sample.Components.FileUpload;
 using BlazorServerFunctions.Sample.Components.ResultDemo;
 using BlazorServerFunctions.Sample.Components.GrpcDemo;
@@ -120,6 +121,7 @@ builder.Services.AddScoped<IAntiForgeryService, AntiForgeryService>();
 builder.Services.AddScoped<IFilteredEchoService, FilteredEchoService>();
 builder.Services.AddScoped<IFileUploadService, FileUploadService>();
 builder.Services.AddSingleton<IResultDemoService, ResultDemoService>();
+builder.Services.AddScoped<IExplicitBindingService, ExplicitBindingService>();
 
 builder.Services.AddServerFunctionHealthChecks();
 

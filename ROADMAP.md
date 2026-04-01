@@ -126,19 +126,16 @@ Adding `IServerFunctionResultConverter<T>` + `[ServerFunction(ResultConverter = 
 
 ---
 
-### §5 — Explicit parameter binding
+### §5 — Explicit parameter binding ✅
 **Size:** 🟢 &nbsp; **Value:** 🔸 Medium
 
-Binding is currently fully inferred (route → `{param}` match, GET → query string, POST/PUT/PATCH → JSON body). No escape hatch for unusual cases like a header-sourced parameter or a POST method with a query string parameter.
-
-**What to build:**
-- New `ParameterSource` enum in Abstractions: `Auto`, `Route`, `Query`, `Body`, `Header`
-- New `[ServerFunctionParameter(From = ParameterSource.Header, Name = "X-Tenant-Id")]` attribute for method parameters
-- Generator honours explicit binding over inferred binding
-- **Client side:** header parameters → `request.Headers.Add(...)` instead of body/query
-- **Server side:** `[FromHeader(Name = "X-Tenant-Id")]` instead of `[FromQuery]` / `[FromBody]`
-- New diagnostic BSF031 (error): `ParameterSource.Route` specified but `{paramName}` not present in the route template
-- New diagnostic BSF032 (warning): `ParameterSource.Body` on a GET method — GET requests should not have a body
+**Delivered:**
+- `ParameterSource` enum (`Auto`, `Route`, `Query`, `Body`, `Header`) + `[ServerFunctionParameter]` attribute in Abstractions
+- Server: `[FromHeader(Name="...")]`, `[FromQuery]` emitted for explicit sources; auto params remain in the DTO
+- Client: `HttpRequestMessage`+`SendAsync` path for headers/mixed; query params sent in URL
+- BSF031 (error): `ParameterSource.Route` specified but `{paramName}` not present in the route template
+- BSF032 (error): `ParameterSource.Body` on a GET or DELETE method — browsers (Fetch API) forbid a body on GET/DELETE, making the endpoint unreachable from WASM
+- Unit snapshot tests + E2E round-trip tests (Auto, Route, Header, Query-on-POST) + sample app (`IExplicitBindingService`)
 
 ---
 
@@ -153,6 +150,7 @@ If a service method is marked `[Obsolete]`, the generated client proxy method si
 - Client proxy generator emits `[Obsolete("message", isError)]` on the generated method
 - Server endpoint generator emits `.Deprecated()` on the OpenAPI metadata (only when `Microsoft.AspNetCore.OpenApi` is referenced)
 - No new diagnostics needed
+- If possible, do the following – when using [Obsolete] on a method in an interface, the user can create a custom partial class (the same one getting generated) and implement this method manually. This would require the generated client service class to the partial but the server API endpoint could be a problem here.
 
 ---
 
@@ -187,7 +185,7 @@ Large generator classes (`RestClientProxyGenerator`, `RestServerEndpointGenerato
 - [~] §2 — Result\<T\> converter — cancelled (thin service wrapper + `IExceptionHandler` is the right pattern; documented in README)
 - [x] §3 — OpenAPI customization per method (`Summary`, `Description`, `Tags`, `ProducesStatusCodes`, `ExcludeFromOpenApi`)
 - [x] §4 — `TypedResults` on server endpoints (`TypedResults.Ok<T>()`, explicit lambda return annotation, removed `.Produces<T>()` / `.ProducesProblem()`)
-- [ ] §5 — Explicit parameter binding (`[ServerFunctionParameter(From = ...)]`)
+- [x] §5 — Explicit parameter binding (`[ServerFunctionParameter(From = ...)]`)
 - [ ] §6 — `[Obsolete]` propagation to generated client + OpenAPI
 - [ ] §7 — gRPC HTTP/2 enforcement
 - [ ] §8 — Code readability & maintainability (partial classes, shared helpers)

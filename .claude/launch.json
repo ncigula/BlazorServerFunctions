@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Blazor Sample App (http)",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "samples/BlazorServerFunctions.Sample", "--launch-profile", "http"],
+      "port": 5166
+    },
+    {
+      "name": "Blazor Sample App (https)",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "samples/BlazorServerFunctions.Sample", "--launch-profile", "https"],
+      "port": 7117
+    },
+    {
+      "name": "Aspire AppHost (http)",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "samples/BlazorServerFunctions.Sample.AppHost", "--launch-profile", "http"],
+      "port": 15098
+    },
+    {
+      "name": "Aspire AppHost (https)",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "samples/BlazorServerFunctions.Sample.AppHost", "--launch-profile", "https"],
+      "port": 17219
+    }
+  ]
+}

@@ -2,6 +2,7 @@ using System.Text;
 using BlazorServerFunctions.Generator.Helpers;
 using BlazorServerFunctions.Generator.Models;
 using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
+using RouteNaming = BlazorServerFunctions.Generator.Models.RouteNaming;
 
 namespace BlazorServerFunctions.Generator.Generators;
 
@@ -296,47 +297,103 @@ internal sealed class RestServerEndpointGenerator
         List<ParameterInfo> routeParams,
         List<ParameterInfo> nonRouteParams)
     {
-        // Route-bound params appear first as typed lambda arguments
+        // Route-bound params appear first as typed lambda arguments (unchanged)
         foreach (var rp in routeParams)
-        {
             _stringBuilder.Append(rp.Type).Append(' ').Append(rp.Name).Append(", ");
-        }
 
         bool hasFileParams = nonRouteParams.Any(static p => p.FileKind != FileKind.None);
 
         if (hasFileParams)
         {
-            // File upload methods: list all non-route params inline with per-param binding attributes.
-            // IFormFile / IFormFileCollection auto-bind from multipart form (no attribute needed).
-            // Regular params need [FromForm] to bind from form fields instead of query/body.
-            foreach (var p in nonRouteParams)
-            {
-                var (paramType, attribute) = p.FileKind switch
-                {
-                    FileKind.Stream => ("IFormFile", string.Empty),
-                    FileKind.FormFile => ("IFormFile", string.Empty),
-                    FileKind.FormFileCollection => ("IFormFileCollection", string.Empty),
-                    _ => (p.Type, "[FromForm] "),
-                };
-                _stringBuilder.Append(attribute).Append(paramType).Append(' ').Append(p.Name).Append(", ");
-            }
+            // File upload methods: list all non-route params inline.
+            // File params auto-bind from multipart; regular params use [FromForm] unless explicitly overridden.
+            AppendFileUploadParameters(nonRouteParams);
         }
-        else if (nonRouteParams.Count > 0)
+        else
         {
-            // Regular methods: bundle non-route params into a DTO
-            var bindingAttribute = method.HttpMethod is HttpMethod.Get or HttpMethod.Delete
-                ? "[AsParameters]"
-                : "[FromBody]";
+            // Emit explicitly-bound (header / query / body) params as individual lambda args first.
+            AppendExplicitlyBoundParameters(nonRouteParams);
 
-            _stringBuilder.Append(bindingAttribute).Append(' ')
-                .Append(method.Name)
-                .Append("Request request, ");
+            // Bundle remaining auto params into a single DTO, if any.
+            var autoParams = nonRouteParams.Where(static p => p.ExplicitSource == ParameterSource.Auto).ToList();
+            if (autoParams.Count > 0)
+            {
+                var bindingAttribute = method.HttpMethod is HttpMethod.Get or HttpMethod.Delete
+                    ? "[AsParameters]"
+                    : "[FromBody]";
+                _stringBuilder.Append(bindingAttribute).Append(' ')
+                    .Append(method.Name).Append("Request request, ");
+            }
         }
 
         _stringBuilder.Append(_interfaceInfo.Name).Append(" service");
 
         if (method.HasCancellationToken)
             _stringBuilder.Append(", CancellationToken cancellationToken");
+    }
+
+    /// <summary>
+    /// Emits inline lambda parameters for file upload methods.
+    /// File params: IFormFile / IFormFileCollection (no binding attribute).
+    /// Regular params: use explicit binding if specified, otherwise <c>[FromForm]</c>.
+    /// </summary>
+    private void AppendFileUploadParameters(List<ParameterInfo> nonRouteParams)
+    {
+        foreach (var p in nonRouteParams)
+        {
+            if (p.FileKind != FileKind.None)
+            {
+                var (paramType, attribute) = p.FileKind switch
+                {
+                    FileKind.Stream => ("IFormFile", string.Empty),
+                    FileKind.FormFile => ("IFormFile", string.Empty),
+                    FileKind.FormFileCollection => ("IFormFileCollection", string.Empty),
+                    _ => (p.Type, string.Empty),
+                };
+                _stringBuilder.Append(attribute).Append(paramType).Append(' ').Append(p.Name).Append(", ");
+            }
+            else
+            {
+                // Regular param in a file upload method — honour explicit binding or fall back to [FromForm].
+                var bindAttr = GetExplicitBindingAttribute(p) ?? "[FromForm] ";
+                _stringBuilder.Append(bindAttr).Append(p.Type).Append(' ').Append(p.Name).Append(", ");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Emits individual lambda parameters for all non-auto (header / query / body) explicit bindings.
+    /// Auto params are handled separately via the DTO path.
+    /// </summary>
+    private void AppendExplicitlyBoundParameters(List<ParameterInfo> nonRouteParams)
+    {
+        foreach (var p in nonRouteParams.Where(static p => p.ExplicitSource != ParameterSource.Auto))
+        {
+            var bindAttr = GetExplicitBindingAttribute(p)!;
+            _stringBuilder.Append(bindAttr).Append(p.Type).Append(' ').Append(p.Name).Append(", ");
+        }
+    }
+
+    /// <summary>
+    /// Returns the ASP.NET Core binding attribute string (including trailing space) for a parameter
+    /// with an explicit <see cref="ParameterSource"/>, or <c>null</c> for <see cref="ParameterSource.Auto"/>.
+    /// </summary>
+    private static string? GetExplicitBindingAttribute(ParameterInfo p)
+    {
+        switch (p.ExplicitSource)
+        {
+            case ParameterSource.Header:
+                var headerName = (p.ExplicitName ?? p.Name).EscapeStringLiteral();
+                return $"[FromHeader(Name = \"{headerName}\")] ";
+            case ParameterSource.Query when p.ExplicitName is not null:
+                return $"[FromQuery(Name = \"{p.ExplicitName.EscapeStringLiteral()}\")] ";
+            case ParameterSource.Query:
+                return "[FromQuery] ";
+            case ParameterSource.Body:
+                return "[FromBody] ";
+            default:
+                return null;
+        }
     }
 
     private void GenerateServiceCall(MethodInfo method)
@@ -368,14 +425,17 @@ internal sealed class RestServerEndpointGenerator
                 if (p.IsRouteParameter)
                     return p.Name;
 
-                if (!hasFileParams)
-                    return $"request.{p.Name.ToPascalCase()}";
+                // File params are bound inline regardless — extract stream via OpenReadStream if needed.
+                if (p.FileKind != FileKind.None)
+                    return p.FileKind == FileKind.Stream ? $"{p.Name}.OpenReadStream()" : p.Name;
 
-                // File upload method: params are bound inline, not via request DTO.
-                // Stream params are received as IFormFile on the server — extract via OpenReadStream().
-                return p.FileKind == FileKind.Stream
-                    ? $"{p.Name}.OpenReadStream()"
-                    : p.Name;
+                // Explicitly-bound (header / query / body) and inline file-upload regular params
+                // are direct lambda args — access by name.
+                if (p.ExplicitSource != ParameterSource.Auto || hasFileParams)
+                    return p.Name;
+
+                // Auto params in non-file methods are bundled in the DTO.
+                return $"request.{p.Name.ToPascalCase()}";
             });
 
             _stringBuilder.Append(string.Join(", ", paramList));
@@ -428,25 +488,30 @@ internal sealed class RestServerEndpointGenerator
     {
         foreach (var method in _interfaceInfo.Methods)
         {
-            var nonRouteParams = method.Parameters.Where(static p => !p.IsRouteParameter).ToList();
-            // File upload methods use inline lambda parameters — no DTO record needed.
-            bool hasFileParams = nonRouteParams.Any(static p => p.FileKind != FileKind.None);
-            if (nonRouteParams.Count > 0 && !hasFileParams)
-            {
-                GenerateRequestDto(method, nonRouteParams);
-            }
+            // File upload methods use inline lambda parameters for all params — no DTO record needed.
+            bool hasFileParams = method.Parameters.Any(static p => p.FileKind != FileKind.None);
+            if (hasFileParams)
+                continue;
+
+            // The DTO contains only "auto" non-route params; explicitly-bound params are lambda args.
+            var autoParams = method.Parameters.Where(static p =>
+                !p.IsRouteParameter
+                && p.ExplicitSource == ParameterSource.Auto
+                && p.FileKind == FileKind.None).ToList();
+
+            if (autoParams.Count > 0)
+                GenerateRequestDto(method, autoParams);
         }
     }
 
-    private void GenerateRequestDto(MethodInfo method, List<ParameterInfo> nonRouteParams)
+    private void GenerateRequestDto(MethodInfo method, List<ParameterInfo> autoParams)
     {
         _stringBuilder.AppendLine();
         _stringBuilder.Append("    private record ")
             .Append(method.Name)
             .Append("Request(");
 
-        var properties = nonRouteParams
-            .Select(p => $"{p.Type} {p.Name.ToPascalCase()}");
+        var properties = autoParams.Select(p => $"{p.Type} {p.Name.ToPascalCase()}");
 
         _stringBuilder.Append(string.Join(", ", properties));
         _stringBuilder.AppendLine(");");

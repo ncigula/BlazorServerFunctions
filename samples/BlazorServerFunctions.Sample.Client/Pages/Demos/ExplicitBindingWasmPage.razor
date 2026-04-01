@@ -1,0 +1,182 @@
+@page "/demos/explicit-binding/wasm"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@inject IExplicitBindingService ExplicitBindingService
+
+<PageTitle>Explicit Binding — WASM</PageTitle>
+
+<div class="demo-header">
+    <span class="badge bg-warning text-dark">🌐 WebAssembly</span>
+    <span class="badge bg-secondary ms-2">IExplicitBindingService → ExplicitBindingServiceClient (HTTP)</span>
+</div>
+
+<h2 class="mt-3">Explicit Parameter Binding</h2>
+<p>
+    Same <code>IExplicitBindingService</code> interface, but running in WebAssembly.
+    Each call goes through the generated <code>ExplicitBindingServiceClient</code> proxy over HTTP —
+    parameters are routed to headers, query strings, or the request body exactly as specified by
+    <code>[ServerFunctionParameter(From = ParameterSource.…)]</code>.
+</p>
+
+@* ── Auto: GET /api/v1/explicit-binding/{id}?Filter=… ── *@
+<div class="card mb-3" style="max-width:420px">
+    <div class="card-header d-flex align-items-center gap-2">
+        <span class="badge bg-info text-dark">GET</span>
+        <code>GetItemAsync</code>
+        <span class="badge bg-light text-dark border ms-auto">Auto (inferred)</span>
+    </div>
+    <div class="card-body">
+        <p class="card-text small text-muted mb-2">
+            <code>id</code> → route <code>{id}</code> · <code>filter</code> → query string
+        </p>
+        <div class="d-flex gap-2 mb-2">
+            <input class="form-control form-control-sm" type="number" @bind="_getItemId" placeholder="id" style="width:80px" />
+            <input class="form-control form-control-sm" @bind="_getItemFilter" placeholder="filter" />
+            <button class="btn btn-sm btn-info" @onclick="GetItemAsync">Send</button>
+        </div>
+        @if (_getItemResult is not null)
+        {
+            <div class="alert alert-success py-1 mb-0"><code>@_getItemResult</code></div>
+        }
+        @if (_getItemError is not null)
+        {
+            <div class="alert alert-danger py-1 mb-0"><code>@_getItemError</code></div>
+        }
+    </div>
+</div>
+
+@* ── Route: DELETE /api/v1/explicit-binding/{id} ── *@
+<div class="card mb-3" style="max-width:420px">
+    <div class="card-header d-flex align-items-center gap-2">
+        <span class="badge bg-danger">DELETE</span>
+        <code>DeleteItemAsync</code>
+        <span class="badge bg-light text-dark border ms-auto">ParameterSource.Route</span>
+    </div>
+    <div class="card-body">
+        <p class="card-text small text-muted mb-2">
+            <code>[ServerFunctionParameter(From = ParameterSource.Route)]</code> — compile-time guard: BSF031 if <code>{id}</code> is missing from template
+        </p>
+        <div class="d-flex gap-2 mb-2">
+            <input class="form-control form-control-sm" type="number" @bind="_deleteItemId" placeholder="id" style="width:80px" />
+            <button class="btn btn-sm btn-danger" @onclick="DeleteItemAsync">Send</button>
+        </div>
+        @if (_deleteItemDone)
+        {
+            <div class="alert alert-success py-1 mb-0">204 No Content</div>
+        }
+        @if (_deleteItemError is not null)
+        {
+            <div class="alert alert-danger py-1 mb-0"><code>@_deleteItemError</code></div>
+        }
+    </div>
+</div>
+
+@* ── Header: POST /api/v1/explicit-binding/create-order-async ── *@
+<div class="card mb-3" style="max-width:420px">
+    <div class="card-header d-flex align-items-center gap-2">
+        <span class="badge bg-success">POST</span>
+        <code>CreateOrderAsync</code>
+        <span class="badge bg-light text-dark border ms-auto">ParameterSource.Header</span>
+    </div>
+    <div class="card-body">
+        <p class="card-text small text-muted mb-2">
+            <code>tenantId</code> → <code>X-Tenant-Id</code> header · <code>productId</code> + <code>quantity</code> → JSON body
+        </p>
+        <input class="form-control form-control-sm mb-2" @bind="_tenantId" placeholder="X-Tenant-Id value" />
+        <input class="form-control form-control-sm mb-2" @bind="_productId" placeholder="productId" />
+        <input class="form-control form-control-sm mb-2" type="number" @bind="_quantity" placeholder="quantity" />
+        <button class="btn btn-sm btn-success" @onclick="CreateOrderAsync">Send</button>
+        @if (_createOrderResult is not null)
+        {
+            <div class="alert alert-success py-1 mt-2 mb-0"><code>@_createOrderResult</code></div>
+        }
+        @if (_createOrderError is not null)
+        {
+            <div class="alert alert-danger py-1 mt-2 mb-0"><code>@_createOrderError</code></div>
+        }
+    </div>
+</div>
+
+@* ── Query on POST: POST /api/v1/explicit-binding/search-async?Page=…&PageSize=… ── *@
+<div class="card mb-3" style="max-width:420px">
+    <div class="card-header d-flex align-items-center gap-2">
+        <span class="badge bg-success">POST</span>
+        <code>SearchAsync</code>
+        <span class="badge bg-light text-dark border ms-auto">ParameterSource.Query on POST</span>
+    </div>
+    <div class="card-body">
+        <p class="card-text small text-muted mb-2">
+            <code>page</code> + <code>pageSize</code> → URL query string · <code>query</code> → JSON body
+        </p>
+        <div class="d-flex gap-2 mb-2">
+            <input class="form-control form-control-sm" type="number" @bind="_searchPage" placeholder="page" style="width:80px" />
+            <input class="form-control form-control-sm" type="number" @bind="_searchPageSize" placeholder="size" style="width:80px" />
+            <input class="form-control form-control-sm" @bind="_searchQuery" placeholder="query" />
+        </div>
+        <button class="btn btn-sm btn-success" @onclick="SearchAsync">Send</button>
+        @if (_searchResult is not null)
+        {
+            <div class="alert alert-success py-1 mt-2 mb-0"><code>@_searchResult</code></div>
+        }
+        @if (_searchError is not null)
+        {
+            <div class="alert alert-danger py-1 mt-2 mb-0"><code>@_searchError</code></div>
+        }
+    </div>
+</div>
+
+@code {
+    private int _getItemId = 7;
+    private string _getItemFilter = "pending";
+    private string? _getItemResult;
+    private string? _getItemError;
+
+    private int _deleteItemId = 1;
+    private bool _deleteItemDone;
+    private string? _deleteItemError;
+
+    private string _tenantId = "tenant-x";
+    private string _productId = "product-y";
+    private int _quantity = 3;
+    private string? _createOrderResult;
+    private string? _createOrderError;
+
+    private int _searchPage = 1;
+    private int _searchPageSize = 20;
+    private string _searchQuery = "blazor";
+    private string? _searchResult;
+    private string? _searchError;
+
+    private async Task GetItemAsync()
+    {
+        _getItemResult = null;
+        _getItemError = null;
+        try { _getItemResult = await ExplicitBindingService.GetItemAsync(_getItemId, _getItemFilter); }
+        catch (Exception ex) { _getItemError = ex.Message; }
+    }
+
+    private async Task DeleteItemAsync()
+    {
+        _deleteItemDone = false;
+        _deleteItemError = null;
+        try { await ExplicitBindingService.DeleteItemAsync(_deleteItemId); _deleteItemDone = true; }
+        catch (Exception ex) { _deleteItemError = ex.Message; }
+    }
+
+    private async Task CreateOrderAsync()
+    {
+        _createOrderResult = null;
+        _createOrderError = null;
+        try { _createOrderResult = await ExplicitBindingService.CreateOrderAsync(_tenantId, _productId, _quantity); }
+        catch (Exception ex) { _createOrderError = ex.Message; }
+    }
+
+    private async Task SearchAsync()
+    {
+        _searchResult = null;
+        _searchError = null;
+        try { _searchResult = await ExplicitBindingService.SearchAsync(_searchPage, _searchPageSize, _searchQuery); }
+        catch (Exception ex) { _searchError = ex.Message; }
+    }
+
+}

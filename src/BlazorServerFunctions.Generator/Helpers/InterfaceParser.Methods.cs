@@ -70,6 +70,7 @@ internal sealed partial class InterfaceParser
             ValidateGrpcConstraints(methodSymbol, methodInfo);
 
         ValidateFileParameters(methodSymbol, methodInfo, interfaceInfo.Configuration.ApiType);
+        ValidateExplicitParameterBindings(methodSymbol, methodInfo);
         ParseOpenApiAttributes(serverFunctionAttribute, methodInfo);
 
         return methodInfo;

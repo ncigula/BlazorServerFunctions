@@ -2533,4 +2533,165 @@ public class ServerGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ─── §5 Explicit Parameter Binding ────────────────────────────────────────
+
+    [Fact]
+    public Task Generate_HeaderParameter_EmitsFromHeaderAttribute()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/orders")]
+                     public interface IOrderService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<string> CreateOrderAsync(
+                             [ServerFunctionParameter(From = ParameterSource.Header, Name = "X-Tenant-Id")] string tenantId,
+                             string productId,
+                             int quantity);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_ExplicitQueryOnPost_ExtractsParamFromBody()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/search")]
+                     public interface ISearchService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<string> SearchAsync(
+                             [ServerFunctionParameter(From = ParameterSource.Query)] int page,
+                             [ServerFunctionParameter(From = ParameterSource.Query)] int pageSize,
+                             string filter);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_MixedExplicitBindings_RouteHeaderQueryBody()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/docs")]
+                     public interface IDocumentService
+                     {
+                         [ServerFunction(HttpMethod = "POST", Route = "docs/{folderId}")]
+                         Task<string> CreateDocumentAsync(
+                             int folderId,
+                             [ServerFunctionParameter(From = ParameterSource.Header, Name = "X-Api-Key")] string apiKey,
+                             [ServerFunctionParameter(From = ParameterSource.Query)] string lang,
+                             string title,
+                             string content);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_ExplicitRouteParam_NoExtraEffect_WhenInTemplate()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
+                     public interface IUserService
+                     {
+                         [ServerFunction(HttpMethod = "DELETE", Route = "users/{id}")]
+                         Task DeleteUserAsync(
+                             [ServerFunctionParameter(From = ParameterSource.Route)] int id);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public void BSF031_ExplicitRouteParamNotInTemplate_EmitsError()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/users")]
+                     public interface IUserService
+                     {
+                         [ServerFunction(HttpMethod = "GET", Route = "users/{id}")]
+                         Task<string> GetUserAsync(
+                             int id,
+                             [ServerFunctionParameter(From = ParameterSource.Route)] int orgId);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        result.AssertDiagnostic("BSF031");
+    }
+
+    [Fact]
+    public void BSF032_BodyParamOnGetMethod_EmitsError()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/reports")]
+                     public interface IReportService
+                     {
+                         [ServerFunction(HttpMethod = "GET")]
+                         Task<string> SearchAsync(
+                             [ServerFunctionParameter(From = ParameterSource.Body)] string query);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsServer(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        result.AssertDiagnostic("BSF032");
+    }
 }

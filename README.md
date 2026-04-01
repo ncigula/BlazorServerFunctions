@@ -305,6 +305,81 @@ public interface IFileService
 
 ---
 
+## Explicit parameter binding
+
+By default the generator infers how each parameter is bound: route-template matches go to the route, GET/DELETE non-route parameters go to the query string, and POST/PUT/PATCH non-route parameters go to the JSON body. Use `[ServerFunctionParameter]` to override this inference for a single parameter.
+
+### `ParameterSource` reference
+
+| Value | Server binding | Client dispatch | Notes |
+|---|---|---|---|
+| `Auto` | Inferred (default) | Inferred (default) | No attribute needed |
+| `Route` | Route segment (same as inferred) | URL path | Compile-time validation marker — BSF031 (error) if `{paramName}` absent from template |
+| `Query` | `[FromQuery]` | URL query string | Useful to force a query-string param on POST/PUT/PATCH |
+| `Body` | `[FromBody]` | JSON request body | **Not supported on GET/DELETE** — BSF032 (error). Browsers (Fetch API) forbid a body on GET/DELETE. |
+| `Header` | `[FromHeader(Name = "...")]` | `requestMessage.Headers.Add(...)` | Use `Name` to specify the HTTP header name |
+
+### `ParameterSource.Header`
+
+```csharp
+[ServerFunctionCollection]
+public interface IOrderService
+{
+    [ServerFunction(HttpMethod = "POST")]
+    Task<Order> CreateOrderAsync(
+        [ServerFunctionParameter(From = ParameterSource.Header, Name = "X-Tenant-Id")] string tenantId,
+        string productId,
+        int quantity);
+}
+```
+
+Generated server endpoint:
+```csharp
+group.MapPost("/CreateOrderAsync",
+    async Task<Results<Ok<Order>, ProblemHttpResult>> (
+        [FromHeader(Name = "X-Tenant-Id")] string tenantId,
+        [FromBody] CreateOrderAsyncRequest request,
+        IOrderService service) => { ... })
+
+private record CreateOrderAsyncRequest(string ProductId, int Quantity);
+```
+
+Generated client proxy:
+```csharp
+var requestMessage = new HttpRequestMessage
+{
+    Method = HttpMethod.Post,
+    RequestUri = new Uri($"{BaseRoute}/CreateOrderAsync", UriKind.Relative),
+    Content = JsonContent.Create(request)
+};
+requestMessage.Headers.Add("X-Tenant-Id", tenantId.ToString());
+var response = await _httpClient.SendAsync(requestMessage);
+```
+
+### `ParameterSource.Query` on POST
+
+Force specific parameters to the URL query string even on a POST/PUT/PATCH method:
+
+```csharp
+[ServerFunction(HttpMethod = "POST")]
+Task<PagedResult<Item>> SearchAsync(
+    [ServerFunctionParameter(From = ParameterSource.Query)] int page,
+    [ServerFunctionParameter(From = ParameterSource.Query)] int pageSize,
+    SearchFilter filter);   // Auto → stays in JSON body
+```
+
+### `ParameterSource.Route`
+
+An explicit compile-time assertion that the parameter must appear as `{paramName}` in the route template. The generated code is identical to inferred route binding — this attribute is purely a documentation and safety tool. Diagnostic **BSF031** (error) fires if the template does not contain `{paramName}`.
+
+```csharp
+[ServerFunction(HttpMethod = "DELETE", Route = "items/{id}")]
+Task DeleteItemAsync(
+    [ServerFunctionParameter(From = ParameterSource.Route)] int id);
+```
+
+---
+
 ## Using with MediatR
 
 BlazorServerFunctions works naturally alongside the Mediator pattern. The generated interface is a thin adapter — each method sends a query or command and unwraps the result:

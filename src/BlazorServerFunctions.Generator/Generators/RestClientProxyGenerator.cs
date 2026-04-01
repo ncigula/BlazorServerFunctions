@@ -2,6 +2,7 @@ using System.Text;
 using BlazorServerFunctions.Generator.Helpers;
 using BlazorServerFunctions.Generator.Models;
 using HttpMethod = BlazorServerFunctions.Generator.Models.HttpMethod;
+using RouteNaming = BlazorServerFunctions.Generator.Models.RouteNaming;
 
 namespace BlazorServerFunctions.Generator.Generators;
 
@@ -110,30 +111,147 @@ internal sealed class RestClientProxyGenerator
         }
 
         var nonRouteParams = methodInfo.Parameters.Where(static p => !p.IsRouteParameter).ToList();
-        var hasNonRouteParams = nonRouteParams.Count > 0;
         var fileParams = nonRouteParams.Where(static p => p.FileKind != FileKind.None).ToList();
         var hasFileParams = fileParams.Count > 0;
+
+        // Detect if any param requires the HttpRequestMessage path (headers, or mixed query/body).
+        bool hasExplicitBindings = !hasFileParams && nonRouteParams.Any(p =>
+            p.ExplicitSource == ParameterSource.Header
+            || (p.ExplicitSource == ParameterSource.Query
+                && methodInfo.HttpMethod is HttpMethod.Post or HttpMethod.Put or HttpMethod.Patch)
+            || (p.ExplicitSource == ParameterSource.Body
+                && methodInfo.HttpMethod is HttpMethod.Get or HttpMethod.Delete));
 
         if (hasFileParams)
         {
             var regularParams = nonRouteParams.Where(static p => p.FileKind == FileKind.None).ToList();
             BuildMultipartContent(fileParams, regularParams);
         }
-        else if (hasNonRouteParams && methodInfo.HttpMethod is HttpMethod.Post or HttpMethod.Put or HttpMethod.Patch)
+        else if (!hasExplicitBindings && nonRouteParams.Count > 0
+                 && methodInfo.HttpMethod is HttpMethod.Post or HttpMethod.Put or HttpMethod.Patch)
         {
             BuildRequestObject(parameters: nonRouteParams);
         }
 
-        GenerateHttpRequest(
-            method: methodInfo,
-            nonRouteParams: nonRouteParams,
-            routeNaming: routeNaming,
-            hasFileParams: hasFileParams);
+        if (hasExplicitBindings)
+        {
+            var urlSegment = methodInfo.CustomRoute != null
+                ? RouteTemplateToInterpolation(methodInfo.CustomRoute)
+                : methodInfo.Name.ApplyRouteNaming(routeNaming);
+            GenerateHttpRequestWithExplicitBindings(methodInfo, nonRouteParams, urlSegment);
+        }
+        else
+        {
+            GenerateHttpRequest(
+                method: methodInfo,
+                nonRouteParams: nonRouteParams,
+                routeNaming: routeNaming,
+                hasFileParams: hasFileParams);
+        }
 
         GenerateResponseHandling(methodInfo);
 
         _stringBuilder.AppendLine("    }");
         _stringBuilder.AppendLine();
+    }
+
+    /// <summary>
+    /// Generates the HTTP request for methods that have explicit parameter bindings
+    /// (headers, query-on-POST, or body-on-GET). Uses <c>HttpRequestMessage</c> + <c>SendAsync</c>
+    /// to support arbitrary header injection and mixed query/body layouts.
+    /// </summary>
+    private void GenerateHttpRequestWithExplicitBindings(
+        MethodInfo method, List<ParameterInfo> nonRouteParams, string urlSegment)
+    {
+        // Header params → requestMessage.Headers.Add(...)
+        var headerParams = nonRouteParams
+            .Where(static p => p.FileKind == FileKind.None && p.ExplicitSource == ParameterSource.Header)
+            .ToList();
+
+        // Query: explicit Query on any method + auto on GET/DELETE
+        var queryParams = nonRouteParams
+            .Where(p => p.FileKind == FileKind.None
+                && p.ExplicitSource != ParameterSource.Header
+                && (p.ExplicitSource == ParameterSource.Query
+                    || (p.ExplicitSource == ParameterSource.Auto
+                        && method.HttpMethod is HttpMethod.Get or HttpMethod.Delete)))
+            .ToList();
+
+        // Body: explicit Body on any method + auto on POST/PUT/PATCH
+        var bodyParams = nonRouteParams
+            .Where(p => p.FileKind == FileKind.None
+                && p.ExplicitSource != ParameterSource.Header
+                && p.ExplicitSource != ParameterSource.Query
+                && !(p.ExplicitSource == ParameterSource.Auto
+                     && method.HttpMethod is HttpMethod.Get or HttpMethod.Delete))
+            .ToList();
+
+        if (bodyParams.Count > 0)
+        {
+            if (bodyParams.Count == 1 && bodyParams[0].ExplicitSource == ParameterSource.Body)
+                // Single explicit [FromBody] param: the server binds the raw JSON value directly
+                // (not a DTO property), so emit `var request = paramName;` so JsonContent.Create
+                // serialises e.g. a string as "value" rather than {"ParamName":"value"}.
+                _stringBuilder.Append("        var request = ")
+                    .Append(bodyParams[0].Name).AppendLine(";").AppendLine();
+            else
+                BuildRequestObject(bodyParams);
+        }
+
+        bool hasQueryParams = queryParams.Count > 0;
+        if (hasQueryParams)
+            EmitQueryStringVariable(queryParams);
+
+        EmitSendAsyncWithRequestMessage(method, urlSegment, hasQueryParams, bodyParams.Count > 0, headerParams);
+    }
+
+    private void EmitQueryStringVariable(List<ParameterInfo> queryParams)
+    {
+        _stringBuilder.AppendLine("        var queryString = System.Web.HttpUtility.ParseQueryString(string.Empty);");
+        foreach (var p in queryParams)
+        {
+            var key = (p.ExplicitName ?? p.Name.ToPascalCase()).EscapeStringLiteral();
+            var nullOp = p.Type.EndsWith("?", StringComparison.Ordinal) ? "?" : string.Empty;
+            _stringBuilder.Append($"        queryString[\"{key}\"] = {p.Name}{nullOp}")
+                .AppendLine(".ToString(System.Globalization.CultureInfo.InvariantCulture);");
+        }
+    }
+
+    private void EmitSendAsyncWithRequestMessage(
+        MethodInfo method, string urlSegment, bool hasQueryParams, bool hasBody,
+        List<ParameterInfo> headerParams)
+    {
+        var awaitKeyword = GetAwaitKeyword(method.AsyncType);
+        var resultSuffix = GetResultSuffix(method.AsyncType);
+        var uriSuffix = hasQueryParams ? "?{queryString}" : string.Empty;
+
+        _stringBuilder.AppendLine("        var requestMessage = new HttpRequestMessage");
+        _stringBuilder.AppendLine("        {");
+        _stringBuilder.AppendLine($"            Method = HttpMethod.{method.HttpMethod},");
+
+        if (hasBody)
+        {
+            _stringBuilder.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{urlSegment}{uriSuffix}\", UriKind.Relative),");
+            _stringBuilder.AppendLine("            Content = JsonContent.Create(request)");
+        }
+        else
+        {
+            _stringBuilder.AppendLine($"            RequestUri = new Uri($\"{{BaseRoute}}/{urlSegment}{uriSuffix}\", UriKind.Relative)");
+        }
+
+        _stringBuilder.AppendLine("        };");
+
+        foreach (var hp in headerParams)
+        {
+            var headerName = (hp.ExplicitName ?? hp.Name).EscapeStringLiteral();
+            var nullOp = hp.Type.EndsWith("?", StringComparison.Ordinal) ? "?" : string.Empty;
+            _stringBuilder.AppendLine($"        requestMessage.Headers.Add(\"{headerName}\", {hp.Name}{nullOp}.ToString());");
+        }
+
+        if (method.HasCancellationToken)
+            _stringBuilder.AppendLine($"        var response = {awaitKeyword}_httpClient.SendAsync(requestMessage, cancellationToken){resultSuffix};");
+        else
+            _stringBuilder.AppendLine($"        var response = {awaitKeyword}_httpClient.SendAsync(requestMessage){resultSuffix};");
     }
 
     private void GenerateResponseHandling(MethodInfo methodInfo)

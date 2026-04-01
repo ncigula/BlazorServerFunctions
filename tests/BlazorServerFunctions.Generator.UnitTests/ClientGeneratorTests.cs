@@ -1079,4 +1079,114 @@ public class ClientGeneratorTests
 
         return result.VerifyNoDiagnostics();
     }
+
+    // ─── §5 Explicit Parameter Binding ────────────────────────────────────────
+
+    [Fact]
+    public Task Generate_HeaderParameter_ClientAddsRequestHeader()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/orders")]
+                     public interface IOrderService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<string> CreateOrderAsync(
+                             [ServerFunctionParameter(From = ParameterSource.Header, Name = "X-Tenant-Id")] string tenantId,
+                             string productId,
+                             int quantity);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_ExplicitQueryOnPost_ClientSendsQueryString()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/search")]
+                     public interface ISearchService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task<string> SearchAsync(
+                             [ServerFunctionParameter(From = ParameterSource.Query)] int page,
+                             [ServerFunctionParameter(From = ParameterSource.Query)] int pageSize,
+                             string filter);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_MixedExplicitBindings_ClientCorrectlyRoutesParams()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/docs")]
+                     public interface IDocumentService
+                     {
+                         [ServerFunction(HttpMethod = "POST", Route = "docs/{folderId}")]
+                         Task<string> CreateDocumentAsync(
+                             int folderId,
+                             [ServerFunctionParameter(From = ParameterSource.Header, Name = "X-Api-Key")] string apiKey,
+                             [ServerFunctionParameter(From = ParameterSource.Query)] string lang,
+                             string title,
+                             string content);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
+
+    [Fact]
+    public Task Generate_OnlyHeaderParams_ClientUsesRequestMessageWithNoBody()
+    {
+        var source = """
+                     using System.Threading.Tasks;
+                     using BlazorServerFunctions.Abstractions;
+
+                     namespace MyApp.Services;
+
+                     [ServerFunctionCollection(RoutePrefix = "/ping")]
+                     public interface IPingService
+                     {
+                         [ServerFunction(HttpMethod = "POST")]
+                         Task PingAsync(
+                             [ServerFunctionParameter(From = ParameterSource.Header, Name = "X-Correlation-Id")] string correlationId);
+                     }
+                     """;
+
+        var result = GeneratorTestHelper.RunGeneratorAsClient(
+            source,
+            new ServerFunctionCollectionGenerator());
+
+        return result.VerifyNoDiagnostics();
+    }
 }

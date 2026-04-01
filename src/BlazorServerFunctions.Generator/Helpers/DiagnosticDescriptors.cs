@@ -389,4 +389,26 @@ internal static class DiagnosticDescriptors
         category: Category,
         defaultSeverity: DiagnosticSeverity.Warning,
         isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF031: ParameterSource.Route specified but {paramName} not present in route template
+    /// </summary>
+    public static readonly DiagnosticDescriptor ExplicitRouteParameterMissingFromTemplate = new(
+        id: "BSF031",
+        title: "Explicit Route parameter not in route template",
+        messageFormat: "Parameter '{0}' on method '{1}' is marked ParameterSource.Route but '{{{0}}}' is not present in the route template",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
+
+    /// <summary>
+    /// BSF032: ParameterSource.Body on GET or DELETE
+    /// </summary>
+    public static readonly DiagnosticDescriptor BodyParameterOnGetOrDelete = new(
+        id: "BSF032",
+        title: "Body parameter on GET or DELETE method",
+        messageFormat: "Parameter '{0}' on method '{1}' is marked ParameterSource.Body but the method uses GET or DELETE. Browsers forbid a request body on GET/DELETE (Fetch API restriction), making this endpoint unreachable from WebAssembly clients.",
+        category: Category,
+        defaultSeverity: DiagnosticSeverity.Error,
+        isEnabledByDefault: true);
 }

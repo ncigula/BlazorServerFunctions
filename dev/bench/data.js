@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1774965342478,
+  "lastUpdate": 1775203778478,
   "repoUrl": "https://github.com/ncigula/BlazorServerFunctions",
   "entries": {
     "Benchmark": [
@@ -446,6 +446,36 @@ window.BENCHMARK_DATA = {
             "value": 47040820.28947368,
             "unit": "ns",
             "range": "± 2009684.4231385116"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "committer": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "distinct": true,
+          "id": "e40f87e9bbb2858c6d770404a4a2f70a2c851dda",
+          "message": "5 - Explicit parameter binding",
+          "timestamp": "2026-04-01T09:33:28+02:00",
+          "tree_id": "0f7dcf6b32e53d47f88a1bf5e3038046ee5c4b51",
+          "url": "https://github.com/ncigula/BlazorServerFunctions/commit/e40f87e9bbb2858c6d770404a4a2f70a2c851dda"
+        },
+        "date": 1775203777862,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "BlazorServerFunctions.Benchmarks.IncrementalGenerationBenchmarks.IncrementalRun",
+            "value": 209870.41255070613,
+            "unit": "ns",
+            "range": "± 647.9320178274704"
           }
         ]
       }

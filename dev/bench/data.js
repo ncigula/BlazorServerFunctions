@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1775203778478,
+  "lastUpdate": 1775203854509,
   "repoUrl": "https://github.com/ncigula/BlazorServerFunctions",
   "entries": {
     "Benchmark": [
@@ -476,6 +476,66 @@ window.BENCHMARK_DATA = {
             "value": 209870.41255070613,
             "unit": "ns",
             "range": "± 647.9320178274704"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "committer": {
+            "email": "nikola.cigula@vanado.hr",
+            "name": "ncigula",
+            "username": "ncigulaatvanado"
+          },
+          "distinct": true,
+          "id": "e40f87e9bbb2858c6d770404a4a2f70a2c851dda",
+          "message": "5 - Explicit parameter binding",
+          "timestamp": "2026-04-01T09:33:28+02:00",
+          "tree_id": "0f7dcf6b32e53d47f88a1bf5e3038046ee5c4b51",
+          "url": "https://github.com/ncigula/BlazorServerFunctions/commit/e40f87e9bbb2858c6d770404a4a2f70a2c851dda"
+        },
+        "date": 1775203854140,
+        "tool": "benchmarkdotnet",
+        "benches": [
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 1)",
+            "value": 21120120.432258066,
+            "unit": "ns",
+            "range": "± 953154.2345230372"
+          },
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 5)",
+            "value": 20598741.954166666,
+            "unit": "ns",
+            "range": "± 334246.12472144555"
+          },
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 20)",
+            "value": 25728518.67460318,
+            "unit": "ns",
+            "range": "± 597207.2136096726"
+          },
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 50)",
+            "value": 28869558.863636363,
+            "unit": "ns",
+            "range": "± 684365.0899960916"
+          },
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 100)",
+            "value": 32038052.733333334,
+            "unit": "ns",
+            "range": "± 566468.5984784252"
+          },
+          {
+            "name": "BlazorServerFunctions.Benchmarks.FullGenerationBenchmarks.FullGeneration(InterfaceCount: 200)",
+            "value": 47070539.958333336,
+            "unit": "ns",
+            "range": "± 1736067.7641932487"
           }
         ]
       }
